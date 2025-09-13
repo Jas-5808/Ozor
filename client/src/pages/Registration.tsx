@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import cn from "./style.module.css";
 import { useAuth } from "../hooks/useAuth";
 import TelegramModal from "../components/TelegramModal";
+import PasswordModal from "../components/PasswordModal";
 import { authAPI } from "../services/api";
 
 export function Registration() {
@@ -12,6 +13,7 @@ export function Registration() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [telegramLoading, setTelegramLoading] = useState(false);
 
   const { signup, isAuthenticated } = useAuth();
@@ -83,8 +85,11 @@ export function Registration() {
       // Отправляем код на сервер для проверки
       await authAPI.verifyCode(phone, code);
 
-      // После успешной проверки кода
-      navigate("/profile");
+      // Закрываем модальное окно с кодом
+      setIsTelegramModalOpen(false);
+
+      // Открываем модальное окно для ввода пароля
+      setIsPasswordModalOpen(true);
     } catch (err) {
       setError("Неверный код. Попробуйте еще раз.");
       console.error("Ошибка проверки кода:", err);
@@ -93,8 +98,48 @@ export function Registration() {
     }
   };
 
+  const handlePasswordSubmit = async (phone: string, password: string) => {
+    setTelegramLoading(true);
+    setError("");
+
+    try {
+      // Регистрируем пользователя
+      await authAPI.signup(phone, password);
+
+      // Ждем 1 секунду
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Авторизуемся для получения токенов
+      const response = await authAPI.signin(phone, password);
+
+      // Сохраняем токены в localStorage
+      // if (response.data.access_token) {
+      //   localStorage.etItem("access_token", response.data.access_token);
+      // }
+      // if (response.data.refresh_token) {
+      //   localStorage.etItem("refresh_token", response.data.refresh_token);
+      // }
+
+      // Закрываем модальное окно
+      setIsPasswordModalOpen(false);
+
+      // Перенаправляем на профиль
+      navigate("/profile");
+    } catch (err) {
+      setError("Ошибка при создании аккаунта. Попробуйте еще раз.");
+      console.error("Ошибка создания аккаунта:", err);
+    } finally {
+      setTelegramLoading(false);
+    }
+  };
+
   const handleCloseTelegramModal = () => {
     setIsTelegramModalOpen(false);
+    setError("");
+  };
+
+  const handleClosePasswordModal = () => {
+    setIsPasswordModalOpen(false);
     setError("");
   };
 
@@ -117,32 +162,7 @@ export function Registration() {
             className={cn.input}
             required
           />
-          {/* <input
-            type="password"
-            placeholder="Пароль (минимум 4 символа)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={cn.input}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Подтвердите пароль"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className={cn.input}
-            required
-          /> */}
-          {/* <button 
-            type="submit" 
-            className={cn.btn_primary}
-            disabled={loading}
-          >
-            {loading ? 'Регистрация...' : 'Зарегистрироваться'}
-          </button> */}
         </form>
-
-        {/* <div className={cn.divider}><span>или</span></div> */}
 
         <div className={cn.socials}>
           <button
@@ -168,6 +188,14 @@ export function Registration() {
         isOpen={isTelegramModalOpen}
         onClose={handleCloseTelegramModal}
         onSubmit={handleTelegramCodeSubmit}
+        loading={telegramLoading}
+        phone={phone}
+      />
+
+      <PasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={handleClosePasswordModal}
+        onSubmit={handlePasswordSubmit}
         loading={telegramLoading}
         phone={phone}
       />
