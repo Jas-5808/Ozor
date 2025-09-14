@@ -6,6 +6,7 @@ import { Registration } from "./pages/Registration";
 import { Login } from "./pages/Login";
 import { Product } from "./pages/Product";
 import { Profile } from "./pages/Profile";
+import { UpdateProfile } from "./pages/UpdateProfile";
 import { TestAuth } from "./pages/TestAuth";
 
 export const router = createBrowserRouter([
@@ -33,6 +34,10 @@ export const router = createBrowserRouter([
             {
                 path: "profile",
                 element: <Profile />,
+            },
+            {
+                path: "update-profile",
+                element: <UpdateProfile />,
             },
             {
                 path: "test-auth",

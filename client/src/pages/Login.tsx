@@ -50,7 +50,7 @@ export function Login() {
         <form onSubmit={handleSubmit} className={cn.form}>
           <input
             type="tel"
-            placeholder="+998 (__) ___-__-__"
+            placeholder="+998 99 123 45 67"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className={cn.input}

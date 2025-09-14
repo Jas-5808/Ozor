@@ -61,13 +61,8 @@ export function Registration() {
     setError("");
 
     try {
-      // Отправляем код на сервер
       await authAPI.sendCode(phone);
-
-      // Открываем модальное окно для ввода кода
       setIsTelegramModalOpen(true);
-
-      // Перенаправляем на Telegram бота
       window.open("https://t.me/send_verifix_code_bot", "_blank");
     } catch (err) {
       setError("Ошибка при отправке кода. Попробуйте еще раз.");
@@ -82,13 +77,8 @@ export function Registration() {
     setError("");
 
     try {
-      // Отправляем код на сервер для проверки
       await authAPI.verifyCode(phone, code);
-
-      // Закрываем модальное окно с кодом
       setIsTelegramModalOpen(false);
-
-      // Открываем модальное окно для ввода пароля
       setIsPasswordModalOpen(true);
     } catch (err) {
       setError("Неверный код. Попробуйте еще раз.");
@@ -103,31 +93,44 @@ export function Registration() {
     setError("");
 
     try {
-      // Регистрируем пользователя
       await authAPI.signup(phone, password);
-
-      // Ждем 1 секунду
       await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Авторизуемся для получения токенов
       const response = await authAPI.signin(phone, password);
 
-      // Сохраняем токены в localStorage
-      // if (response.data.access_token) {
-      //   localStorage.etItem("access_token", response.data.access_token);
-      // }
-      // if (response.data.refresh_token) {
-      //   localStorage.etItem("refresh_token", response.data.refresh_token);
-      // }
+      if (response.data.access_token) {
+        localStorage.setItem("access_token", response.data.access_token);
+      }
+      if (response.data.refresh_token) {
+        localStorage.setItem("refresh_token", response.data.refresh_token);
+      }
 
-      // Закрываем модальное окно
       setIsPasswordModalOpen(false);
-
-      // Перенаправляем на профиль
       navigate("/profile");
-    } catch (err) {
-      setError("Ошибка при создании аккаунта. Попробуйте еще раз.");
-      console.error("Ошибка создания аккаунта:", err);
+    } catch (err: any) {
+      // Проверяем, если это 409 ошибка с сообщением "record already exists"
+      if (err.response && err.response.status === 409 && 
+          err.response.data?.detail?.includes("record already exists")) {
+        // Обрабатываем как успех и переходим на страницу обновления профиля
+        try {
+          const response = await authAPI.signin(phone, password);
+          
+          if (response.data.access_token) {
+            localStorage.setItem("access_token", response.data.access_token);
+          }
+          if (response.data.refresh_token) {
+            localStorage.setItem("refresh_token", response.data.refresh_token);
+          }
+
+          setIsPasswordModalOpen(false);
+          navigate("/update-profile");
+        } catch (signinErr) {
+          setError("Ошибка при входе в аккаунт. Попробуйте еще раз.");
+          console.error("Ошибка входа:", signinErr);
+        }
+      } else {
+        setError("Ошибка при создании аккаунта. Попробуйте еще раз.");
+        console.error("Ошибка создания аккаунта:", err);
+      }
     } finally {
       setTelegramLoading(false);
     }
@@ -156,7 +159,7 @@ export function Registration() {
         <form onSubmit={handleSubmit} className={cn.form}>
           <input
             type="tel"
-            placeholder="+998 (__) ___-__-__"
+            placeholder="+998 99 123 45 67"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className={cn.input}
