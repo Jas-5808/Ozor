@@ -33,9 +33,9 @@ export const ProductsList: React.FC = () => {
   }
   return (
     <div className={cn.products_grid}>
-      {products.map((product) => (
+      {products.map((product, index) => (
         <ProductCard
-          key={product.id}
+          key={product?.product_id || `product-${index}`}
           product={product}
           onToggleLike={handleToggleLike}
         />
@@ -43,4 +43,4 @@ export const ProductsList: React.FC = () => {
     </div>
   );
 };
-export default ProductsList;
+export default ProductsList;

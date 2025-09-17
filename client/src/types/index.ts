@@ -1,15 +1,48 @@
 
 export interface Product {
-  id: string;
+  product_id: string;
+  product_name: string;
+  product_description: string;
   category: {
     id: string;
     name: string;
   };
-  name: string;
-  description: string;
-  base_price: number;
   refferal_price: number;
   main_image: string;
+  variant_id: string;
+  variant_sku: string;
+  price: number;
+  stock: number;
+  variant_attributes: ProductAttributeValue[];
+}
+
+export interface ProductAttribute {
+  id: string;
+  name: string;
+  unit: string;
+}
+
+export interface ProductAttributeValue {
+  id: string;
+  variant_id: string;
+  attribute_id: string;
+  value: string;
+  image: string;
+}
+
+export interface ProductVariant {
+  id: string;
+  product_id: string;
+  sku: string;
+  price: number | null;
+  base_price: number | null;
+  stock: number;
+  attribute_values: ProductAttributeValue[];
+}
+
+export interface ProductDetail extends Product {
+  attributes: ProductAttribute[];
+  variants: ProductVariant[];
 }
 export interface Category {
   id: string;
@@ -68,4 +101,4 @@ export interface ProductFilters {
 export interface LoadingState {
   loading: boolean;
   error: string | null;
-}
+}

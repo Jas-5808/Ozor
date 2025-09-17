@@ -4,6 +4,8 @@ import { config } from "../utils/config";
 const API_BASE_URL = config.api.baseUrl;
 const API_TIMEOUT = config.api.timeout;
 
+console.log("API Configuration:", { API_BASE_URL, API_TIMEOUT });
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: API_TIMEOUT,
@@ -15,6 +17,8 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
+    const fullUrl = `${config.baseURL}${config.url}`;
+    console.log("Отправляем запрос:", config.method?.toUpperCase(), fullUrl);
     const token = localStorage.getItem("access_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -28,22 +32,26 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   (response) => {
+    console.log("Получен ответ:", response.status, response.config.url);
     return response;
   },
   (error) => {
-    console.error("API Error:", error);
+    console.error("API Error:", error.response?.status, error.response?.data, error.config?.url);
     return Promise.reject(error);
   }
 );
 
 export const shopAPI = {
   getProducts: () => apiClient.get("/shop/products"),
-  getProductById: (id) => apiClient.get(`/shop/products/${id}`),
+  getProductById: (id) => apiClient.get(`/shop/product/${id}`),
   getProductsByCategory: (categoryId) =>
     apiClient.get(`/shop/products?category=${categoryId}`),
   getCategories: () => apiClient.get("/shop/categories"),
   getCategoryById: (categoryId) =>
     apiClient.get(`/shop/category/${categoryId}`),
+  // Новый метод для получения всех вариантов товара
+  getAllProductVariants: (productId) => 
+    apiClient.get(`/shop/products?product_id=${productId}`),
 };
 
 export const authAPI = {

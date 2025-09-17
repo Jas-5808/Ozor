@@ -18,20 +18,34 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const handleToggleLike = (e: React.MouseEvent) => {
     e.preventDefault();      // не даём ссылке сработать
     e.stopPropagation();     // и прерываем всплытие
-    toggleLike(product.id);
-    onToggleLike?.(product.id);
+    toggleLike(product.product_id);
+    onToggleLike?.(product.product_id);
   };
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
   };
-  const liked = isLiked || isProductLiked(product.id);
+  const liked = isLiked || isProductLiked(product.product_id);
+  
+  // Получаем изображение варианта или основное изображение
+  const getProductImage = () => {
+    // Ищем изображение в variant_attributes
+    if (product.variant_attributes && product.variant_attributes.length > 0) {
+      const variantWithImage = product.variant_attributes.find(attr => attr.image && attr.image.trim() !== '');
+      if (variantWithImage) {
+        return getProductImageUrl(variantWithImage.image);
+      }
+    }
+    // Fallback на основное изображение
+    return getProductImageUrl(product.main_image);
+  };
+
   return (
-    <Link to={`/product/${product.id}`}  state={{ product }}  className={cn.card}>
+    <Link to={`/product/${product.product_id}`}  state={{ product }}  className={cn.card}>
       <div className={cn.card_img}>
         <img 
-          src={getProductImageUrl(product.main_image)} 
-          alt={product.name}
+          src={getProductImage()} 
+          alt={product.product_name}
           onError={(e) => {
             e.currentTarget.src = "/img/NaturalTitanium.jpg";
           }}
@@ -53,17 +67,27 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </div>
       <div className={cn.card_body}>
         <div className={cn.product_price}>
-          <h3>{formatPrice(product.base_price)}</h3>
+          <h3>
+            {product.price && product.price > 0 ? 
+              formatPrice(product.price) : 
+              'Цена не указана'
+            }
+          </h3>
         </div>
         <div className={cn.product_quantities}>
-          <p>В наличии</p>
+          <p>
+            {product.stock > 0 ? 
+              'В наличии' : 
+              'Нет в наличии'
+            }
+          </p>
         </div>
         <div className={cn.product_name}>
-          {truncateText(product.name, 50)}
+          {truncateText(product.product_name, 50)}
         </div>
-        {product.description && (
+        {product.product_description && (
           <div className={cn.product_description}>
-            {truncateText(product.description, 80)}
+            {truncateText(product.product_description, 80)}
           </div>
         )}
         <div className={cn.product_grade}>
@@ -73,9 +97,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
           <span>1 230 оценки</span>
         </div>
-        <button type="button" onClick={handleAddToCart}>
+        <button 
+          type="button" 
+          onClick={handleAddToCart}
+          disabled={!product.price || product.price <= 0 || product.stock <= 0}
+          className={(!product.price || product.price <= 0 || product.stock <= 0) ? cn.disabled_button : ''}
+        >
           <img src="/icons/korzinka.svg" alt="" aria-hidden="true" />
-          Savatka
+          {!product.price || product.price <= 0 ? 
+            'Цена не указана' : 
+            product.stock <= 0 ? 
+              'Нет в наличии' : 
+              'Savatka'
+          }
         </button>
       </div>
     </Link>

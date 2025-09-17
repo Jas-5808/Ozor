@@ -1,15 +1,14 @@
 import React from "react";
 import cn from "./style.module.scss";
 import ProductsList from "../components/ProductsList";
+import SimpleSlider from "../components/SimpleSlider";
 export function MainPage(){
   return (
     <>
         <div className={cn.main}>
           <div className="container">
             <div className={cn.main_content}>
-              <div className={cn.ads}>
-                {}
-              </div>
+              <SimpleSlider />
               <div className={cn.cards}>
                 <ProductsList />
               </div>
@@ -19,4 +18,4 @@ export function MainPage(){
     </>
   );
 }
-export default MainPage;
+export default MainPage;

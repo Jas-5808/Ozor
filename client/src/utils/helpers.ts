@@ -13,7 +13,8 @@ export const formatDate = (date: string | Date): string => {
     day: 'numeric',
   }).format(new Date(date));
 };
-export const truncateText = (text: string, maxLength: number): string => {
+export const truncateText = (text: string | undefined | null, maxLength: number): string => {
+  if (!text) return '';
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength) + '...';
 };
@@ -105,4 +106,4 @@ export const getProductImageUrl = (imagePath: string): string => {
   }
   const baseUrl = 'https://lab.ozar.uz/media';
   return `${baseUrl}/${imagePath}`;
-};
+};

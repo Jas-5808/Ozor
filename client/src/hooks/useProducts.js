@@ -9,7 +9,11 @@ export const useProducts = () => {
       setLoading(true);
       setError(null);
       const response = await shopAPI.getProducts();
-      setProducts(response.data);
+      // Фильтруем товары: показываем только те, у которых есть цена (price > 0)
+      const filteredProducts = response.data.filter(product => 
+        product.price && product.price > 0
+      );
+      setProducts(filteredProducts);
     } catch (err) {
       setError(err.message || 'Ошибка при загрузке продуктов');
       console.error('Error fetching products:', err);
@@ -74,7 +78,11 @@ export const useProductsByCategory = (categoryId) => {
       setLoading(true);
       setError(null);
       const response = await shopAPI.getProductsByCategory(categoryId);
-      setProducts(response.data);
+      // Фильтруем товары: показываем только те, у которых есть цена (price > 0)
+      const filteredProducts = response.data.filter(product => 
+        product.price && product.price > 0
+      );
+      setProducts(filteredProducts);
     } catch (err) {
       setError(err.message || 'Ошибка при загрузке продуктов категории');
       console.error('Error fetching products by category:', err);
@@ -91,4 +99,4 @@ export const useProductsByCategory = (categoryId) => {
     error,
     refetch: fetchProductsByCategory,
   };
-};
+};

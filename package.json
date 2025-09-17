@@ -1,0 +1,19 @@
+{
+  "name": "ozor-ecommerce",
+  "version": "1.0.0",
+  "description": "Интернет магазин Ozor",
+  "main": "index.js",
+  "scripts": {
+    "dev": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "preview": "cd client && npm run preview",
+    "install-client": "cd client && npm install",
+    "install-all": "npm run install-client"
+  },
+  "keywords": ["ecommerce", "uzbekistan", "shop"],
+  "author": "Ozor Team",
+  "license": "MIT",
+  "workspaces": [
+    "client"
+  ]
+}
