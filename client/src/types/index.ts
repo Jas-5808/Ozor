@@ -1,4 +1,3 @@
-
 export interface Product {
   product_id: string;
   product_name: string;
@@ -74,7 +73,7 @@ export interface Order {
   userId: string;
   items: CartItem[];
   total: number;
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  status: "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
   createdAt: string;
   updatedAt: string;
 }
@@ -95,10 +94,19 @@ export interface ProductFilters {
   minPrice?: number;
   maxPrice?: number;
   search?: string;
-  sortBy?: 'price' | 'name' | 'createdAt';
-  sortOrder?: 'asc' | 'desc';
+  sortBy?: "price" | "name" | "createdAt";
+  sortOrder?: "asc" | "desc";
 }
 export interface LoadingState {
   loading: boolean;
   error: string | null;
+}
+
+export interface Flow {
+  id: string;
+  productId: string;
+  productName: string;
+  link: string;
+  commission: number;
+  createdAt: string;
 }
