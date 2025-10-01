@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import cn from "./mainCss.module.css";
 import CategoryList from "./CategoryList";
 import SubcategoriesPanel from "./SubcategoriesPanel";
@@ -28,6 +28,7 @@ export function Header() {
   const { isAuthenticated } = useAuth();
   const hideTimerRef = useRef<number | null>(null);
   const [isSideCatalogOpen, setIsSideCatalogOpen] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
   const handleSelect = (value: string, img: string, label: string) => {
     setSelected({ value, img, label });
     setIsOpen(false);
@@ -77,9 +78,17 @@ export function Header() {
       hideTimerRef.current = null;
     }, 150);
   };
+  useEffect(() => {
+    const onScroll = () => {
+      setIsCompact(window.scrollY > 10);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   return (
     <>
-      <header className={cn.header}>
+      <header className={`${cn.header} ${isCompact ? cn.header_compact : ""}`}>
         <div className="container">
           <div className={cn.header_content}>
             <div className={cn.header_location}>
