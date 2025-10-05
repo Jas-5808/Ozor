@@ -9,7 +9,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 10000;
   padding: 20px;
 }
 
@@ -52,11 +52,11 @@
 }
 
 .close-btn {
-  background: none;
+  background: #5555;
   border: none;
   font-size: 24px;
   cursor: pointer;
-  color: #6b7280;
+  color: #000;
   padding: 0;
   width: 32px;
   height: 32px;
@@ -68,8 +68,8 @@
 }
 
 .close-btn:hover {
-  background-color: #f3f4f6;
-  color: #374151;
+  background-color:#616161;
+  color: #000;
 }
 
 /* Вкладки */
