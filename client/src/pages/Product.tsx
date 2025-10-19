@@ -95,6 +95,8 @@ export function Product() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxZoom, setLightboxZoom] = useState(1);
+  const [activeTab, setActiveTab] = useState<'description' | 'comments'>('description');
+  const [comments, setComments] = useState<Array<{ id: string; author: string; text: string; createdAt: string }>>([]);
   
   const productFromState = state?.product;
   const product = useMemo<ProductDetail | null>(() => {
@@ -533,21 +535,58 @@ export function Product() {
         {/* Дополнительные блоки */}
         {product && (
           <div className={cn.additional_sections}>
-            {/* Описание */}
-            <section className={cn.description_section}>
-              <h3 className={cn.section_title}>Описание</h3>
-              <div className={cn.product_desc}>
-                {product.product_description ? (
-                  product.product_description.split('\r\n\r\n').map((paragraph, index) => (
-                    <p key={index} className={cn.description_paragraph}>
-                      {paragraph}
-                    </p>
-                  ))
+            {/* Табы: Описание / Комментарии */}
+            <div>
+              <div className={cn.tabs}>
+                <button
+                  className={`${cn.tab} ${activeTab === 'description' ? cn.tab_active : ''}`}
+                  onClick={() => setActiveTab('description')}
+                  type="button"
+                >
+                  Описание
+                </button>
+                <button
+                  className={`${cn.tab} ${activeTab === 'comments' ? cn.tab_active : ''}`}
+                  onClick={() => setActiveTab('comments')}
+                  type="button"
+                >
+                  Комментарии
+                </button>
+              </div>
+              <div className={cn.tabs_panel}>
+                {activeTab === 'description' ? (
+                  <div className={cn.product_desc}>
+                    {product.product_description ? (
+                      product.product_description.split('\r\n\r\n').map((paragraph, index) => (
+                        <p key={index} className={cn.description_paragraph}>
+                          {paragraph}
+                        </p>
+                      ))
+                    ) : (
+                      <p>Описание недоступно.</p>
+                    )}
+                  </div>
                 ) : (
-                  <p>Описание недоступно.</p>
+                  <div className={cn.comments_section}>
+                    {comments.length === 0 ? (
+                      <p className={cn.comments_empty}>Пока нет комментариев. Оставить комментарий можно после покупки товара.</p>
+                    ) : (
+                      <div className={cn.specifications_list}>
+                        {comments.map((c) => (
+                          <div key={c.id} className={cn.specification_item}>
+                            <div>
+                              <strong>{c.author}</strong>
+                              <div className={cn.muted} style={{ fontSize: 12 }}>{new Date(c.createdAt).toLocaleString('ru-RU')}</div>
+                            </div>
+                            <div style={{ maxWidth: 640 }}>{c.text}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            </section>
+            </div>
 
             {/* Недавно просмотренные */}
             <section className={cn.recently_viewed_section}>

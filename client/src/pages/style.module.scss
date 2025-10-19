@@ -943,6 +943,34 @@
   gap: 40px;
 }
 
+/* ====== ТАБЫ Описание / Комментарии ====== */
+.tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.tab {
+  padding: 10px 14px;
+  border-radius: 10px 10px 0 0;
+  background: transparent;
+  border: 0;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+}
+.tab_active {
+  color: #1f2937;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-bottom-color: transparent;
+}
+.tabs_panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0 12px 12px 12px;
+  padding: 20px;
+}
+
 .section_title {
   font-size: 24px;
   font-weight: 700;
@@ -992,6 +1020,25 @@
   background: #fff;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
+}
+
+.comments_section {
+  padding: 20px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+.comments_empty { color: #6b7280; }
+.comments_form { display: grid; gap: 10px; margin-top: 12px; }
+.comments_input, .comments_textarea {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.comments_submit {
+  height: 40px; border: 0; border-radius: 10px; font-weight: 700;
+  background: var(--blue); color: #fff; cursor: pointer;
 }
 
 /* Сетка товаров */
