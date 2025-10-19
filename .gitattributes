@@ -1,6 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 node_modules/* linguist-vendored
+node_modules
 dist/* linguist-vendored
 .env linguist-vendored
 .env.example linguist-vendored
