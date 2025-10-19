@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
+// @ts-ignore – модуль стилей объявлен через d.ts
 import cn from "./style.module.scss";
 import { formatPrice, getProductImageUrl, storage, getVariantMainImage } from "../utils/helpers";
 import { Product as ProductType, ProductDetail } from "../types";
 import { shopAPI } from "../services/api";
+import { useApp } from "../context/AppContext";
 import ProductCard from "../components/ProductCard";
 
 type LocationState = { product?: ProductType };
@@ -107,6 +109,7 @@ export function Product() {
     }
     return null;
   }, [productFromState, fetchedProduct]);
+  const { addToCart } = useApp();
   useEffect(() => {
     let ignore = false;
     console.log("useEffect вызван с:", { id, productFromState });
@@ -153,6 +156,16 @@ export function Product() {
   }, [selectedVariant, product]);
 
   // Недавно просмотренные: сохраняем текущий товар
+  useEffect(() => {
+    // Предзагрузка ранее просмотренных, чтобы показать сразу
+    try {
+      const key = 'recently_viewed';
+      const list: ProductType[] = storage.get(key) || [];
+      setRecentlyViewed(list.filter((p) => p.product_id !== (product?.product_id || '')) .slice(0, 8));
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!product) return;
     try {
@@ -213,6 +226,20 @@ export function Product() {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [lightboxOpen, galleryImages.length]);
+
+  // Добавление в корзину
+  const handleAddToCart = () => {
+    if (!product) return;
+    const canBuy = selectedVariant ? (selectedVariant.stock > 0 && selectedVariant.price !== null) : (product.price !== null && product.stock > 0);
+    if (!canBuy) return;
+    const item = {
+      id: (selectedVariant?.id || product.variant_id),
+      name: product.product_name,
+      refferal_price: product.refferal_price || 0,
+      base_price: (selectedVariant?.base_price ?? selectedVariant?.price ?? product.price ?? 0),
+    };
+    addToCart(item, 1);
+  };
 
   // Функция для получения значения атрибута по ID
   const getAttributeValue = (variant: ProductDetail['variants'][0], attributeId: string) => {
@@ -347,6 +374,15 @@ export function Product() {
                   className={cn.main_image}
                   onClick={() => openLightbox(lightboxIndex)}
                 />
+                <button 
+                  type="button" 
+                  className={cn.primary_btn}
+                  onClick={handleAddToCart}
+                  disabled={selectedVariant ? (selectedVariant.stock === 0 || selectedVariant.price === null) : (product.price === null || product.stock === 0)}
+                  style={{ width: '92%', margin: '12px auto' }}
+                >
+                  Добавить в корзину
+                </button>
               </div>
             </section>
             <section className={cn.product_info}>
@@ -455,7 +491,11 @@ export function Product() {
                       <span className={cn.out_of_stock}>Нет в наличии</span>
                     )
                   ) : (
-                    <span className={cn.in_stock}>В наличии</span>
+                    product.stock > 0 ? (
+                      <span className={cn.in_stock}>В наличии: {product.stock} шт.</span>
+                    ) : (
+                      <span className={cn.out_of_stock}>Нет в наличии</span>
+                    )
                   )}
                 </div>
                 <form className={cn.buy_form} onSubmit={(e)=>e.preventDefault()}>

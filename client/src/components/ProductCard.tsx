@@ -76,7 +76,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </h3>
         </div>
         <div className={cn.product_quantities}>
-          <p>{product.stock > 0 ? "В наличии" : product.stock === 0 ? "Нет в наличии" : product.stock < 0 ? `Доступно под заказ (${product.stock})` : "Нет в наличии"}</p>
+          <p>{product.stock > 0 ? "В наличии" : product.stock === 0 ? "Нет в наличии" : product.stock < 0 ? `Доступно под заказ ${product.stock}` : "Нет в наличии"}</p>
         </div>
         <div className={cn.product_name}>
           {truncateText(product.product_name, 50)}
