@@ -1,30 +1,34 @@
 import React, { useState } from 'react';
 import './DeliveryModal.css';
 import ModernMap from './ModernMap';
+import { useApp } from '../context/AppContext';
 interface DeliveryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (deliveryData: { type: string; address?: string; location?: any }) => void;
 }
 const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfirm }) => {
+  const { state } = useApp();
   const [selectedMethod, setSelectedMethod] = useState<'pickup' | 'courier'>('pickup');
   const [address, setAddress] = useState('');
   const [selectedAddressId, setSelectedAddressId] = useState<number>(1);
   const [showOptionsMenu, setShowOptionsMenu] = useState<number | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [addresses, setAddresses] = useState([
-    { id: 1, text: "Улица Навои, дом 15, кв. 42\nТашкент, Узбекистан" },
-    { id: 2, text: "Проспект Амира Темура, дом 8\nТашкент, Узбекистан" }
+    { id: 1, text: "Улица Навои, дом 15, кв. 42\nТашкент, Узбекистан", city: 'Ташкент', country: 'Узбекистан', latitude: undefined as number | undefined, longitude: undefined as number | undefined },
+    { id: 2, text: "Проспект Амира Темура, дом 8\nТашкент, Узбекистан", city: 'Ташкент', country: 'Узбекистан', latitude: undefined as number | undefined, longitude: undefined as number | undefined }
   ]);
   const handleConfirm = () => {
-    const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+    const selected = addresses.find(addr => addr.id === selectedAddressId);
     onConfirm({
       type: selectedMethod,
-      address: selectedMethod === 'courier' ? selectedAddress?.text : undefined,
+      address: selectedMethod === 'courier' ? selected?.text : undefined,
       location: {
-        city: 'Ташкент',
-        address: selectedAddress?.text || 'Ташкент, Узбекистан',
-        country: 'Узбекистан',
+        latitude: selected?.latitude,
+        longitude: selected?.longitude,
+        city: selected?.city || 'Неизвестно',
+        address: selected?.text || '',
+        country: selected?.country || 'Неизвестно',
         isManual: true
       }
     });
@@ -54,12 +58,17 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
     latitude: number;
     longitude: number;
     address: string;
+    fullAddress?: string;
     city: string;
     country: string;
   }) => {
     const newAddress = {
       id: Math.max(...addresses.map(a => a.id)) + 1,
-      text: `${location.address}\n${location.city}, ${location.country}`
+      text: `${location.fullAddress || location.address}\n${location.city}, ${location.country}`,
+      city: location.city,
+      country: location.country,
+      latitude: location.latitude,
+      longitude: location.longitude,
     };
     setAddresses([...addresses, newAddress]);
     setSelectedAddressId(newAddress.id);
@@ -162,8 +171,12 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
         isOpen={showMap}
         onClose={() => setShowMap(false)}
         onLocationSelect={handleMapLocationSelect}
+        initialLocation={state.location.data?.latitude && state.location.data?.longitude ? {
+          latitude: state.location.data.latitude,
+          longitude: state.location.data.longitude,
+        } : undefined}
       />
     </div>
   );
 };
-export default DeliveryModal;
+export default DeliveryModal;

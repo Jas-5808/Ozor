@@ -17,10 +17,17 @@ const useGeolocation = () => {
       );
       const data = await response.json();
       if (data && data.display_name) {
+        const adr = data.address || {};
+        const road = adr.road || adr.pedestrian || adr.cycleway || adr.footway || adr.path || '';
+        const house = adr.house_number || '';
+        const streetHouse = `${road}${house ? ' ' + house : ''}`.trim();
+        const city = adr.city || adr.town || adr.village || adr.locality || adr.county || 'Неизвестно';
+        const country = adr.country || 'Неизвестно';
+        const compactAddress = streetHouse || data.display_name;
         return {
-          address: data.display_name,
-          city: data.address?.city || data.address?.town || data.address?.village || 'Неизвестно',
-          country: data.address?.country || 'Неизвестно'
+          address: compactAddress,
+          city,
+          country
         };
       }
       return null;
@@ -122,4 +129,4 @@ const useGeolocation = () => {
     }
   };
 };
-export default useGeolocation;
+export default useGeolocation;

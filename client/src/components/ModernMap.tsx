@@ -29,9 +29,11 @@ const ModernMap: React.FC<ModernMapProps> = ({
   const [selectedLocation, setSelectedLocation] = useState<{
     latitude: number;
     longitude: number;
-    address: string;
+    address: string; // краткий адрес: улица + дом
+    fullAddress?: string; // полный форматированный адрес
     city: string;
     country: string;
+    region?: string;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,6 +46,38 @@ const ModernMap: React.FC<ModernMapProps> = ({
   const [showSearchHistory, setShowSearchHistory] = useState(false);
   const [searchType, setSearchType] = useState<'address' | 'poi'>('address');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  // Ручной ввод адреса
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [manualCity, setManualCity] = useState('Ташкент');
+  const [manualStreet, setManualStreet] = useState('');
+  const [manualHouse, setManualHouse] = useState('');
+  const [manualApartment, setManualApartment] = useState('');
+  const [manualNote, setManualNote] = useState('');
+
+  const reverseGeocodeOSM = async (lat: number, lng: number) => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ru`);
+      const data = await res.json();
+      const adr = data?.address || {};
+      const road = adr.road || adr.pedestrian || adr.cycleway || adr.footway || adr.path || '';
+      const house = adr.house_number || '';
+      const streetHouse = `${road}${house ? ' ' + house : ''}`.trim();
+      const city = adr.city || adr.town || adr.village || adr.locality || adr.county || 'Неизвестно';
+      const country = adr.country || 'Неизвестно';
+      const fullAddress = data?.display_name || [streetHouse, city, country].filter(Boolean).join(', ');
+      return {
+        latitude: lat,
+        longitude: lng,
+        address: streetHouse || fullAddress,
+        fullAddress,
+        city,
+        country,
+        region: adr.state || adr.region || ''
+      };
+    } catch (e) {
+      return null;
+    }
+  };
   const mapRef = useRef<HTMLDivElement>(null);
   mapboxgl.accessToken = MAPBOX_CONFIG.accessToken;
   const createCustomMarker = (isFavorite = false) => {
@@ -73,24 +107,104 @@ const ModernMap: React.FC<ModernMapProps> = ({
       );
       const data = await response.json();
       if (data.features && data.features.length > 0) {
-        const feature = data.features[0];
+        // Предпочитаем максимально точный адрес: сначала тип 'address', затем 'poi', затем остальные
+        const sorted = [...data.features].sort((a: any, b: any) => {
+          const priority = (f: any) => (f.place_type?.includes('address') ? 0 : f.place_type?.includes('poi') ? 1 : 2);
+          const da = priority(a);
+          const db = priority(b);
+          if (da !== db) return da - db;
+          // далее по релевантности, если доступна
+          return (b.relevance || 0) - (a.relevance || 0);
+        });
+        const feature = sorted[0];
         const context = feature.context || [];
-        const city = context.find((c: any) => c.id.startsWith('place.'))?.text || 
+        const city = feature.text?.length && feature.place_type?.includes('place') ? feature.text :
+                    context.find((c: any) => c.id.startsWith('place.'))?.text || 
                     context.find((c: any) => c.id.startsWith('locality.'))?.text || 
                     'Неизвестно';
         const country = context.find((c: any) => c.id.startsWith('country.'))?.text || 'Неизвестно';
-        return {
+        const region = context.find((c: any) => c.id.startsWith('region.'))?.text || '';
+        // Конструируем компактный адрес: улица + дом, если это тип address, иначе полное имя
+        const isAddress = feature.place_type?.includes('address');
+        const street = feature.text; // например, название улицы
+        const house = (feature as any).address; // номер дома, если есть
+        const shortAddress = isAddress && (street || house)
+          ? `${street || ''}${house ? ' ' + house : ''}`.trim()
+          : feature.place_name;
+        const fullAddress = feature.place_name;
+        const result = {
           latitude: lat,
           longitude: lng,
-          address: feature.place_name,
+          address: shortAddress,
+          fullAddress,
           city: city,
-          country: country
+          country: country,
+          region
         };
+        // Если Mapbox не дал улицу/дом (часто в Узбекистане), пробуем OSM
+        const lacksStreet = !isAddress || !street;
+        const onlyCityCountry = !shortAddress || shortAddress === city || shortAddress === country || shortAddress === `${city}, ${country}`;
+        if (lacksStreet || onlyCityCountry) {
+          const osm = await reverseGeocodeOSM(lat, lng);
+          if (osm && osm.address && osm.address !== city && osm.address !== country) {
+            return osm;
+          }
+        }
+        return result;
       }
       return null;
     } catch (error) {
       console.error('Ошибка при получении адреса:', error);
       return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  const geocodeManualAddress = async () => {
+    const parts = [] as string[];
+    if (manualStreet) parts.push(manualStreet);
+    if (manualHouse) parts.push(manualHouse);
+    const streetPart = parts.join(' ').trim();
+    const queryCore = [streetPart, manualCity, 'Узбекистан'].filter(Boolean).join(', ');
+    if (!queryCore) return;
+    try {
+      setIsLoading(true);
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(queryCore)}.json?access_token=${MAPBOX_CONFIG.accessToken}&country=UZ&limit=1&language=ru&types=address,poi,place`
+      );
+      const data = await response.json();
+      const feature = data.features?.[0];
+      if (feature && feature.center && feature.center.length === 2) {
+        const [lng, lat] = feature.center;
+        if (map && marker) {
+          map.flyTo({ center: [lng, lat], zoom: 16 });
+          marker.setLngLat([lng, lat]);
+        }
+        const context = feature.context || [];
+        const city = feature.text?.length && feature.place_type?.includes('place') ? feature.text :
+          context.find((c: any) => c.id.startsWith('place.'))?.text ||
+          context.find((c: any) => c.id.startsWith('locality.'))?.text || manualCity || 'Неизвестно';
+        const country = context.find((c: any) => c.id.startsWith('country.'))?.text || 'Узбекистан';
+        const isAddress = feature.place_type?.includes('address');
+        const street = feature.text;
+        const house = (feature as any).address;
+        const shortAddress = isAddress && (street || house)
+          ? `${street || ''}${house ? ' ' + house : ''}`.trim()
+          : feature.place_name;
+        const fullAddress = feature.place_name;
+        setSelectedLocation({
+          latitude: lat,
+          longitude: lng,
+          address: shortAddress,
+          fullAddress,
+          city,
+          country
+        });
+        setShowSearchResults(false);
+        setShowSearchHistory(false);
+      }
+    } catch (error) {
+      console.error('Ошибка геокодирования ручного адреса:', error);
     } finally {
       setIsLoading(false);
     }
@@ -393,6 +507,37 @@ const ModernMap: React.FC<ModernMapProps> = ({
                 </button>
               )}
             </div>
+            {showManualInput && (
+              <div className="manual-input-panel" role="region" aria-label="Ручной ввод адреса">
+                <div className="manual-row">
+                  <div className="field">
+                    <label htmlFor="manual-city">Город</label>
+                    <input id="manual-city" value={manualCity} onChange={(e) => setManualCity(e.target.value)} placeholder="Например: Ташкент" />
+                  </div>
+                  <div className="field field-large">
+                    <label htmlFor="manual-street">Улица</label>
+                    <input id="manual-street" value={manualStreet} onChange={(e) => setManualStreet(e.target.value)} placeholder="Например: Абдула Кадыри" />
+                  </div>
+                  <div className="field field-small">
+                    <label htmlFor="manual-house">Дом</label>
+                    <input id="manual-house" value={manualHouse} onChange={(e) => setManualHouse(e.target.value)} placeholder="12A" />
+                  </div>
+                </div>
+                <div className="manual-row">
+                  <div className="field">
+                    <label htmlFor="manual-apartment">Квартира (необязательно)</label>
+                    <input id="manual-apartment" value={manualApartment} onChange={(e) => setManualApartment(e.target.value)} placeholder="Например: 45" />
+                  </div>
+                  <div className="field field-grow">
+                    <label htmlFor="manual-note">Комментарий курьеру</label>
+                    <input id="manual-note" value={manualNote} onChange={(e) => setManualNote(e.target.value)} placeholder="Подъезд, домофон и т.д." />
+                  </div>
+                  <div className="actions">
+                    <button className="locate-btn" onClick={geocodeManualAddress} title="Найти на карте">Найти</button>
+                  </div>
+                </div>
+              </div>
+            )}
             {}
             {showSearchHistory && searchHistory.length > 0 && !searchQuery && (
               <div className="search-history">
@@ -444,6 +589,14 @@ const ModernMap: React.FC<ModernMapProps> = ({
           </div>
           <div className="header-controls">
             {}
+            <button 
+              className="control-btn" 
+              onClick={() => setShowManualInput(v => !v)} 
+              title={showManualInput ? 'Скрыть ручной ввод' : 'Ручной ввод адреса'}
+              aria-label={showManualInput ? 'Скрыть ручной ввод' : 'Ручной ввод адреса'}
+            >
+              📝
+            </button>
             {favoritePlaces.length > 0 && (
               <div className="favorites-dropdown">
                 <button className="favorites-toggle" title="Избранные места">
@@ -489,6 +642,36 @@ const ModernMap: React.FC<ModernMapProps> = ({
             </svg>
           </button>
           {}
+            <button 
+              className="map-control-btn map-zoom-in-btn" 
+              onClick={() => map && map.zoomIn()} 
+              title="Приблизить"
+              aria-label="Приблизить"
+            >
+              +
+            </button>
+            <button 
+              className="map-control-btn map-zoom-out-btn" 
+              onClick={() => map && map.zoomOut()} 
+              title="Отдалить"
+              aria-label="Отдалить"
+            >
+              −
+            </button>
+            <button 
+              className="map-control-btn map-recenter-btn" 
+              onClick={() => {
+                if (map && marker) {
+                  const pos = marker.getLngLat();
+                  map.flyTo({ center: [pos.lng, pos.lat], zoom: 16 });
+                }
+              }} 
+              title="Центрировать на маркере"
+              aria-label="Центрировать на маркере"
+            >
+              ⊙
+            </button>
+            {}
           <div className="map-style-controls">
             <button 
               className={`map-style-btn ${currentMapStyle === MAPBOX_CONFIG.styles.streets ? 'active' : ''}`}
@@ -546,7 +729,17 @@ const ModernMap: React.FC<ModernMapProps> = ({
             )}
           </div>
           <div className="footer-center">
-            {}
+            <div 
+              className="selected-address" 
+              title={selectedLocation ? (selectedLocation.fullAddress || selectedLocation.address) : 'Выберите точку на карте'}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor"/>
+              </svg>
+              <div className="selected-address-text">
+                {selectedLocation ? (selectedLocation.fullAddress || selectedLocation.address) : 'Выберите точку на карте'}
+              </div>
+            </div>
           </div>
           <div className="footer-right">
             <button 
@@ -565,4 +758,4 @@ const ModernMap: React.FC<ModernMapProps> = ({
     </div>
   );
 };
-export default ModernMap;
+export default ModernMap;
