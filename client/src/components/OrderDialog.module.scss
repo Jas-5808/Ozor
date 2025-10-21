@@ -1,0 +1,149 @@
+/* Локальные утилити-классы. Визуальный стиль подтягиваем классами из profile.module.scss на уровне JSX */
+
+.overlay { display: contents; }
+
+.dialog { border-radius: 14px; }
+
+.row {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.name { font-size: 14px; font-weight: 600; }
+.meta { font-size: 12px; opacity: .9; }
+.price { font-weight: 700; }
+.muted { font-size: 12px; opacity: .85; }
+
+.qty {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.qtyCtrl { display: inline-flex; align-items: center; gap: 8px; }
+.qtyBtn { padding: 6px 10px; border-radius: 8px; }
+
+.actions { display: flex; gap: 8px; margin-top: 14px; }
+/* убраны пустые классы для прохождения линтера */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 24px;           /* отступы по краям */
+  min-height: 100vh;       /* фолбэк */
+  min-height: 100dvh;      /* корректная высота в мобильных браузерах */
+}
+
+.dialog {
+  width: min(560px, 95%);
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0,0,0,.12);
+  padding: 20px;
+  max-height: 90vh;   /* ограничиваем высоту */
+  max-height: 90dvh;  /* для мобильных */
+  overflow: auto;     /* скролл при переполнении */
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid #e5e7eb;
+}
+
+.name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.meta {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.price {
+  color: var(--blue);
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.qty {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.qtyCtrl {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qtyBtn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #1f2937;
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.primary {
+  flex: 1;
+  height: 44px;
+  border: 0;
+  border-radius: 10px;
+  font-weight: 700;
+  background: var(--blue);
+  color: #fff;
+  cursor: pointer;
+}
+
+.secondary {
+  flex: 1;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #1f2937;
+  cursor: pointer;
+}
+

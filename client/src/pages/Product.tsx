@@ -7,6 +7,8 @@ import { Product as ProductType, ProductDetail } from "../types";
 import { shopAPI } from "../services/api";
 import { useApp } from "../context/AppContext";
 import ProductCard from "../components/ProductCard";
+import PhoneInput from "../components/PhoneInput";
+import OrderDialog from "../components/OrderDialog";
 
 type LocationState = { product?: ProductType };
 
@@ -97,6 +99,8 @@ export function Product() {
   const [lightboxZoom, setLightboxZoom] = useState(1);
   const [activeTab, setActiveTab] = useState<'description' | 'comments'>('description');
   const [comments, setComments] = useState<Array<{ id: string; author: string; text: string; createdAt: string }>>([]);
+  const [phone, setPhone] = useState<string>("");
+  const [orderOpen, setOrderOpen] = useState<boolean>(false);
   
   const productFromState = state?.product;
   const product = useMemo<ProductDetail | null>(() => {
@@ -376,15 +380,6 @@ export function Product() {
                   className={cn.main_image}
                   onClick={() => openLightbox(lightboxIndex)}
                 />
-                <button 
-                  type="button" 
-                  className={cn.primary_btn}
-                  onClick={handleAddToCart}
-                  disabled={selectedVariant ? (selectedVariant.stock === 0 || selectedVariant.price === null) : (product.price === null || product.stock === 0)}
-                  style={{ width: '92%', margin: '12px auto' }}
-                >
-                  Добавить в корзину
-                </button>
               </div>
             </section>
             <section className={cn.product_info}>
@@ -483,7 +478,7 @@ export function Product() {
                   )}
                 </div>
                 <div className={cn.delivery_hint}>
-                  Yetkazib berish narxi: <strong>{formatPrice(product.refferal_price)}</strong> so`m
+                  Yetkazib berish narxi: 30 000 so`m
                 </div>
                 <div className={cn.stock_info}>
                   {selectedVariant ? (
@@ -500,9 +495,15 @@ export function Product() {
                     )
                   )}
                 </div>
-                <form className={cn.buy_form} onSubmit={(e)=>e.preventDefault()}>
+                <form className={cn.buy_form} onSubmit={(e)=>{e.preventDefault(); setOrderOpen(true);}}>
                   <input className={cn.input} placeholder="Ismingiz" />
-                  <input className={cn.input} placeholder="Telefon raqamingiz" />
+                  <PhoneInput 
+                    className={cn.input}
+                    placeholder="Telefon raqamingiz"
+                    value={phone}
+                    onChange={setPhone}
+                    required
+                  />
                   <button 
                     type="submit" 
                     className={cn.primary_btn}
@@ -513,6 +514,33 @@ export function Product() {
                      'Buyurtma berish'}
                   </button>
                 </form>
+                {product && (
+                  <OrderDialog
+                    open={orderOpen}
+                    onClose={() => setOrderOpen(false)}
+                    product={product}
+                    variant={selectedVariant}
+                    deliveryPrice={product.refferal_price}
+                    onBuyNow={(qty)=>{
+                      const price = selectedVariant?.price ?? product.price ?? 0;
+                      addToCart({
+                        id: selectedVariant?.id || product.variant_id,
+                        name: product.product_name,
+                        refferal_price: product.refferal_price || 0,
+                        base_price: price,
+                      }, qty);
+                    }}
+                    onAddToCart={(qty)=>{
+                      const price = selectedVariant?.price ?? product.price ?? 0;
+                      addToCart({
+                        id: selectedVariant?.id || product.variant_id,
+                        name: product.product_name,
+                        refferal_price: product.refferal_price || 0,
+                        base_price: price,
+                      }, qty);
+                    }}
+                  />
+                )}
               </div>
               <div className={cn.seller_card}>
                 <div className={cn.seller_top}>
