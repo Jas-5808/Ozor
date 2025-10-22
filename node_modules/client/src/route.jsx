@@ -8,41 +8,24 @@ import { Product } from "./pages/Product";
 import { Profile } from "./pages/Profile";
 import { UpdateProfile } from "./pages/UpdateProfile";
 import { TestAuth } from "./pages/TestAuth";
+import Favorites from "./pages/Favorites";
+import Cart from "./pages/Cart";
 
 export const router = createBrowserRouter([
-    {
-        path: "/",
-        element: <App />,
-        errorElement: <ErrorPage />,
-        children: [
-            {
-                path: "",
-                element: <MainPage />,
-            },
-            {
-                path: "login",
-                element: <Login />,
-            },
-            {
-                path: "registration",
-                element: <Registration />,
-            },
-            {
-                path: "/product/:id",
-                element: <Product />,
-            },
-            {
-                path: "profile",
-                element: <Profile />,
-            },
-            {
-                path: "update-profile",
-                element: <UpdateProfile />,
-            },
-            {
-                path: "test-auth",
-                element: <TestAuth />,
-            },
-        ]
-    }
+  {
+    path: "/",
+    element: <App />,
+    errorElement: <ErrorPage />,
+    children: [
+      { path: "", element: <MainPage /> },
+      { path: "login", element: <Login /> },
+      { path: "registration", element: <Registration /> },
+      { path: "/product/:id", element: <Product /> },
+      { path: "profile", element: <Profile /> },
+      { path: "favorites", element: <Favorites /> },
+      { path: "cart", element: <Cart /> },
+      { path: "update-profile", element: <UpdateProfile /> },
+      { path: "test-auth", element: <TestAuth /> },
+    ],
+  },
 ]);
