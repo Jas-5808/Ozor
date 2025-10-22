@@ -42,16 +42,16 @@ apiClient.interceptors.response.use(
 );
 
 export const shopAPI = {
-  getProducts: () => apiClient.get("/shop/products"),
+  getProducts: (params = {}) => apiClient.get("/shop/products", { params }),
   getProductById: (id) => apiClient.get(`/shop/product/${id}`),
-  getProductsByCategory: (categoryId) =>
-    apiClient.get(`/shop/products?category=${categoryId}`),
+  getProductsByCategory: (categoryId, params = {}) =>
+    apiClient.get(`/shop/products`, { params: { category: categoryId, ...params } }),
   getCategories: () => apiClient.get("/shop/categories"),
   getCategoryById: (categoryId) =>
     apiClient.get(`/shop/category/${categoryId}`),
-  // Новый метод для получения всех вариантов товара
+  // Расширенный метод для получения всех вариантов товара
   getAllProductVariants: (productId) => 
-    apiClient.get(`/shop/products?product_id=${productId}`),
+    apiClient.get(`/shop/products`, { params: { product_id: productId } }),
 };
 
 export const authAPI = {

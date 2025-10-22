@@ -13,6 +13,7 @@ export interface Product {
   price: number;
   stock: number;
   variant_attributes: ProductAttributeValue[];
+  variant_media?: VariantMedia[]; // из /shop/products для варианта
 }
 
 export interface ProductAttribute {
@@ -24,9 +25,10 @@ export interface ProductAttribute {
 export interface ProductAttributeValue {
   id: string;
   variant_id: string;
-  attribute_id: string;
+  attribute_id?: string; // в некоторых ответах приходит attribute_name вместо id
+  attribute_name?: string;
   value: string;
-  image: string;
+  image?: string; // может отсутствовать, изображения приходят в variant_media
 }
 
 export interface ProductVariant {
@@ -37,11 +39,21 @@ export interface ProductVariant {
   base_price: number | null;
   stock: number;
   attribute_values: ProductAttributeValue[];
+  variant_media?: VariantMedia[];
 }
 
 export interface ProductDetail extends Product {
   attributes: ProductAttribute[];
   variants: ProductVariant[];
+}
+export interface ProductVariantWithMedia extends ProductVariant {
+  variant_media?: VariantMedia[];
+}
+export interface VariantMedia {
+  id: string;
+  file: string;
+  type: string;
+  is_main: boolean;
 }
 export interface Category {
   id: string;

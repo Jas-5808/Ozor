@@ -104,6 +104,14 @@ export const getProductImageUrl = (imagePath: string): string => {
   if (imagePath.startsWith('/')) {
     return imagePath;
   }
+  // API возвращает относительные пути вида products/... или variants/...
   const baseUrl = 'https://lab.ozar.uz/media';
   return `${baseUrl}/${imagePath}`;
+};
+
+// Безопасное извлечение изображения варианта (если приходит variant_media)
+export const getVariantMainImage = (variant_media?: { file: string; is_main?: boolean }[]): string | null => {
+  if (!variant_media || variant_media.length === 0) return null;
+  const main = variant_media.find((m) => m.is_main) || variant_media[0];
+  return main?.file ? getProductImageUrl(main.file) : null;
 };

@@ -1,13 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
+// @ts-ignore – модуль стилей объявлен через d.ts
 import cn from "./style.module.scss";
-import { formatPrice, getProductImageUrl } from "../utils/helpers";
+import { formatPrice, getProductImageUrl, storage, getVariantMainImage } from "../utils/helpers";
 import { Product as ProductType, ProductDetail } from "../types";
 import { shopAPI } from "../services/api";
+import { useApp } from "../context/AppContext";
+import ProductCard from "../components/ProductCard";
+import PhoneInput from "../components/PhoneInput";
+import OrderDialog from "../components/OrderDialog";
 
 type LocationState = { product?: ProductType };
 
-// Функция для загрузки всех вариантов товара
+// Функция для загрузки всех вариантов товара (учитывает новую структуру API)
 async function fetchAllProductVariants(productId: string): Promise<ProductDetail | null> {
   try {
     console.log("Загружаем все варианты товара с ID:", productId);
@@ -22,40 +27,42 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
 
     // Берем первый вариант как базовый для получения общей информации
     const firstVariant = response.data[0];
-    
-    // Собираем все уникальные атрибуты
-    const allAttributes = new Map();
+
+    // Собираем все уникальные атрибуты по attribute_name (новый формат)
+    const allAttributes = new Map<string, { id: string; name: string; unit: string }>();
     const allVariants: any[] = [];
-    
+
     response.data.forEach((variant: any) => {
-      // Собираем атрибуты
-      variant.variant_attributes.forEach((attr: any) => {
-        if (!allAttributes.has(attr.attribute_id)) {
-          allAttributes.set(attr.attribute_id, {
-            id: attr.attribute_id,
-            name: attr.attribute_id === 'f73925aa-e38b-4ce9-949b-ce1815aafdfb' ? 'memory' :
-                  attr.attribute_id === '617912e3-3888-40e9-a4f2-90289262e837' ? 'ram' :
-                  attr.attribute_id === '4d85c888-6673-409c-8beb-c573b4dbe0a2' ? 'color' :
-                  attr.attribute_id === '7754bc21-05b3-46f5-9fcc-d0835d88cfaf' ? 'color' : 'unknown',
-            unit: attr.attribute_id === 'f73925aa-e38b-4ce9-949b-ce1815aafdfb' ? 'ГБ' :
-                  attr.attribute_id === '617912e3-3888-40e9-a4f2-90289262e837' ? 'ГБ' : ''
+      const attrs = (variant.variant_attributes || []) as any[];
+      attrs.forEach((attr) => {
+        const key = attr.attribute_name || attr.attribute_id || attr.id || 'unknown';
+        if (!allAttributes.has(key)) {
+          allAttributes.set(key, {
+            id: key,
+            name: key,
+            unit: ''
           });
         }
       });
-      
-      // Создаем вариант в нужном формате
+
       allVariants.push({
         id: variant.variant_id,
         product_id: variant.product_id,
         sku: variant.variant_sku,
         price: variant.price,
-        base_price: variant.price, // Используем price как base_price
+        base_price: variant.price ?? null,
         stock: variant.stock,
-        attribute_values: variant.variant_attributes
+        attribute_values: (variant.variant_attributes || []).map((av: any) => ({
+          id: av.id,
+          variant_id: av.variant_id,
+          attribute_id: (av.attribute_name || av.attribute_id),
+          attribute_name: av.attribute_name,
+          value: av.value,
+        })),
+        variant_media: variant.variant_media || [],
       });
     });
 
-    // Формируем ProductDetail
     const productDetail: ProductDetail = {
       product_id: firstVariant.product_id,
       product_name: firstVariant.product_name,
@@ -69,7 +76,7 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
       stock: firstVariant.stock,
       variant_attributes: firstVariant.variant_attributes,
       attributes: Array.from(allAttributes.values()),
-      variants: allVariants
+      variants: allVariants,
     };
 
     return productDetail;
@@ -86,6 +93,14 @@ export function Product() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductDetail['variants'][0] | null>(null);
+  const [recentlyViewed, setRecentlyViewed] = useState<ProductType[]>([]);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [lightboxZoom, setLightboxZoom] = useState(1);
+  const [activeTab, setActiveTab] = useState<'description' | 'comments'>('description');
+  const [comments, setComments] = useState<Array<{ id: string; author: string; text: string; createdAt: string }>>([]);
+  const [phone, setPhone] = useState<string>("");
+  const [orderOpen, setOrderOpen] = useState<boolean>(false);
   
   const productFromState = state?.product;
   const product = useMemo<ProductDetail | null>(() => {
@@ -100,6 +115,7 @@ export function Product() {
     }
     return null;
   }, [productFromState, fetchedProduct]);
+  const { addToCart } = useApp();
   useEffect(() => {
     let ignore = false;
     console.log("useEffect вызван с:", { id, productFromState });
@@ -132,15 +148,114 @@ export function Product() {
     return () => { ignore = true; };
   }, [id]);
 
+  // Сбор изображений для галереи/лайтбокса
+  const galleryImages: string[] = useMemo(() => {
+    const fromMedia = getVariantMainImage((selectedVariant as any)?.variant_media ? (selectedVariant as any).variant_media : (product as any)?.variant_media) || null;
+    const mediaImages = ((selectedVariant as any)?.variant_media || (product as any)?.variant_media || [])
+      .map((m: any) => m?.file)
+      .filter(Boolean)
+      .map((f: string) => getProductImageUrl(f));
+    const attrImages = selectedVariant?.attribute_values?.filter((av) => (av as any).image)?.map((av) => getProductImageUrl((av as any).image)) || [];
+    const main = product ? getProductImageUrl(product.main_image) : null;
+    const images = Array.from(new Set([fromMedia, ...mediaImages, ...attrImages, main].filter(Boolean)));
+    return images as string[];
+  }, [selectedVariant, product]);
+
+  // Недавно просмотренные: сохраняем текущий товар
+  useEffect(() => {
+    // Предзагрузка ранее просмотренных, чтобы показать сразу
+    try {
+      const key = 'recently_viewed';
+      const list: ProductType[] = storage.get(key) || [];
+      setRecentlyViewed(list.filter((p) => p.product_id !== (product?.product_id || '')) .slice(0, 8));
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!product) return;
+    try {
+      const key = 'recently_viewed';
+      const list: ProductType[] = storage.get(key) || [];
+      const item: ProductType = {
+        product_id: product.product_id,
+        product_name: product.product_name,
+        product_description: product.product_description,
+        category: product.category,
+        refferal_price: product.refferal_price,
+        main_image: product.main_image,
+        variant_id: selectedVariant?.id || product.variant_id,
+        variant_sku: selectedVariant?.sku || product.variant_sku,
+        price: selectedVariant?.price ?? product.price,
+        stock: selectedVariant?.stock ?? product.stock,
+        variant_attributes: selectedVariant?.attribute_values || product.variant_attributes || [],
+      };
+      const deduped = [item, ...list.filter((p) => p.product_id !== item.product_id)].slice(0, 12);
+      storage.set(key, deduped);
+      setRecentlyViewed(deduped.filter((p) => p.product_id !== product.product_id).slice(0, 8));
+    } catch {}
+  }, [product, selectedVariant]);
+
+  // Лайтбокс
+  const openLightbox = (index: number) => {
+    setLightboxIndex(index);
+    setLightboxZoom(1);
+    setLightboxOpen(true);
+    document.body.style.overflow = 'hidden';
+  };
+  const closeLightbox = () => {
+    setLightboxOpen(false);
+    setLightboxZoom(1);
+    document.body.style.overflow = '';
+  };
+  const nextImage = () => {
+    setLightboxIndex((prev) => (prev + 1) % Math.max(galleryImages.length, 1));
+  };
+  const prevImage = () => {
+    setLightboxIndex((prev) => (prev - 1 + Math.max(galleryImages.length, 1)) % Math.max(galleryImages.length, 1));
+  };
+  const zoomIn = () => setLightboxZoom((z) => Math.min(z + 0.25, 3));
+  const zoomOut = () => setLightboxZoom((z) => Math.max(z - 0.25, 0.5));
+  const onLightboxWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
+    if (e.deltaY < 0) zoomIn();
+    else zoomOut();
+  };
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowRight') nextImage();
+      if (e.key === 'ArrowLeft') prevImage();
+      if (e.key === '+') zoomIn();
+      if (e.key === '-') zoomOut();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [lightboxOpen, galleryImages.length]);
+
+  // Добавление в корзину
+  const handleAddToCart = () => {
+    if (!product) return;
+    const canBuy = selectedVariant ? (selectedVariant.stock > 0 && selectedVariant.price !== null) : (product.price !== null && product.stock > 0);
+    if (!canBuy) return;
+    const item = {
+      id: (selectedVariant?.id || product.variant_id),
+      name: product.product_name,
+      refferal_price: product.refferal_price || 0,
+      base_price: (selectedVariant?.base_price ?? selectedVariant?.price ?? product.price ?? 0),
+    };
+    addToCart(item, 1);
+  };
+
   // Функция для получения значения атрибута по ID
   const getAttributeValue = (variant: ProductDetail['variants'][0], attributeId: string) => {
-    const attributeValue = variant.attribute_values.find(av => av.attribute_id === attributeId);
+    const attributeValue = variant.attribute_values.find(av => (av.attribute_id === attributeId) || (av as any).attribute_name === attributeId);
     return attributeValue?.value || '';
   };
 
   // Функция для получения названия атрибута по ID
   const getAttributeName = (attributeId: string) => {
-    const attribute = product?.attributes.find(a => a.id === attributeId);
+    const attribute = product?.attributes.find(a => a.id === attributeId || a.name === attributeId);
     return attribute?.name || '';
   };
 
@@ -246,34 +361,24 @@ export function Product() {
           <div className={cn.product_content}>
             <section className={cn.product_gallery}>
               <div className={cn.gallery_thumbs}>
-                {/* Показываем все изображения вариантов */}
-                {selectedVariant?.attribute_values
-                  .filter(av => av.image)
-                  .map((av, i) => (
-                    <button key={i} className={cn.thumb} type="button" aria-label={`Превью ${i+1}`}>
-                      <img src={getProductImageUrl(av.image)} alt="" />
-                    </button>
-                  ))}
-                {/* Добавляем основное изображение если нужно */}
-                {(!selectedVariant?.attribute_values.some(av => av.image) || selectedVariant.attribute_values.filter(av => av.image).length < 5) && 
-                  [0,1,2,3,4].slice(0, 5 - (selectedVariant?.attribute_values.filter(av => av.image).length || 0)).map((i) => (
-                    <button key={`main-${i}`} className={cn.thumb} type="button" aria-label={`Превью ${i+1}`}>
-                      <img src={getProductImageUrl(product.main_image)} alt="" />
-                    </button>
-                  ))
-                }
+                {galleryImages.map((img, i) => (
+                  <button
+                    key={i}
+                    className={`${cn.thumb} ${i === lightboxIndex ? 'active' : ''}`}
+                    type="button"
+                    aria-label={`Превью ${i + 1}`}
+                    onClick={() => openLightbox(i)}
+                  >
+                    <img src={img} alt="" />
+                  </button>
+                ))}
               </div>
               <div className={cn.gallery_main}>
                 <img 
-                  src={getProductImageUrl(
-                    selectedVariant?.attribute_values.find(av => av.image)?.image || product.main_image
-                  )} 
+                  src={galleryImages[lightboxIndex] || getProductImageUrl(product.main_image)} 
                   alt={product.product_name} 
                   className={cn.main_image}
-                  onClick={() => {
-                    // Здесь будет открытие модального окна для просмотра изображения
-                    console.log('Открыть просмотр изображения');
-                  }}
+                  onClick={() => openLightbox(lightboxIndex)}
                 />
               </div>
             </section>
@@ -373,7 +478,7 @@ export function Product() {
                   )}
                 </div>
                 <div className={cn.delivery_hint}>
-                  Yetkazib berish narxi: <strong>{formatPrice(product.refferal_price)}</strong> so`m
+                  Yetkazib berish narxi: 30 000 so`m
                 </div>
                 <div className={cn.stock_info}>
                   {selectedVariant ? (
@@ -383,12 +488,22 @@ export function Product() {
                       <span className={cn.out_of_stock}>Нет в наличии</span>
                     )
                   ) : (
-                    <span className={cn.in_stock}>В наличии</span>
+                    product.stock > 0 ? (
+                      <span className={cn.in_stock}>В наличии: {product.stock} шт.</span>
+                    ) : (
+                      <span className={cn.out_of_stock}>Нет в наличии</span>
+                    )
                   )}
                 </div>
-                <form className={cn.buy_form} onSubmit={(e)=>e.preventDefault()}>
+                <form className={cn.buy_form} onSubmit={(e)=>{e.preventDefault(); setOrderOpen(true);}}>
                   <input className={cn.input} placeholder="Ismingiz" />
-                  <input className={cn.input} placeholder="Telefon raqamingiz" />
+                  <PhoneInput 
+                    className={cn.input}
+                    placeholder="Telefon raqamingiz"
+                    value={phone}
+                    onChange={setPhone}
+                    required
+                  />
                   <button 
                     type="submit" 
                     className={cn.primary_btn}
@@ -399,6 +514,33 @@ export function Product() {
                      'Buyurtma berish'}
                   </button>
                 </form>
+                {product && (
+                  <OrderDialog
+                    open={orderOpen}
+                    onClose={() => setOrderOpen(false)}
+                    product={product}
+                    variant={selectedVariant}
+                    deliveryPrice={product.refferal_price}
+                    onBuyNow={(qty)=>{
+                      const price = selectedVariant?.price ?? product.price ?? 0;
+                      addToCart({
+                        id: selectedVariant?.id || product.variant_id,
+                        name: product.product_name,
+                        refferal_price: product.refferal_price || 0,
+                        base_price: price,
+                      }, qty);
+                    }}
+                    onAddToCart={(qty)=>{
+                      const price = selectedVariant?.price ?? product.price ?? 0;
+                      addToCart({
+                        id: selectedVariant?.id || product.variant_id,
+                        name: product.product_name,
+                        refferal_price: product.refferal_price || 0,
+                        base_price: price,
+                      }, qty);
+                    }}
+                  />
+                )}
               </div>
               <div className={cn.seller_card}>
                 <div className={cn.seller_top}>
@@ -421,55 +563,76 @@ export function Product() {
         {/* Дополнительные блоки */}
         {product && (
           <div className={cn.additional_sections}>
-            {/* Описание */}
-            <section className={cn.description_section}>
-              <h3 className={cn.section_title}>Описание</h3>
-              <div className={cn.product_desc}>
-                {product.product_description ? (
-                  product.product_description.split('\r\n\r\n').map((paragraph, index) => (
-                    <p key={index} className={cn.description_paragraph}>
-                      {paragraph}
-                    </p>
-                  ))
+            {/* Табы: Описание / Комментарии */}
+            <div>
+              <div className={cn.tabs}>
+                <button
+                  className={`${cn.tab} ${activeTab === 'description' ? cn.tab_active : ''}`}
+                  onClick={() => setActiveTab('description')}
+                  type="button"
+                >
+                  Описание
+                </button>
+                <button
+                  className={`${cn.tab} ${activeTab === 'comments' ? cn.tab_active : ''}`}
+                  onClick={() => setActiveTab('comments')}
+                  type="button"
+                >
+                  Комментарии
+                </button>
+              </div>
+              <div className={cn.tabs_panel}>
+                {activeTab === 'description' ? (
+                  <div className={cn.product_desc}>
+                    {product.product_description ? (
+                      product.product_description.split('\r\n\r\n').map((paragraph, index) => (
+                        <p key={index} className={cn.description_paragraph}>
+                          {paragraph}
+                        </p>
+                      ))
+                    ) : (
+                      <p>Описание недоступно.</p>
+                    )}
+                  </div>
                 ) : (
-                  <p>Описание недоступно.</p>
+                  <div className={cn.comments_section}>
+                    {comments.length === 0 ? (
+                      <p className={cn.comments_empty}>Пока нет комментариев. Оставить комментарий можно после покупки товара.</p>
+                    ) : (
+                      <div className={cn.specifications_list}>
+                        {comments.map((c) => (
+                          <div key={c.id} className={cn.specification_item}>
+                            <div>
+                              <strong>{c.author}</strong>
+                              <div className={cn.muted} style={{ fontSize: 12 }}>{new Date(c.createdAt).toLocaleString('ru-RU')}</div>
+                            </div>
+                            <div style={{ maxWidth: 640 }}>{c.text}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            </section>
+            </div>
 
             {/* Недавно просмотренные */}
             <section className={cn.recently_viewed_section}>
               <h3 className={cn.section_title}>Недавно просмотренные</h3>
               <div className={cn.products_grid}>
-                {/* Здесь будут карточки недавно просмотренных товаров */}
-                <div className={cn.placeholder_card}>
-                  <div className={cn.placeholder_image}></div>
-                  <div className={cn.placeholder_content}>
-                    <div className={cn.placeholder_title}></div>
-                    <div className={cn.placeholder_price}></div>
+                {recentlyViewed && recentlyViewed.length > 0 ? (
+                  recentlyViewed.map((p) => (
+                    <ProductCard key={p.product_id} product={p} />
+                  ))
+                ) : (
+                  <div className={cn.placeholder_card}>
+                    <div className={cn.placeholder_image}></div>
+                    <div className={cn.placeholder_content}>
+                      <div className={cn.placeholder_title}></div>
+                      <div className={cn.placeholder_price}></div>
+                    </div>
                   </div>
-                </div>
-                <div className={cn.placeholder_card}>
-                  <div className={cn.placeholder_image}></div>
-                  <div className={cn.placeholder_content}>
-                    <div className={cn.placeholder_title}></div>
-                    <div className={cn.placeholder_price}></div>
-                  </div>
-                </div>
-                <div className={cn.placeholder_card}>
-                  <div className={cn.placeholder_image}></div>
-                  <div className={cn.placeholder_content}>
-                    <div className={cn.placeholder_title}></div>
-                    <div className={cn.placeholder_price}></div>
-                  </div>
-                </div>
-                <div className={cn.placeholder_card}>
-                  <div className={cn.placeholder_image}></div>
-                  <div className={cn.placeholder_content}>
-                    <div className={cn.placeholder_title}></div>
-                    <div className={cn.placeholder_price}></div>
-                  </div>
-                </div>
+                )}
               </div>
             </section>
 
@@ -511,6 +674,32 @@ export function Product() {
           </div>
         )}
       </div>
+
+      {/* Лайтбокс */}
+      {lightboxOpen && (
+        <div className={cn.lightbox_overlay} onWheel={onLightboxWheel} onClick={(e) => {
+          if (e.target === e.currentTarget) closeLightbox();
+        }}>
+          <div className={cn.lightbox_container}>
+            <button className={`${cn.lightbox_btn} ${cn.lightbox_close}`} onClick={closeLightbox} aria-label="Закрыть">×</button>
+            <button className={`${cn.lightbox_btn} ${cn.lightbox_prev}`} onClick={(e)=>{ e.stopPropagation(); prevImage(); }} aria-label="Предыдущее">‹</button>
+            <button className={`${cn.lightbox_btn} ${cn.lightbox_next}`} onClick={(e)=>{ e.stopPropagation(); nextImage(); }} aria-label="Следующее">›</button>
+            <div className={cn.lightbox_image_wrapper}>
+              <img
+                src={galleryImages[lightboxIndex] || getProductImageUrl(product?.main_image || '')}
+                alt="Просмотр"
+                className={cn.lightbox_image}
+                style={{ transform: `scale(${lightboxZoom})` }}
+                onClick={(e)=> e.stopPropagation()}
+              />
+            </div>
+            <div className={cn.lightbox_zoom}>
+              <button className={cn.zoom_btn} onClick={(e)=>{ e.stopPropagation(); zoomOut(); }} aria-label="Уменьшить">−</button>
+              <button className={cn.zoom_btn} onClick={(e)=>{ e.stopPropagation(); zoomIn(); }} aria-label="Увеличить">+</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

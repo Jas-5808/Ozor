@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 interface PhoneInputProps {
   value: string;
@@ -9,12 +9,14 @@ interface PhoneInputProps {
 }
 
 export function PhoneInput({ value, onChange, className, placeholder, required }: PhoneInputProps) {
-  const [displayValue, setDisplayValue] = useState("+998 ");
+  const PREFIX = "+998 ";
+  const [displayValue, setDisplayValue] = useState(PREFIX);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Инициализируем с +998 если значение пустое
+    // Инициализируем с +998  если значение пустое
     if (!value) {
-      setDisplayValue("+998 ");
+      setDisplayValue(PREFIX);
     } else {
       setDisplayValue(value);
     }
@@ -33,13 +35,16 @@ export function PhoneInput({ value, onChange, className, placeholder, required }
     // Ограничиваем до 9 цифр (99 123 45 67)
     const limitedNumbers = cleanNumbers.substring(0, 9);
     
-    // Форматируем: 99 123 45 67
-    let formatted = "+998 ";
+    // Форматируем: +998 (99) 123 45 67
+    let formatted = PREFIX; // +998 
     if (limitedNumbers.length > 0) {
-      formatted += limitedNumbers.substring(0, 2);
+      formatted += "(" + limitedNumbers.substring(0, 2);
+    }
+    if (limitedNumbers.length >= 2) {
+      formatted += ") ";
     }
     if (limitedNumbers.length > 2) {
-      formatted += " " + limitedNumbers.substring(2, 5);
+      formatted += limitedNumbers.substring(2, 5);
     }
     if (limitedNumbers.length > 5) {
       formatted += " " + limitedNumbers.substring(5, 7);
@@ -54,17 +59,17 @@ export function PhoneInput({ value, onChange, className, placeholder, required }
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
     
-    // Если пытаются удалить +998, не позволяем
-    if (input.length < 6) { // +998 = 5 символов
-      setDisplayValue("+998 ");
-      onChange("+998 ");
+    // Если пытаются удалить "+998 ", не позволяем
+    if (input.length < PREFIX.length) {
+      setDisplayValue(PREFIX);
+      onChange(PREFIX);
       return;
     }
     
-    // Если пытаются изменить +998, восстанавливаем
-    if (!input.startsWith("+998 ")) {
-      setDisplayValue("+998 ");
-      onChange("+998 ");
+    // Если пытаются изменить префикс, восстанавливаем
+    if (!input.startsWith(PREFIX)) {
+      setDisplayValue(PREFIX);
+      onChange(PREFIX);
       return;
     }
     
@@ -74,14 +79,30 @@ export function PhoneInput({ value, onChange, className, placeholder, required }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Запрещаем удаление +998
-    if (e.key === 'Backspace' && displayValue.length <= 6) {
+    // Запрещаем удаление "+998 "
+    if (e.key === 'Backspace' && displayValue.length <= PREFIX.length) {
       e.preventDefault();
+      return;
     }
-    
-    // Запрещаем вставку в начало
-    if (e.key === 'v' && e.ctrlKey) {
-      e.preventDefault();
+
+    // Если курсор в конце и строка заканчивается на ") ", позволяем удалить цифру кода оператора
+    if (e.key === 'Backspace' && inputRef.current) {
+      const { selectionStart, selectionEnd } = inputRef.current;
+      const caretAtEnd = selectionStart === selectionEnd && selectionStart === displayValue.length;
+      if (caretAtEnd && displayValue.endsWith(") ")) {
+        e.preventDefault();
+        const numbers = displayValue.replace(/\D/g, '');
+        const cleanNumbers = numbers.startsWith('998') ? numbers.substring(3) : numbers;
+        if (cleanNumbers.length >= 1) {
+          const nextInput = PREFIX + cleanNumbers.slice(0, cleanNumbers.length - 1);
+          const formatted = formatPhoneNumber(nextInput);
+          setDisplayValue(formatted);
+          onChange(formatted);
+        } else {
+          setDisplayValue(PREFIX);
+          onChange(PREFIX);
+        }
+      }
     }
   };
 
@@ -96,6 +117,7 @@ export function PhoneInput({ value, onChange, className, placeholder, required }
   return (
     <input
       type="tel"
+      ref={inputRef}
       value={displayValue}
       onChange={handleChange}
       onKeyDown={handleKeyDown}
@@ -103,7 +125,7 @@ export function PhoneInput({ value, onChange, className, placeholder, required }
       className={className}
       placeholder={placeholder}
       required={required}
-      maxLength={18} // +998 99 123 45 67 = 18 символов
+      maxLength={19} // +998 (99) 123 45 67 = 19 символов
     />
   );
 }

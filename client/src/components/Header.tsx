@@ -102,9 +102,11 @@ export function Header() {
                   title="Нажмите, чтобы изменить местоположение"
                 >
                   <img src="/icons/location.svg" alt="" className="size-5" />
-                  <p className="text-sm md:text-base">
-                    {state.location.data?.address ||
-                      "Местоположение не определено"}
+                  <p
+                    className="text-sm md:text-base max-w-[220px] md:max-w-[320px] truncate whitespace-nowrap overflow-hidden"
+                    title={state.location.data?.address || "Местоположение не определено"}
+                  >
+                    {state.location.data?.address || "Местоположение не определено"}
                   </p>
                 </div>
                 <div className="relative">

@@ -2,11 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import cn from "../pages/style.module.scss";
 import { useApp } from "../context/AppContext";
-import {
-  formatPrice,
-  truncateText,
-  getProductImageUrl,
-} from "../utils/helpers";
+import { formatPrice, truncateText, getProductImageUrl, getVariantMainImage } from "../utils/helpers";
 import { Product } from "../types";
 interface ProductCardProps {
   product: Product;
@@ -31,18 +27,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
   const liked = isLiked || isProductLiked(product.product_id);
 
-  // Получаем изображение варианта или основное изображение
+  // Получаем изображение: сначала variant_media.main, потом из атрибута, потом основное
   const getProductImage = () => {
-    // Ищем изображение в variant_attributes
+    const fromMedia = getVariantMainImage((product as any).variant_media);
+    if (fromMedia) return fromMedia;
     if (product.variant_attributes && product.variant_attributes.length > 0) {
-      const variantWithImage = product.variant_attributes.find(
-        (attr) => attr.image && attr.image.trim() !== ""
-      );
-      if (variantWithImage) {
-        return getProductImageUrl(variantWithImage.image);
-      }
+      const variantWithImage = product.variant_attributes.find((attr) => (attr as any).image && (attr as any).image.trim() !== "");
+      if (variantWithImage) return getProductImageUrl((variantWithImage as any).image);
     }
-    // Fallback на основное изображение
     return getProductImageUrl(product.main_image);
   };
 
@@ -84,7 +76,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </h3>
         </div>
         <div className={cn.product_quantities}>
-          <p>{product.stock > 0 ? "В наличии" : "Нет в наличии"}</p>
+          <p>{product.stock > 0 ? "В наличии" : product.stock === 0 ? "Нет в наличии" : product.stock < 0 ? `Доступно под заказ ${product.stock}` : "Нет в наличии"}</p>
         </div>
         <div className={cn.product_name}>
           {truncateText(product.product_name, 50)}

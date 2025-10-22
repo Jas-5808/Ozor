@@ -1,2 +1,24 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+node_modules/* linguist-vendored
+node_modules
+dist/* linguist-vendored
+.env linguist-vendored
+.env.example linguist-vendored
+.env.local linguist-vendored
+.env.development.local linguist-vendored
+.env.test.local linguist-vendored
+.env.production.local linguist-vendored
+
+*.ts linguist-detectable=false
+*.tsx linguist-detectable=false
+*.js linguist-detectable=false
+*.jsx linguist-detectable=false
+*.json linguist-detectable=false
+*.css linguist-detectable=false
+*.scss linguist-detectable=false
+*.sass linguist-detectable=false
+*.less linguist-detectable=false
+*.md linguist-detectable=false
+*.txt linguist-detectable=false
+
