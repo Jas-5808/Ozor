@@ -5,6 +5,7 @@ import cn from "./style.module.scss";
 import { formatPrice, getProductImageUrl, storage, getVariantMainImage } from "../utils/helpers";
 import { Product as ProductType, ProductDetail } from "../types";
 import { shopAPI } from "../services/api";
+import { uzbekistanLocations } from "../data/uzbekistanLocations";
 import { useApp } from "../context/AppContext";
 import ProductCard from "../components/ProductCard";
 import PhoneInput from "../components/PhoneInput";
@@ -88,7 +89,7 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
 export function Product() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
-  const state = (location.state ?? {}) as LocationState;
+  const routeState = (location.state ?? {}) as LocationState;
   const [fetchedProduct, setFetchedProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,9 +101,10 @@ export function Product() {
   const [activeTab, setActiveTab] = useState<'description' | 'comments'>('description');
   const [comments, setComments] = useState<Array<{ id: string; author: string; text: string; createdAt: string }>>([]);
   const [phone, setPhone] = useState<string>("");
+  const [name, setName] = useState<string>("");
   const [orderOpen, setOrderOpen] = useState<boolean>(false);
   
-  const productFromState = state?.product;
+  const productFromState = routeState?.product;
   const product = useMemo<ProductDetail | null>(() => {
     if (fetchedProduct) return fetchedProduct;
     if (productFromState) {
@@ -115,7 +117,25 @@ export function Product() {
     }
     return null;
   }, [productFromState, fetchedProduct]);
-  const { addToCart } = useApp();
+  const { addToCart, state: appState } = useApp();
+
+  const toCityCode = (value?: string): string => {
+    if (!value) return "";
+    const v = value.trim().toLowerCase();
+    const byId = uzbekistanLocations.find(l => l.id === v);
+    if (byId) return byId.id;
+    const byName = uzbekistanLocations.find(l => l.name.toLowerCase() === v);
+    return byName?.id || "";
+  };
+
+  const getRegionForCityOrRegion = (code?: string): string => {
+    if (!code) return "";
+    const loc = uzbekistanLocations.find(l => l.id === code);
+    if (!loc) return "";
+    if (loc.type === 'city') return loc.parentId || "";
+    if (loc.type === 'region') return loc.id;
+    return "";
+  };
   useEffect(() => {
     let ignore = false;
     console.log("useEffect вызван с:", { id, productFromState });
@@ -496,7 +516,7 @@ export function Product() {
                   )}
                 </div>
                 <form className={cn.buy_form} onSubmit={(e)=>{e.preventDefault(); setOrderOpen(true);}}>
-                  <input className={cn.input} placeholder="Ismingiz" />
+                  <input className={cn.input} placeholder="Ismingiz" value={name} onChange={(e)=>setName(e.target.value)} />
                   <PhoneInput 
                     className={cn.input}
                     placeholder="Telefon raqamingiz"
@@ -521,14 +541,26 @@ export function Product() {
                     product={product}
                     variant={selectedVariant}
                     deliveryPrice={product.refferal_price}
-                    onBuyNow={(qty)=>{
-                      const price = selectedVariant?.price ?? product.price ?? 0;
-                      addToCart({
-                        id: selectedVariant?.id || product.variant_id,
-                        name: product.product_name,
-                        refferal_price: product.refferal_price || 0,
-                        base_price: price,
-                      }, qty);
+                    onBuyNow={async (qty, extra)=>{
+                      const variantId = selectedVariant?.id || product.variant_id;
+                      const cityCode = toCityCode(extra?.city || appState.location.data?.city);
+                      const payload = {
+                        items: [
+                          {
+                            variant_id: variantId,
+                            quantity: qty,
+                          }
+                        ],
+                        guest_user_number: phone || "",
+                        city: cityCode,
+                        order_region: getRegionForCityOrRegion(cityCode),
+                        order_comment: name || "",
+                      } as any;
+                      try {
+                        await shopAPI.guestOrder(payload);
+                      } catch (e) {
+                        console.error('Failed to create guest order', e);
+                      }
                     }}
                     onAddToCart={(qty)=>{
                       const price = selectedVariant?.price ?? product.price ?? 0;

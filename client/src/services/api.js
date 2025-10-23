@@ -52,6 +52,8 @@ export const shopAPI = {
   // Расширенный метод для получения всех вариантов товара
   getAllProductVariants: (productId) => 
     apiClient.get(`/shop/products`, { params: { product_id: productId } }),
+  guestOrder: (payload) => apiClient.post(`/shop/guest/order`, payload),
+  getAllOrders: () => apiClient.get(`/shop/orders/all`),
 };
 
 export const authAPI = {
@@ -117,6 +119,7 @@ export const authAPI = {
 
 export const userAPI = {
   getProfile: () => apiClient.get("/profile"),
+  getUsersInfo: () => apiClient.get("/profile/user-info"),
   updateProfile: (data) => {
     console.log("API updateProfile вызван с:", data);
     
