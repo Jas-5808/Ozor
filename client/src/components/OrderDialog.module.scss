@@ -2,7 +2,7 @@
 
 .overlay { display: contents; }
 
-.dialog { border-radius: 14px; }
+.dialog { border-radius: 14px; width: min(560px, 92vw); padding: 20px; }
 
 .row {
   display: grid;

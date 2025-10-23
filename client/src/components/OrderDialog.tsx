@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 // @ts-ignore – модуль стилей объявлен через d.ts
 import s from "./OrderDialog.module.scss";
 // @ts-ignore – модуль стилей объявлен через d.ts
-import profile from "../pages/profile.module.scss";
+import profile from "../pages/style.module.scss";
 import { ProductDetail } from "../types";
 import { formatPrice, getProductImageUrl, getVariantMainImage } from "../utils/helpers";
 
@@ -31,8 +31,8 @@ export default function OrderDialog({ open, onClose, product, variant, deliveryP
   if (!open) return null;
 
   return ReactDOM.createPortal(
-    <div className={profile.dialogOverlay} onClick={onClose}>
-      <div className={profile.dialog + ' ' + s.dialog} onClick={(e)=>e.stopPropagation()}>
+    <div className={profile.lightbox_overlay} onClick={onClose}>
+      <div className={s.dialog} onClick={(e)=>e.stopPropagation()}>
         <div className={s.row}>
           <img className={s.thumb} src={image} alt={product.product_name} />
           <div>
