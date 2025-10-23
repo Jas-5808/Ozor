@@ -6,17 +6,20 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [tailwindcss(), react()],
   server: {
-    cors: {
-      origin: true,
-      credentials: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-      allowedHeaders: [
-        "Content-Type",
-        "Authorization",
-        "Accept",
-        "Origin",
-        "X-Requested-With",
-      ],
+    port: 5174,
+    cors: false,
+    proxy: {
+      "/api": {
+        target: "https://api.ozar.uz",
+        changeOrigin: true,
+        secure: true,
+        configure: (proxy) => {
+          proxy.on("proxyRes", (proxyRes) => {
+            // Нормализуем CORS: оставляем только один допустимый Origin
+            proxyRes.headers["access-control-allow-origin"] = "http://localhost:5174";
+          });
+        },
+      },
     },
   },
 });
