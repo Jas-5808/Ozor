@@ -1,5 +1,14 @@
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import { config } from "../utils/config";
+import {
+  Product,
+  Category,
+  User,
+  CartItem,
+  Order,
+  ApiResponse,
+  PaginatedResponse,
+} from "../types";
 
 const API_BASE_URL = config.api.baseUrl;
 const API_TIMEOUT = config.api.timeout;
@@ -36,26 +45,43 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error("API Error:", error.response?.status, error.response?.data, error.config?.url);
+    console.error(
+      "API Error:",
+      error.response?.status,
+      error.response?.data,
+      error.config?.url
+    );
     return Promise.reject(error);
   }
 );
 
 export const shopAPI = {
-  getProducts: (params = {}) => apiClient.get("/shop/products", { params }),
-  getProductById: (id) => apiClient.get(`/shop/product/${id}`),
-  getProductsByCategory: (categoryId, params = {}) =>
-    apiClient.get(`/shop/products`, { params: { category: categoryId, ...params } }),
-  getCategories: () => apiClient.get("/shop/categories"),
-  getCategoryById: (categoryId) =>
+  getProducts: (
+    params: Record<string, any> = {}
+  ): Promise<AxiosResponse<Product[]>> =>
+    apiClient.get("/shop/products", { params }),
+  getProductById: (id: string): Promise<AxiosResponse<Product>> =>
+    apiClient.get(`/shop/product/${id}`),
+  getProductsByCategory: (
+    categoryId: string,
+    params: Record<string, any> = {}
+  ): Promise<AxiosResponse<Product[]>> =>
+    apiClient.get(`/shop/products`, {
+      params: { category: categoryId, ...params },
+    }),
+  getCategories: (): Promise<AxiosResponse<Category[]>> =>
+    apiClient.get("/shop/categories"),
+  getCategoryById: (categoryId: string): Promise<AxiosResponse<Category>> =>
     apiClient.get(`/shop/category/${categoryId}`),
   // Расширенный метод для получения всех вариантов товара
-  getAllProductVariants: (productId) => 
+  getAllProductVariants: (
+    productId: string
+  ): Promise<AxiosResponse<Product[]>> =>
     apiClient.get(`/shop/products`, { params: { product_id: productId } }),
 };
 
 export const authAPI = {
-  signin: (phone, password) => {
+  signin: (phone: string, password: string): Promise<AxiosResponse<any>> => {
     console.log("API signin вызван с:", { phone, password });
 
     const formData = new URLSearchParams();
@@ -69,7 +95,7 @@ export const authAPI = {
     });
   },
 
-  signup: (phone, password) => {
+  signup: (phone: string, password: string): Promise<AxiosResponse<any>> => {
     console.log("API signup вызван с:", { phone, password });
 
     const formData = new URLSearchParams();
@@ -83,7 +109,7 @@ export const authAPI = {
     });
   },
 
-  sendCode: (phone) => {
+  sendCode: (phone: string): Promise<AxiosResponse<any>> => {
     console.log("API sendCode вызван с:", { phone });
 
     const formData = new URLSearchParams();
@@ -96,7 +122,7 @@ export const authAPI = {
     });
   },
 
-  verifyCode: (phone, code) => {
+  verifyCode: (phone: string, code: string): Promise<AxiosResponse<any>> => {
     console.log("API verifyCode вызван с:", { phone, code });
 
     const formData = new URLSearchParams();
@@ -110,18 +136,18 @@ export const authAPI = {
     });
   },
 
-  refreshToken: (refreshToken) =>
+  refreshToken: (refreshToken: string): Promise<AxiosResponse<any>> =>
     apiClient.post("/auth/refresh", { refresh_token: refreshToken }),
-  logout: () => apiClient.post("/auth/logout"),
+  logout: (): Promise<AxiosResponse<any>> => apiClient.post("/auth/logout"),
 };
 
 export const userAPI = {
-  getProfile: () => apiClient.get("/profile"),
-  updateProfile: (data) => {
+  getProfile: (): Promise<AxiosResponse<User>> => apiClient.get("/profile"),
+  updateProfile: (data: Partial<User>): Promise<AxiosResponse<User>> => {
     console.log("API updateProfile вызван с:", data);
-    
+
     const formData = new URLSearchParams();
-    
+
     // Добавляем только те поля, которые есть в данных
     if (data.first_name !== undefined) {
       formData.append("first_name", data.first_name);
@@ -145,23 +171,34 @@ export const userAPI = {
       },
     });
   },
-  getBalance: () => apiClient.get("/profile/balance"),
-  updateUserData: (data) => apiClient.patch("/profile", data),
+  getBalance: (): Promise<AxiosResponse<{ balance: number }>> =>
+    apiClient.get("/profile/balance"),
+  updateUserData: (data: Partial<User>): Promise<AxiosResponse<User>> =>
+    apiClient.patch("/profile", data),
 };
 
 export const cartAPI = {
-  getCart: () => apiClient.get("/cart"),
-  addToCart: (productId, quantity = 1) =>
+  getCart: (): Promise<AxiosResponse<CartItem[]>> => apiClient.get("/cart"),
+  addToCart: (
+    productId: string,
+    quantity: number = 1
+  ): Promise<AxiosResponse<CartItem>> =>
     apiClient.post("/cart/items", { productId, quantity }),
-  removeFromCart: (itemId) => apiClient.delete(`/cart/items/${itemId}`),
-  updateCartItem: (itemId, quantity) =>
+  removeFromCart: (itemId: string): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/cart/items/${itemId}`),
+  updateCartItem: (
+    itemId: string,
+    quantity: number
+  ): Promise<AxiosResponse<CartItem>> =>
     apiClient.put(`/cart/items/${itemId}`, { quantity }),
 };
 
 export const orderAPI = {
-  getOrders: () => apiClient.get("/orders"),
-  createOrder: (orderData) => apiClient.post("/orders", orderData),
-  getOrderById: (orderId) => apiClient.get(`/orders/${orderId}`),
+  getOrders: (): Promise<AxiosResponse<Order[]>> => apiClient.get("/orders"),
+  createOrder: (orderData: Partial<Order>): Promise<AxiosResponse<Order>> =>
+    apiClient.post("/orders", orderData),
+  getOrderById: (orderId: string): Promise<AxiosResponse<Order>> =>
+    apiClient.get(`/orders/${orderId}`),
 };
 
 export default apiClient;

@@ -1,9 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import cn from "../pages/style.module.scss";
-import { useApp } from "../context/AppContext";
-import { formatPrice, truncateText, getProductImageUrl, getVariantMainImage } from "../utils/helpers";
-import { Product } from "../types";
+// CSS module removed - using Tailwind utilities
+import { useApp } from "../../context/AppContext";
+import { formatPrice, truncateText, getProductImageUrl, getVariantMainImage } from "../../utils/helpers";
+import { Product } from "../../types";
 interface ProductCardProps {
   product: Product;
   onToggleLike?: (productId: string) => void;
@@ -42,19 +42,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     <Link
       to={`/product/${product.product_id}`}
       state={{ product }}
-      className={cn.card}
+      className="flex-1 min-w-[160px] max-w-[220px] w-full cursor-pointer text-black transition-transform hover:scale-105"
     >
-      <div className={cn.card_img}>
+      <div className="relative w-full aspect-[220/285] rounded-xl overflow-hidden mb-3">
         <img
           src={getProductImage()}
           alt={product.product_name}
+          className="absolute inset-0 w-full h-full object-cover"
           onError={(e) => {
             e.currentTarget.src = "/img/NaturalTitanium.jpg";
           }}
         />
         <button
           type="button"
-          className={cn.like}
+          className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
           onClick={handleToggleLike}
           aria-pressed={liked}
           aria-label={liked ? "Убрать из избранного" : "Добавить в избранное"}
@@ -62,48 +63,50 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <img
             src={liked ? "/icons/like3.svg" : "/icons/like2.svg"}
             alt=""
+            className="w-4 h-4"
             aria-hidden="true"
           />
         </button>
-        {}
       </div>
-      <div className={cn.card_body}>
-        <div className={cn.product_price}>
-          <h3>
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-center">
+          <h3 className="text-blue-600 font-semibold text-sm">
             {product.price && product.price > 0
               ? formatPrice(product.price)
               : "Цена не указана"}
           </h3>
         </div>
-        <div className={cn.product_quantities}>
-          <p>{product.stock > 0 ? "В наличии" : product.stock === 0 ? "Нет в наличии" : product.stock < 0 ? `Доступно под заказ ${product.stock}` : "Нет в наличии"}</p>
+        <div className="inline-block self-start bg-yellow-300 px-2 py-1 rounded-lg">
+          <p className="text-xs font-semibold">
+            {product.stock > 0 ? "В наличии" : product.stock === 0 ? "Нет в наличии" : product.stock < 0 ? `Доступно под заказ ${product.stock}` : "Нет в наличии"}
+          </p>
         </div>
-        <div className={cn.product_name}>
+        <div className="font-semibold text-sm">
           {truncateText(product.product_name, 50)}
         </div>
         {product.product_description && (
-          <div className={cn.product_description}>
+          <div className="text-xs text-gray-600 leading-relaxed mb-1">
             {truncateText(product.product_description, 80)}
           </div>
         )}
-        <div className={cn.product_grade}>
-          <div className={cn.stars}>
-            <img src="/icons/star.png" alt="Рейтинг" />
-            <p>4.7</p>
+        <div className="flex items-center gap-2 mb-1">
+          <div className="flex gap-1">
+            <img src="/icons/star.png" alt="Рейтинг" className="w-4 h-4" />
+            <p className="text-xs font-semibold">4.7</p>
           </div>
-          <span>1 230 оценки</span>
+          <span className="text-xs text-gray-500">1 230 оценки</span>
         </div>
         <button
           type="button"
           onClick={handleAddToCart}
           disabled={!product.price || product.price <= 0 || product.stock <= 0}
-          className={
+          className={`w-full py-2 rounded-xl flex items-center justify-center gap-1 text-white font-medium text-sm transition-colors ${
             !product.price || product.price <= 0 || product.stock <= 0
-              ? cn.disabled_button
-              : ""
-          }
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
         >
-          <img src="/icons/korzinka.svg" alt="" aria-hidden="true" />
+          <img src="/icons/korzinka.svg" alt="" className="w-4 h-4" aria-hidden="true" />
           {!product.price || product.price <= 0
             ? "Цена не указана"
             : product.stock <= 0

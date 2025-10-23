@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import cn from "./style.module.css";
+// CSS module removed - using Tailwind utilities
 import { userAPI } from "../services/api";
 
 export function UpdateProfile() {

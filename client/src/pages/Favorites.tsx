@@ -1,6 +1,6 @@
 import React from "react";
 import cn from "./style.module.scss";
-import ProductCard from "../components/ProductCard";
+import ProductCard from "../components/ui/ProductCard";
 import { useApp } from "../context/AppContext";
 import { useProducts } from "../hooks/useProducts";
 

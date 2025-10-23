@@ -1,22 +1,23 @@
-import { useState, useEffect } from 'react';
-import { shopAPI } from '../services/api';
+import { useState, useEffect } from "react";
+import { shopAPI } from "../api";
+import { Product } from "../types";
 export const useProducts = () => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const fetchProducts = async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await shopAPI.getProducts();
       // Фильтруем товары: показываем только те, у которых есть цена (price > 0)
-      const filteredProducts = response.data.filter(product => 
-        product.price && product.price > 0
+      const filteredProducts = response.data.filter(
+        (product) => product.price && product.price > 0
       );
       setProducts(filteredProducts);
     } catch (err) {
-      setError(err.message || 'Ошибка при загрузке продуктов');
-      console.error('Error fetching products:', err);
+      setError(err.message || "Ошибка при загрузке продуктов");
+      console.error("Error fetching products:", err);
     } finally {
       setLoading(false);
     }
@@ -34,10 +35,10 @@ export const useProducts = () => {
     refetch,
   };
 };
-export const useProductById = (productId) => {
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+export const useProductById = (productId: string | undefined) => {
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const fetchProduct = async () => {
     if (!productId) {
       setLoading(false);
@@ -49,8 +50,8 @@ export const useProductById = (productId) => {
       const response = await shopAPI.getProductById(productId);
       setProduct(response.data);
     } catch (err) {
-      setError(err.message || 'Ошибка при загрузке продукта');
-      console.error('Error fetching product:', err);
+      setError(err.message || "Ошибка при загрузке продукта");
+      console.error("Error fetching product:", err);
     } finally {
       setLoading(false);
     }
@@ -65,10 +66,10 @@ export const useProductById = (productId) => {
     refetch: fetchProduct,
   };
 };
-export const useProductsByCategory = (categoryId) => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+export const useProductsByCategory = (categoryId: string | undefined) => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const fetchProductsByCategory = async () => {
     if (!categoryId) {
       setLoading(false);
@@ -79,13 +80,13 @@ export const useProductsByCategory = (categoryId) => {
       setError(null);
       const response = await shopAPI.getProductsByCategory(categoryId);
       // Фильтруем товары: показываем только те, у которых есть цена (price > 0)
-      const filteredProducts = response.data.filter(product => 
-        product.price && product.price > 0
+      const filteredProducts = response.data.filter(
+        (product) => product.price && product.price > 0
       );
       setProducts(filteredProducts);
     } catch (err) {
-      setError(err.message || 'Ошибка при загрузке продуктов категории');
-      console.error('Error fetching products by category:', err);
+      setError(err.message || "Ошибка при загрузке продуктов категории");
+      console.error("Error fetching products by category:", err);
     } finally {
       setLoading(false);
     }

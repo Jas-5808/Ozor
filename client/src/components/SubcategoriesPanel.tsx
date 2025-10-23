@@ -1,5 +1,5 @@
 import React from 'react';
-import cn from './mainCss.module.css';
+// CSS module removed - using Tailwind utilities
 import { getSubcategories } from '../hooks/useCategories';
 interface SubcategoriesPanelProps {
   categories: any[];
@@ -33,31 +33,33 @@ export const SubcategoriesPanel: React.FC<SubcategoriesPanelProps> = ({
   };
   return (
     <div 
-      className={cn.subcategories_panel}
+      className="bg-white border-t border-gray-200 p-4"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      <div className={cn.subcategories_content}>
-          <div className={cn.subcategories_grid}>
-            {subcategories.map((subcategory) => (
-              <div
-                key={subcategory.id}
-                className={`${cn.subcategory_item} ${
-                  selectedSubcategoryId === subcategory.id ? cn.subcategory_active : ''
-                }`}
-                onClick={() => handleSubcategoryClick(subcategory.id)}
-              >
-                <div className={cn.subcategory_name}>
-                  {subcategory.name}
-                </div>
-                <div className={cn.subcategory_count}>
-                  {subcategory.products_count} товаров
-                </div>
+      <div className="container">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {subcategories.map((subcategory) => (
+            <div
+              key={subcategory.id}
+              className={`p-3 rounded-lg border cursor-pointer transition-colors hover:bg-gray-50 ${
+                selectedSubcategoryId === subcategory.id 
+                  ? 'bg-blue-100 border-blue-300 text-blue-600' 
+                  : 'border-gray-200 text-gray-700'
+              }`}
+              onClick={() => handleSubcategoryClick(subcategory.id)}
+            >
+              <div className="font-medium text-sm mb-1">
+                {subcategory.name}
               </div>
-            ))}
-          </div>
+              <div className="text-xs text-gray-500">
+                {subcategory.products_count} товаров
+              </div>
+            </div>
+          ))}
         </div>
       </div>
+    </div>
   );
 };
-export default SubcategoriesPanel;
+export default SubcategoriesPanel;

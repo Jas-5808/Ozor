@@ -1,21 +1,24 @@
-import React from 'react';
-import { useProducts } from '../hooks/useProducts';
-import ProductCard from './ProductCard';
-import SkeletonGrid from './SkeletonGrid';
-import cn from '../pages/style.module.scss';
+import React from "react";
+import { useProducts } from "../hooks/useProducts";
+import ProductCard from "./ui/ProductCard";
+import SkeletonGrid from "./SkeletonGrid";
+// CSS module removed - using Tailwind utilities
 export const ProductsList: React.FC = () => {
   const { products, loading, error, refetch } = useProducts();
   const handleToggleLike = (productId: string) => {
-    console.log('Переключен лайк для:', productId);
+    console.log("Переключен лайк для:", productId);
   };
   if (loading) {
     return <SkeletonGrid count={8} columns={4} />;
   }
   if (error) {
     return (
-      <div className={cn.error_container}>
-        <p>Ошибка: {error}</p>
-        <button onClick={refetch} className={cn.retry_button}>
+      <div className="flex flex-col items-center justify-center p-10 text-center">
+        <p className="mb-5 text-red-600">Ошибка: {error}</p>
+        <button 
+          className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+          onClick={refetch}
+        >
           Попробовать снова
         </button>
       </div>
@@ -23,16 +26,19 @@ export const ProductsList: React.FC = () => {
   }
   if (!products || products.length === 0) {
     return (
-      <div className={cn.empty_container}>
-        <p>Продукты не найдены</p>
-        <button onClick={refetch} className={cn.retry_button}>
+      <div className="flex flex-col items-center justify-center p-10 text-center">
+        <p className="mb-5 text-gray-500">Продукты не найдены</p>
+        <button 
+          className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+          onClick={refetch}
+        >
           Обновить
         </button>
       </div>
     );
   }
   return (
-    <div className={cn.products_grid}>
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5">
       {products.map((product, index) => (
         <ProductCard
           key={product?.product_id || `product-${index}`}

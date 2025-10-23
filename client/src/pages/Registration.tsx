@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import cn from "./style.module.css";
+// CSS module removed - using Tailwind utilities
 import { useAuth } from "../hooks/useAuth";
 import TelegramModal from "../components/TelegramModal";
 import PasswordModal from "../components/PasswordModal";

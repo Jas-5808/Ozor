@@ -1,5 +1,5 @@
 import React from 'react';
-import cn from './mainCss.module.css';
+// CSS module removed - using Tailwind utilities
 import { useCategories, getMainCategories } from '../hooks/useCategories';
 interface CategoryListProps {
   onCategorySelect?: (categoryId: string) => void;
@@ -25,11 +25,11 @@ export const CategoryList: React.FC<CategoryListProps> = ({
   };
   if (loading) {
     return (
-      <div className={cn.category}>
+      <div className="bg-white py-4">
         <div className="container">
-          <ul className={cn.list}>
+          <ul className="flex flex-wrap gap-2">
             {Array.from({ length: 6 }, (_, index) => (
-              <li key={index} className={cn.category_skeleton}></li>
+              <li key={index} className="h-10 bg-gray-200 rounded-lg animate-pulse flex-1 min-w-[120px]"></li>
             ))}
           </ul>
         </div>
@@ -38,40 +38,40 @@ export const CategoryList: React.FC<CategoryListProps> = ({
   }
   if (error) {
     return (
-      <div className={cn.category}>
+      <div className="bg-white py-4">
         <div className="container">
-          <ul className={cn.list}>
-            <li>Ошибка загрузки категорий</li>
+          <ul className="flex flex-wrap gap-2">
+            <li className="text-red-600">Ошибка загрузки категорий</li>
           </ul>
         </div>
       </div>
     );
   }
   return (
-    <div className={cn.category}>
+    <div className="bg-white py-4">
       <div className="container">
-        <ul className={cn.list}>
+        <ul className="flex flex-wrap gap-2">
           {mainCategories.slice(0, 5).map((category) => (
-                         <li
-               key={category.id}
-               className={`${cn.category_item} ${
-                 selectedCategoryId === category.id ? cn.category_active : ''
-               }`}
-               data-has-subcategories={category.subcategories_count > 0}
-               onClick={() => handleCategoryClick(category.id)}
-               onMouseEnter={() => {
-                 if (category.subcategories_count > 0) {
-                   handleCategoryHover(category.id);
-                 }
-               }}
-               onMouseLeave={() => handleCategoryHover(null)}
-             >
-               {category.name}
-             </li>
+            <li
+              key={category.id}
+              className={`px-4 py-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 ${
+                selectedCategoryId === category.id ? 'bg-blue-100 text-blue-600' : 'text-gray-700'
+              }`}
+              data-has-subcategories={category.subcategories_count > 0}
+              onClick={() => handleCategoryClick(category.id)}
+              onMouseEnter={() => {
+                if (category.subcategories_count > 0) {
+                  handleCategoryHover(category.id);
+                }
+              }}
+              onMouseLeave={() => handleCategoryHover(null)}
+            >
+              {category.name}
+            </li>
           ))}
         </ul>
       </div>
     </div>
   );
 };
-export default CategoryList;
+export default CategoryList;

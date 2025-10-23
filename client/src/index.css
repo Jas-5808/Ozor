@@ -1,37 +1,123 @@
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
-*{
+/* Liquid Glass Design System */
+
+* {
   margin: 0;
   padding: 0;
-  text-decoration: none;
-  list-style: none;
   box-sizing: border-box;
-  font-family: "Montserrat", sans-serif;
 }
-html, body {
+
+html,
+body {
   overflow-x: hidden;
-}
-body{
-  background: rgb(246, 246, 246);
-}
-
-.container{
-  max-width: 1240px;
-  padding: 0 20px;
-  margin: auto;
-}
-
-button{
-  border: none;
-  background: none;
-  cursor: pointer;
-}
-html, body {
-  scrollbar-width: none; 
+  scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
-html::-webkit-scrollbar, 
+html::-webkit-scrollbar,
 body::-webkit-scrollbar {
-  display: none; 
+  display: none;
+}
+
+body {
+  font-family: "Montserrat", sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+  color: #111827;
+}
+
+/* Glass Effect Utilities */
+.glass-card {
+  @apply bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-lg;
+}
+
+.glass-button {
+  @apply bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-2 text-white/90 hover:bg-white/20 transition-all duration-200;
+}
+
+.glass-input {
+  @apply bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/70 focus:bg-white/20 focus:border-white/40 transition-all duration-200;
+}
+
+.glass-header {
+  @apply bg-[#434344]/70 backdrop-blur-2xl border-b border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.15)];
+}
+
+/* Container */
+.container {
+  @apply max-w-7xl mx-auto px-5;
+}
+
+/* Button Reset */
+button {
+  @apply border-none bg-transparent cursor-pointer;
+}
+
+/* Focus States */
+.focus-ring {
+  @apply focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-in-out;
+}
+
+.animate-slide-up {
+  animation: slideInUp 0.6s ease-out;
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s infinite;
+}
+
+/* Mobile-First Responsive Design */
+@media (max-width: 640px) {
+  .container {
+    @apply px-4;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  body {
+    @apply bg-gray-900 text-white;
+  }
+
+  .glass-card {
+    @apply bg-gray-800/20 border-gray-700/20;
+  }
 }

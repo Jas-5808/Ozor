@@ -1,10 +1,10 @@
 import React, { useRef, useState, useEffect } from "react";
-import CategoryList from "./CategoryList";
-import SubcategoriesPanel from "./SubcategoriesPanel";
-import { useCategories } from "../hooks/useCategories";
-import SideCatalog from "./SideCatalog";
-import { useApp } from "../context/AppContext";
-import { useAuth } from "../hooks/useAuth";
+import CategoryList from "../CategoryList";
+import SubcategoriesPanel from "../SubcategoriesPanel";
+import { useCategories } from "../../hooks/useCategories";
+import SideCatalog from "../SideCatalog";
+import { useApp } from "../../context/AppContext";
+import { useAuth } from "../../hooks/useAuth";
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState({

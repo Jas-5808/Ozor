@@ -1,26 +1,33 @@
-import './App.css'
-import { Outlet} from 'react-router-dom'
-import Header from './components/Header'
-import Footer from './components/Footer'
-import { AppProvider, useApp } from './context/AppContext'
-import { AuthProvider } from './hooks/useAuth'
-import { useAuth } from './hooks/useAuth'
-import useGeolocation from './hooks/useGeolocation'
-import DeliveryModal from './components/DeliveryModal'
-import { useEffect } from 'react'
+import "./App.css";
+import { Outlet } from "react-router-dom";
+import Header from "./components/layout/Header";
+import Footer from "./components/layout/Footer";
+import { AppProvider, useApp } from "./context/AppContext";
+import { AuthProvider } from "./hooks/useAuth";
+import { useAuth } from "./hooks/useAuth";
+import useGeolocation from "./hooks/useGeolocation";
+import DeliveryModal from "./components/DeliveryModal";
+import { useEffect } from "react";
 
 function AppContent() {
-  const { state, setLocation, showLocationModal, hideLocationModal, setDeliveryMethod, hideDeliveryModal } = useApp();
+  const {
+    state,
+    setLocation,
+    showLocationModal,
+    hideLocationModal,
+    setDeliveryMethod,
+    hideDeliveryModal,
+  } = useApp();
   const { isAuthenticated } = useAuth();
   const { location: geoLocation, requestLocationPermission } = useGeolocation();
 
   useEffect(() => {
-    const hasShownLocationModal = localStorage.getItem('hasShownLocationModal');
-    const hasLocation = localStorage.getItem('userLocation');
+    const hasShownLocationModal = localStorage.getItem("hasShownLocationModal");
+    const hasLocation = localStorage.getItem("userLocation");
 
     if (!hasShownLocationModal && !hasLocation) {
       showLocationModal();
-      localStorage.setItem('hasShownLocationModal', 'true');
+      localStorage.setItem("hasShownLocationModal", "true");
     }
   }, [showLocationModal]);
 
@@ -55,9 +62,9 @@ function AppContent() {
       setLocation({
         latitude: geoLocation.latitude,
         longitude: geoLocation.longitude,
-        city: geoLocation.city || 'Неизвестно',
+        city: geoLocation.city || "Неизвестно",
         address: geoLocation.address,
-        country: geoLocation.country || 'Неизвестно',
+        country: geoLocation.country || "Неизвестно",
         isManual: false,
       });
       hideLocationModal();
@@ -65,7 +72,14 @@ function AppContent() {
       // Если не удалось получить геопозицию — показываем модалку выбора вручную
       showLocationModal();
     }
-  }, [geoLocation, isAuthenticated, state.location.data, setLocation, hideLocationModal, showLocationModal]);
+  }, [
+    geoLocation,
+    isAuthenticated,
+    state.location.data,
+    setLocation,
+    hideLocationModal,
+    showLocationModal,
+  ]);
 
   return (
     <>
@@ -93,7 +107,7 @@ function App() {
         <AppContent />
       </AppProvider>
     </AuthProvider>
-  )
+  );
 }
 
-export default App
+export default App;
