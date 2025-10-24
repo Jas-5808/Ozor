@@ -78,6 +78,8 @@ export const shopAPI = {
     productId: string
   ): Promise<AxiosResponse<Product[]>> =>
     apiClient.get(`/shop/products`, { params: { product_id: productId } }),
+  guestOrder: (payload) => apiClient.post(`/shop/guest/order`, payload),
+  getAllOrders: () => apiClient.get(`/shop/orders/all`),
 };
 
 export const authAPI = {
@@ -142,8 +144,9 @@ export const authAPI = {
 };
 
 export const userAPI = {
-  getProfile: (): Promise<AxiosResponse<User>> => apiClient.get("/profile"),
-  updateProfile: (data: Partial<User>): Promise<AxiosResponse<User>> => {
+  getProfile: () => apiClient.get("/profile"),
+  getUsersInfo: () => apiClient.get("/profile/user-info"),
+  updateProfile: (data) => {
     console.log("API updateProfile вызван с:", data);
 
     const formData = new URLSearchParams();

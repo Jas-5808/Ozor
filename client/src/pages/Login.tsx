@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import cn from "./style.module.scss";
 import { useAuth } from "../hooks/useAuth";
+import PhoneInput from "../components/PhoneInput";
 export function Login() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -18,14 +19,10 @@ export function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    if (!phone || !password) {
-      setError("Заполните все поля");
-      setLoading(false);
-      return;
-    }
     try {
-      console.log('Отправляем данные:', { phone, password });
-      await signin(phone, password);
+      const normalizedPhone = '+' + phone.replace(/\D/g, '');
+      console.log('Отправляем данные:', { phone: normalizedPhone, password });
+      await signin(normalizedPhone, password);
       navigate('/profile');
     } catch (err) {
       console.error('Ошибка входа:', err);
@@ -48,11 +45,10 @@ export function Login() {
           </div>
         )}
         <form onSubmit={handleSubmit} className={cn.form}>
-          <input
-            type="tel"
-            placeholder="+998 99 123 45 67"
+          <PhoneInput
+            placeholder="+998 (99) 123 45 67"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={setPhone}
             className={cn.input}
             required
           />

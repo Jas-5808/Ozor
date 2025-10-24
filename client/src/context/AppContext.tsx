@@ -234,7 +234,20 @@ interface AppProviderProps {
   children: ReactNode;
 }
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
-  const [state, dispatch] = useReducer(appReducer, initialState);
+  const [state, dispatch] = useReducer(appReducer, (()=>{
+    try {
+      const raw = localStorage.getItem('app_state');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Восстановим Set для likedProducts
+        if (parsed && parsed.likedProducts) {
+          parsed.likedProducts = new Set(parsed.likedProducts);
+        }
+        return { ...initialState, ...parsed } as AppState;
+      }
+    } catch {}
+    return initialState;
+  })());
   const addToCart = (product: any, quantity = 1) => {
     dispatch({
       type: 'ADD_TO_CART',
@@ -313,6 +326,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     hideDeliveryModal,
     setDeliveryMethod,
   };
+  React.useEffect(()=>{
+    try {
+      const toSave = { ...state, likedProducts: Array.from(state.likedProducts) };
+      localStorage.setItem('app_state', JSON.stringify(toSave));
+    } catch {}
+  }, [state]);
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 export const useApp = (): AppContextType => {
@@ -321,4 +340,4 @@ export const useApp = (): AppContextType => {
     throw new Error('useApp must be used within an AppProvider');
   }
   return context;
-};
+};

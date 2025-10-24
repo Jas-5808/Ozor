@@ -102,12 +102,8 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
-    </AuthProvider>
-  );
+    <AppContent />
+  )
 }
 
 export default App;

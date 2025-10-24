@@ -1,7 +1,9 @@
 
 export const config = {
   api: {
-    baseUrl: import.meta.env.VITE_API_BASE_URL || 'https://api.ozar.uz/api/v1',
+    baseUrl: import.meta.env.DEV
+      ? '/api/v1'
+      : (import.meta.env.VITE_API_BASE_URL || 'https://api.ozar.uz/api/v1'),
     timeout: parseInt(import.meta.env.VITE_API_TIMEOUT || '10000'),
   },
   app: {
@@ -31,7 +33,9 @@ export const validateConfig = () => {
   const required = [
     'VITE_API_BASE_URL',
   ];
-  const missing = required.filter(key => !import.meta.env[key]);
+  const missing = import.meta.env.DEV
+    ? []
+    : required.filter(key => !import.meta.env[key]);
   if (missing.length > 0) {
     console.warn('Missing environment variables:', missing);
   }

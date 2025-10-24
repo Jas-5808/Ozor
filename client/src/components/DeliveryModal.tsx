@@ -11,15 +11,19 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
   const { state } = useApp();
   const [selectedMethod, setSelectedMethod] = useState<'pickup' | 'courier'>('pickup');
   const [address, setAddress] = useState('');
-  const [selectedAddressId, setSelectedAddressId] = useState<number>(1);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState<number | null>(null);
   const [showMap, setShowMap] = useState(false);
-  const [addresses, setAddresses] = useState([
-    { id: 1, text: "Улица Навои, дом 15, кв. 42\nТашкент, Узбекистан", city: 'Ташкент', country: 'Узбекистан', latitude: undefined as number | undefined, longitude: undefined as number | undefined },
-    { id: 2, text: "Проспект Амира Темура, дом 8\nТашкент, Узбекистан", city: 'Ташкент', country: 'Узбекистан', latitude: undefined as number | undefined, longitude: undefined as number | undefined }
-  ]);
+  const [addresses, setAddresses] = useState<Array<{
+    id: number;
+    text: string;
+    city: string;
+    country: string;
+    latitude?: number;
+    longitude?: number;
+  }>>([]);
   const handleConfirm = () => {
-    const selected = addresses.find(addr => addr.id === selectedAddressId);
+    const selected = addresses.find(addr => addr.id === selectedAddressId!);
     onConfirm({
       type: selectedMethod,
       address: selectedMethod === 'courier' ? selected?.text : undefined,
@@ -42,7 +46,8 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
     if (addresses.length > 1) {
       setAddresses(addresses.filter(addr => addr.id !== addressId));
       if (selectedAddressId === addressId) {
-        setSelectedAddressId(addresses.find(addr => addr.id !== addressId)?.id || 1);
+        const next = addresses.find(addr => addr.id !== addressId);
+        setSelectedAddressId(next ? next.id : null);
       }
     }
     setShowOptionsMenu(null);
@@ -63,7 +68,7 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
     country: string;
   }) => {
     const newAddress = {
-      id: Math.max(...addresses.map(a => a.id)) + 1,
+      id: addresses.length ? Math.max(...addresses.map(a => a.id)) + 1 : 1,
       text: `${location.fullAddress || location.address}\n${location.city}, ${location.country}`,
       city: location.city,
       country: location.country,
@@ -108,6 +113,11 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
           ) : (
             <div className="courier-content">
               <div className="addresses-list">
+                {addresses.length === 0 && (
+                  <div className="empty-addresses">
+                    У вас нет сохранённых адресов. Добавьте новый адрес.
+                  </div>
+                )}
                 {addresses.map((address) => (
                   <div 
                     key={address.id}
@@ -162,6 +172,7 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
           <button 
             className="confirm-delivery-btn"
             onClick={handleConfirm}
+            disabled={selectedMethod === 'courier' && (selectedAddressId === null)}
           >
             Подтвердить
           </button>
