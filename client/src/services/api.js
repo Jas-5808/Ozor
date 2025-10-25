@@ -47,6 +47,7 @@ export const shopAPI = {
   getProductsByCategory: (categoryId, params = {}) =>
     apiClient.get(`/shop/products`, { params: { category: categoryId, ...params } }),
   getCategories: () => apiClient.get("/shop/categories"),
+  createCategory: (payload) => apiClient.post("/shop/category", payload),
   getCategoryById: (categoryId) =>
     apiClient.get(`/shop/category/${categoryId}`),
   // Расширенный метод для получения всех вариантов товара
@@ -54,6 +55,9 @@ export const shopAPI = {
     apiClient.get(`/shop/products`, { params: { product_id: productId } }),
   guestOrder: (payload) => apiClient.post(`/shop/guest/order`, payload),
   getAllOrders: () => apiClient.get(`/shop/orders/all`),
+  // Referral links
+  getReferrals: () => apiClient.get(`/shop/referral`),
+  createReferral: (payload) => apiClient.post(`/shop/referral`, payload),
 };
 
 export const authAPI = {

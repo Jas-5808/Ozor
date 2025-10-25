@@ -1,63 +1,137 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 // @ts-ignore
 import s from '../AdminLayout.module.scss';
-import DateRange from '../components/DateRange';
-import CalendarHeatmap from '../components/CalendarHeatmap';
-import LineChart from '../components/LineChart';
-import PieChart from '../components/PieChart';
 
 export default function Dashboard() {
-  const [range, setRange] = useState<{from: string; to: string}>(()=>({ from: new Date(Date.now()-29*86400000).toISOString().slice(0,10), to: new Date().toISOString().slice(0,10) }));
-  const days = useMemo(()=>{
-    const out: string[] = []; const from = new Date(range.from); const to = new Date(range.to);
-    for (let d=new Date(from); d<=to; d.setDate(d.getDate()+1)) out.push(new Date(d).toISOString().slice(0,10));
-    return out;
-  }, [range]);
-  const revenue = days.map(()=> Math.floor(10 + Math.random()*40));
-  const processedCount = revenue.reduce((a,b)=>a+(b>20?1:0),0);
-  const processedSum = revenue.filter(v=>v>20).reduce((a,b)=>a+b,0) * 100000; // mock to sum
-  const values = useMemo(()=> Object.fromEntries(days.map((d,i)=> [d, revenue[i]])), [days, revenue]);
+  // мок-статы для карточек
+  const warehouseStats = useMemo(()=> ({ total: 25, low: 1, out: 0, amount: 5489801 }), []);
+  const ordersStats = useMemo(()=> ({ total: 316, avg: 51987, sum: 16427956, pending: 99 }), []);
+  const recent = useMemo(()=> (
+    [
+      { id: 333, name: 'Комплектующие', client: 'jasur sadicov', status:'Ожидает', sum: 55998, date: '27 сент. 2025 г.' },
+      { id: 330, name: 'Комплектующие', client: 'jasur sadicov', status:'Отменен', sum: 151995, date: '15 сент. 2025 г.' },
+      { id: 329, name: 'Комплектующие', client: 'jasur sadicov', status:'Отменен', sum: 49999, date: '13 сент. 2025 г.' },
+      { id: 328, name: 'Комплектующие', client: 'jasur sadicov', status:'Доставлен', sum: 443986, date: '28 авг. 2025 г.' },
+      { id: 327, name: 'Комплектующие', client: 'Жасур Садыков', status:'Отменен', sum: 144993, date: '28 авг. 2025 г.' },
+    ]
+  ), []);
+
+  const badge = (status: string) => {
+    const map: Record<string, string> = {
+      'Ожидает': `${s.badge} ${s.badgeInfo}`,
+      'Отменен': `${s.badge} ${s.badgeCancelled}`,
+      'Доставлен': `${s.badge} ${s.badgePaid}`,
+      'Подтвержден': `${s.badge} ${s.badgeActive}`,
+      'Сборка': `${s.badge} ${s.badgePending}`,
+    };
+    return map[status] || s.badge;
+  };
 
   return (
     <div>
-      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12}}>
-        <div style={{fontWeight:800, fontSize:18}}>Dashboard</div>
-        <DateRange value={range} onChange={setRange} />
+      {/* Верхние карточки управления */}
+      <div className={s.cardGrid} style={{marginBottom:12}}>
+        <div className={s.kpi}>
+          <div style={{display:'flex', alignItems:'center', gap:10}}>
+            <div style={{width:32, height:32, borderRadius:10, background:'#e0e7ff', display:'grid', placeItems:'center'}}>📦</div>
+            <div style={{fontWeight:700}}>Управление складом</div>
+          </div>
+          <div style={{opacity:.65, fontSize:12, marginTop:6}}>Товары, остатки, движения</div>
+        </div>
+        <div className={s.kpi}>
+          <div style={{display:'flex', alignItems:'center', gap:10}}>
+            <div style={{width:32, height:32, borderRadius:10, background:'#dcfce7', display:'grid', placeItems:'center'}}>📑</div>
+            <div style={{fontWeight:700}}>Управление заказами</div>
+          </div>
+          <div style={{opacity:.65, fontSize:12, marginTop:6}}>Заказы, статусы, клиенты</div>
+        </div>
+        <div className={s.kpi}>
+          <div style={{display:'flex', alignItems:'center', gap:10}}>
+            <div style={{width:32, height:32, borderRadius:10, background:'#fee2e2', display:'grid', placeItems:'center'}}>🛒</div>
+            <div style={{fontWeight:700}}>Управление товарами</div>
+          </div>
+          <div style={{opacity:.65, fontSize:12, marginTop:6}}>Каталог, категории, цены</div>
+        </div>
+        <div className={s.kpi}>
+          <div style={{display:'flex', alignItems:'center', gap:10}}>
+            <div style={{width:32, height:32, borderRadius:10, background:'#fff7ed', display:'grid', placeItems:'center'}}>🏷️</div>
+            <div style={{fontWeight:700}}>Управление категориями</div>
+          </div>
+          <div style={{opacity:.65, fontSize:12, marginTop:6}}>Создание и редактирование</div>
+        </div>
       </div>
-      <div className={s.cardGrid}>
-        <div className={s.kpi}><div style={{opacity:.7, fontSize:12}}>Обработано заявок</div><div style={{fontSize:24, fontWeight:800}}>{processedCount}</div></div>
-        <div className={s.kpi}><div style={{opacity:.7, fontSize:12}}>Сумма обработанных</div><div style={{fontSize:24, fontWeight:800}}>{processedSum.toLocaleString()}</div></div>
-        <div className={s.kpi}><div style={{opacity:.7, fontSize:12}}>Всего дней</div><div style={{fontSize:24, fontWeight:800}}>{days.length}</div></div>
-        <div className={s.kpi}><div style={{opacity:.7, fontSize:12}}>Средний чек</div><div style={{fontSize:24, fontWeight:800}}>{(processedSum/Math.max(processedCount,1)).toLocaleString()}</div></div>
-      </div>
-      <div style={{marginTop:12}} className={s.panel}>
-        <div style={{fontWeight:700, marginBottom:8}}>Календарь доходов (по дням)</div>
-        <CalendarHeatmap
-          from={range.from}
-          to={range.to}
-          values={values}
-          cellSize={34}
-          showDayNumbers={false}
-          display="value"
-          valueFormatter={(v)=> v.toLocaleString()}
-          labelColWidth={48}
-        />
-        <div style={{marginTop:8, fontSize:12, color:'#64748b'}}>Сумма дохода за период: <strong>{processedSum.toLocaleString()}</strong></div>
-      </div>
-      <div style={{display:'grid', gridTemplateColumns:'1fr 360px', gap:12, marginTop:12}}>
+
+      {/* Блоки статистики */}
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12}}>
         <div className={s.panel}>
-          <div style={{fontWeight:700, marginBottom:8}}>Линейный график доходов</div>
-          <LineChart series={[{ label:'Revenue', points: revenue, color:'#2563eb' }]} width={Math.max(640, days.length*16)} height={160} animate />
+          <div style={{fontWeight:700, marginBottom:8}}>Статистика склада</div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', textAlign:'center'}}>
+            <div>
+              <div style={{color:'#2563eb', fontSize:18, fontWeight:800}}>{warehouseStats.total}</div>
+              <div style={{opacity:.7, fontSize:12}}>Всего товаров</div>
+            </div>
+            <div>
+              <div style={{color:'#059669', fontSize:18, fontWeight:800}}>{warehouseStats.amount.toLocaleString()} ₽</div>
+              <div style={{opacity:.7, fontSize:12}}>Общая стоимость</div>
+            </div>
+            <div>
+              <div style={{color:'#d97706', fontSize:18, fontWeight:800}}>{warehouseStats.low}</div>
+              <div style={{opacity:.7, fontSize:12}}>Низкий остаток</div>
+            </div>
+            <div>
+              <div style={{color:'#ef4444', fontSize:18, fontWeight:800}}>{warehouseStats.out}</div>
+              <div style={{opacity:.7, fontSize:12}}>Нет в наличии</div>
+            </div>
+          </div>
         </div>
         <div className={s.panel}>
-          <div style={{fontWeight:700, marginBottom:8}}>Структура продаж</div>
-          <PieChart animate innerRadius={60} data={[
-            { label:'Категория A', value: 45 },
-            { label:'Категория B', value: 25 },
-            { label:'Категория C', value: 18 },
-            { label:'Прочее', value: 12 },
-          ]} />
+          <div style={{fontWeight:700, marginBottom:8}}>Статистика заказов</div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr) 1fr', textAlign:'center'}}>
+            <div>
+              <div style={{color:'#2563eb', fontSize:18, fontWeight:800}}>{ordersStats.total}</div>
+              <div style={{opacity:.7, fontSize:12}}>Всего заказов</div>
+            </div>
+            <div>
+              <div style={{color:'#059669', fontSize:18, fontWeight:800}}>{ordersStats.avg.toLocaleString()} ₽</div>
+              <div style={{opacity:.7, fontSize:12}}>Средний чек</div>
+            </div>
+            <div>
+              <div style={{color:'#16a34a', fontSize:18, fontWeight:800}}>{ordersStats.sum.toLocaleString()} ₽</div>
+              <div style={{opacity:.7, fontSize:12}}>Общая сумма</div>
+            </div>
+            <div>
+              <div style={{color:'#ef4444', fontSize:18, fontWeight:800}}>{ordersStats.pending}</div>
+              <div style={{opacity:.7, fontSize:12}}>Ожидают</div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Последние заказы */}
+      <div className={s.panel}>
+        <div style={{fontWeight:700, marginBottom:8}}>Последние заказы</div>
+        <table className={s.table}>
+          <thead>
+            <tr>
+              <th>ЗАКАЗ</th>
+              <th>КЛИЕНТ</th>
+              <th>СТАТУС</th>
+              <th>СУММА</th>
+              <th>ДАТА</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recent.map(r=> (
+              <tr key={r.id}>
+                <td>#{r.id}<div style={{opacity:.65, fontSize:12}}>{r.name}</div></td>
+                <td>{r.client}</td>
+                <td><span className={badge(r.status)}>{r.status}</span></td>
+                <td>{r.sum.toLocaleString()} ₽</td>
+                <td>{r.date}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

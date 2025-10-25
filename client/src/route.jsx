@@ -11,7 +11,7 @@ import { UpdateProfile } from "./pages/UpdateProfile";
 import { TestAuth } from "./pages/TestAuth";
 import Favorites from "./pages/Favorites";
 import Cart from "./pages/Cart";
-import { AdminLayout, Dashboard, Products as AdminProducts, Categories as AdminCategories, Banners as AdminBanners, Orders as AdminOrders, Users as AdminUsers, Audit as AdminAudit } from './admin';
+import { AdminLayout, Dashboard, Products as AdminProducts, Categories as AdminCategories, Banners as AdminBanners, Orders as AdminOrders, Users as AdminUsers, Audit as AdminAudit, Warehouse as AdminWarehouse } from './admin';
 import { useAuth } from './hooks/useAuth';
 
 function RequireAuth({ children }){
@@ -52,6 +52,7 @@ export const router = createBrowserRouter([
       { path: "/admin", element: <Dashboard /> },
       { path: "/admin/products", element: <AdminProducts /> },
       { path: "/admin/categories", element: <AdminCategories /> },
+      { path: "/admin/warehouse", element: <AdminWarehouse /> },
       { path: "/admin/banners", element: <AdminBanners /> },
       { path: "/admin/orders", element: <AdminOrders /> },
       { path: "/admin/users", element: <AdminUsers /> },

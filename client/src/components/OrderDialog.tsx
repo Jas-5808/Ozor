@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
 // @ts-ignore – модуль стилей объявлен через d.ts
 import s from "./OrderDialog.module.scss";
@@ -52,6 +52,12 @@ export default function OrderDialog({ open, onClose, product, variant, deliveryP
   const total = useMemo(() => (price * qty) + (deliveryPrice ?? 0), [price, qty, deliveryPrice]);
 
   if (!open) return null;
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   return ReactDOM.createPortal(
     <div className={s.overlay} onClick={onClose}>

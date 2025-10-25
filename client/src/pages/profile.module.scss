@@ -284,3 +284,84 @@
   border: 1px solid #2a7bd9;
   color: #0b1a33;
 }
+
+/* Referral cards layout */
+.referralGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.referralCard {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 85, 191, 0.08);
+  padding: 12px;
+}
+
+.referralHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.iconBtn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.linkRow {
+  display: grid;
+  grid-template-columns: 1fr 34px;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.miniBtn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid #2a7bd9;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 85, 191, 0.95),
+    rgba(0, 179, 255, 0.9)
+  );
+  color: #0b1a33;
+}
+
+.checkboxes {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin: 10px 0 8px 0;
+}
+
+.statRow {
+  font-size: 12px;
+  color: #0b1a33;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cardFooter {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #0b1a33;
+  opacity: 0.85;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

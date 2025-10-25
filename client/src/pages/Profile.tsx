@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { userAPI } from "../services/api";
+import { userAPI, shopAPI } from "../services/api";
 import { useProducts } from "../hooks/useProducts";
 // @ts-ignore – модуль стилей объявлен через d.ts
 import cn from "./profile.module.scss";
@@ -26,6 +26,14 @@ export function Profile() {
     link?: string;
     title?: string;
   }>({ open: false });
+  const [referrals, setReferrals] = useState<any[]>([]);
+  const [referralsLoading, setReferralsLoading] = useState<boolean>(false);
+  const [referralsError, setReferralsError] = useState<string | null>(null);
+  const [formProductId, setFormProductId] = useState<string>("");
+  const [formTitle, setFormTitle] = useState<string>("");
+  const [formChecked, setFormChecked] = useState<boolean>(false);
+  const [createLoading, setCreateLoading] = useState<boolean>(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAuthenticated && !profile) {
@@ -62,6 +70,56 @@ export function Profile() {
       setCopied(text);
       setTimeout(() => setCopied(""), 1500);
     } catch {}
+  };
+
+  const fetchReferrals = async () => {
+    try {
+      setReferralsLoading(true);
+      setReferralsError(null);
+      const res = await shopAPI.getReferrals();
+      setReferrals(Array.isArray(res.data) ? res.data : []);
+    } catch (e: any) {
+      setReferralsError(e?.message || "Xatolik yuz berdi");
+    } finally {
+      setReferralsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "oqim" && isAuthenticated) {
+      fetchReferrals();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, isAuthenticated]);
+
+  useEffect(() => {
+    if (activeTab === "market" && !formProductId && products && products.length > 0) {
+      setFormProductId(products[0].product_id);
+    }
+  }, [activeTab, products, formProductId]);
+
+  useEffect(() => {
+    if (!formProductId && products && products.length > 0) {
+      setFormProductId(products[0].product_id);
+    }
+  }, [products, formProductId]);
+
+  const handleCreateReferral = async () => {
+    if (!formProductId) return;
+    try {
+      setCreateLoading(true);
+      setCreateError(null);
+      await shopAPI.createReferral({
+        product_id: formProductId,
+        title: formTitle || "",
+      });
+      setFormTitle("");
+      await fetchReferrals();
+    } catch (e: any) {
+      setCreateError(e?.message || "Xatolik yuz berdi");
+    } finally {
+      setCreateLoading(false);
+    }
   };
 
   if (!isAuthenticated) {
@@ -156,6 +214,54 @@ export function Profile() {
 
         {activeTab === "market" && (
           <div className={`${cn.glass} ${cn.panel}`}>
+            <div className={cn.cardWhite} style={{ marginBottom: 12 }}>
+              <div className={cn.productHead}>
+                <div style={{ flex: 1 }}>
+                  <div className={`${cn.productTitle} ${cn.textDark}`} style={{ marginBottom: 6 }}>
+                    Yangi referal link yaratish
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <select
+                      value={formProductId}
+                      onChange={(e) => setFormProductId(e.target.value)}
+                      className={cn.copyInput}
+                    >
+                      {products.map((p: any) => (
+                        <option key={p.product_id} value={p.product_id}>
+                          {p.product_name}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      value={formTitle}
+                      onChange={(e) => setFormTitle(e.target.value)}
+                      placeholder="Sarlavha (title)"
+                      className={cn.copyInput}
+                    />
+                  </div>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                    <input
+                      type="checkbox"
+                      checked={formChecked}
+                      onChange={(e) => setFormChecked(e.target.checked)}
+                    />
+                    <span className={cn.small}>Я согласен с условиями (пока без логики)</span>
+                  </label>
+                  {createError && (
+                    <div className={cn.small} style={{ color: "#d12", marginTop: 6 }}>{createError}</div>
+                  )}
+                  <div className={cn.actions}>
+                    <button
+                      className={cn.button}
+                      onClick={handleCreateReferral}
+                      disabled={createLoading || !formProductId}
+                    >
+                      {createLoading ? "Yaratilmoqda..." : "Ssilka yaratish"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
             {productsLoading && <p>Yuklanmoqda...</p>}
             {productsError && <p>Xatolik: {String(productsError)}</p>}
             {!productsLoading && !productsError && (
@@ -204,58 +310,65 @@ export function Profile() {
                 ))}
               </div>
             )}
+            {/* referrals list removed from Market, moved to Oqim */}
           </div>
         )}
 
         {activeTab === "oqim" && (
           <div className={`${cn.glass} ${cn.panel}`}>
-            {flows.length === 0 ? (
-              <p>Hozircha oqimlar yo'q. Marketdan link yarating.</p>
-            ) : (
-              <div className={cn.list}>
-                {flows.map((f) => (
-                  <div key={f.id} className={`${cn.glass} ${cn.flowRow}`}>
-                    <div className={cn.flowInfo}>
-                      <div className={cn.productTitle}>{f.productName}</div>
-                      <div className={cn.small}>
-                        Daromad: {formatPrice(f.commission || 0)} •{" "}
-                        {new Date(f.createdAt).toLocaleString()}
-                      </div>
-                      <div
-                        className={cn.small}
-                        style={{ wordBreak: "break-all" }}
-                      >
-                        {f.link}
-                      </div>
-                    </div>
-                    <div className={cn.actions}>
-                      <button
-                        className={cn.button}
-                        onClick={() => handleCopy(f.link)}
-                      >
-                        {copied === f.link ? "Nusxa olindi" : "Nusxalash"}
-                      </button>
-                      <button
-                        className={`${cn.button} ${cn.secondary}`}
-                        onClick={() => removeFlow(f.id)}
-                      >
-                        O'chirish
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {flows.length > 0 && (
-                  <div className={cn.actions}>
-                    <button
-                      className={`${cn.button} ${cn.secondary}`}
-                      onClick={clearFlows}
-                    >
-                      Barchasini tozalash
-                    </button>
-                  </div>
-                )}
+            <div className={cn.cardWhite}>
+              <div className={`${cn.productTitle} ${cn.textDark}`} style={{ marginBottom: 8 }}>
+                Mening referallarim
               </div>
-            )}
+              {referralsLoading && <p>Yuklanmoqda...</p>}
+              {referralsError && <p>Xatolik: {String(referralsError)}</p>}
+              {!referralsLoading && !referralsError && referrals.length === 0 && (
+                <p>Hozircha referal linklar yo'q.</p>
+              )}
+              {!referralsLoading && !referralsError && referrals.length > 0 && (
+                <div className={cn.referralGrid}>
+                  {referrals.map((r: any) => {
+                    const link = `${window.location.origin}/product/${r.product_id}?ref=${r.code}`;
+                    return (
+                      <div key={r.id} className={cn.referralCard}>
+                        <div className={cn.referralHeader}>
+                          <div className={cn.productTitle}>{r.title || "No title"}</div>
+                          <button className={cn.iconBtn} title="O'chirish" disabled>
+                            🗑️
+                          </button>
+                        </div>
+                        <div className={cn.small} style={{ marginBottom: 6 }}>
+                          Kod: <b>{r.code}</b>
+                        </div>
+                        <div className={cn.linkRow}>
+                          <input readOnly value={link} className={cn.copyInput} />
+                          <button className={cn.miniBtn} onClick={() => handleCopy(link)} title="Nusxalash">
+                            📋
+                          </button>
+                        </div>
+                        <div className={cn.checkboxes}>
+                          <label className={cn.small}>
+                            <input type="checkbox" /> sorovlarni hududsiz qabul qilish
+                          </label>
+                          <label className={cn.small}>
+                            <input type="checkbox" /> Operatorsiz
+                          </label>
+                        </div>
+                        <div className={cn.statRow}>
+                          Foyda: {formatPrice(r.total_earned || 0, "UZS")}
+                        </div>
+                        <div className={cn.cardFooter}>
+                          <button className={cn.button} onClick={() => handleCopy(link)}>
+                            {copied === link ? "Nusxa olindi" : "Nusxa ko'chirish"}
+                          </button>
+                          <span>{new Date(r.created_at).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
