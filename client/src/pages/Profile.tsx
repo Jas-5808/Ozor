@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { userAPI } from "../services/api";
-import cn from "./profile.module.scss";
 import { useProducts } from "../hooks/useProducts";
+// @ts-ignore – модуль стилей объявлен через d.ts
+import cn from "./profile.module.scss";
 import { formatPrice, getProductImageUrl } from "../utils/helpers";
 import { useFlows } from "../hooks/useFlows";
 
@@ -65,162 +66,93 @@ export function Profile() {
 
   if (!isAuthenticated) {
     return (
-      <div className="container">
-        <div className={cn.profileWrapper}>
-          <div className={`${cn.glass} ${cn.panel}`}>
-            <p>Profilni ko'rish uchun tizimga kiring.</p>
-          </div>
+      <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-5 md:px-6 py-6">
+        <div className="rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)] ring-1 ring-gray-100 p-6 text-gray-800">
+          <p className="text-center">Profilni ko'rish uchun tizimga kiring.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container">
-      <div className={cn.profileWrapper}>
-        <div className={cn.headerBar}>
-          <h2 className={cn.title}>Mening kabinetim</h2>
-          <button className={cn.logoutBtn} onClick={logout}>
-            Chiqish
-          </button>
-        </div>
+    <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-5 md:px-6 py-6 text-gray-800">
+      {/* Header bar */}
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 bg-clip-text text-transparent">
+          Mening kabinetim
+        </h2>
+        <button onClick={logout} className="h-10 px-4 rounded-xl bg-red-500/90 hover:bg-red-600 text-white font-semibold shadow-sm">
+          Chiqish
+        </button>
+      </div>
 
-        <div className={cn.tabs}>
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-gray-200 mb-5">
+        {[
+          { id: "dashboard", label: "Dashboard" },
+          { id: "market", label: "Market" },
+          { id: "oqim", label: "Oqim" },
+          { id: "stats", label: "Statistika" },
+          { id: "payments", label: "To'lov" },
+        ].map((t) => (
           <button
-            className={`${cn.tab} ${
-              activeTab === "dashboard" ? cn.tabActive : ""
+            key={t.id}
+            onClick={() => setActiveTab(t.id as any)}
+            className={`px-4 py-2 rounded-t-xl text-sm font-semibold transition-colors ${
+              activeTab === (t.id as any)
+                ? "bg-white text-gray-900 border border-gray-200 border-b-white"
+                : "text-gray-500 hover:text-gray-700"
             }`}
-            onClick={() => setActiveTab("dashboard")}
           >
-            Dashboard
+            {t.label}
           </button>
-          <button
-            className={`${cn.tab} ${
-              activeTab === "market" ? cn.tabActive : ""
-            }`}
-            onClick={() => setActiveTab("market")}
-          >
-            Market
-          </button>
-          <button
-            className={`${cn.tab} ${activeTab === "oqim" ? cn.tabActive : ""}`}
-            onClick={() => setActiveTab("oqim")}
-          >
-            Oqim
-          </button>
-          <button
-            className={`${cn.tab} ${activeTab === "stats" ? cn.tabActive : ""}`}
-            onClick={() => setActiveTab("stats")}
-          >
-            Statistika
-          </button>
-          <button
-            className={`${cn.tab} ${
-              activeTab === "payments" ? cn.tabActive : ""
-            }`}
-            onClick={() => setActiveTab("payments")}
-          >
-            To'lov
-          </button>
-        </div>
+        ))}
+      </div>
 
-        {activeTab === "dashboard" && (
-          <div className={`${cn.glass} ${cn.panel}`}>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 12,
-              }}
-            >
-              <div className={`${cn.cardWhite}`}>
-                <div className={cn.profileCard}>
-                  <img
-                    className={cn.profileAvatar}
-                    src={profile?.avatar || "/img/NaturalTitanium.jpg"}
-                    alt="avatar"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src =
-                        "/img/NaturalTitanium.jpg";
-                    }}
-                  />
-                  <div>
-                    <div className={cn.profileName}>
-                      {(profile?.first_name || "") +
-                        (profile?.last_name ? " " + profile?.last_name : "") ||
-                        "Foydalanuvchi"}
-                    </div>
-                    {profile?.email && (
-                      <div className={cn.profileEmail}>{profile.email}</div>
-                    )}
-                    {profile?.location && (
-                      <div className={cn.small}>
-                        Joylashuv: {profile.location}
-                      </div>
-                    )}
-                    <a href="/update-profile" className={cn.linkBtn}>
-                      Profilni tahrirlash
-                    </a>
-                  </div>
-                </div>
-                <div className={cn.infoGrid}>
-                  <div className={cn.infoItem}>
-                    <div className={cn.infoLabel}>User ID</div>
-                    <div className={cn.infoValue}>
-                      {profile?.user_id || "—"}
-                    </div>
-                  </div>
-                  <div className={cn.infoItem}>
-                    <div className={cn.infoLabel}>Balans</div>
-                    <div className={cn.infoValue}>
-                      {formatPrice(profile?.balance || 0, "UZS")}
-                    </div>
-                  </div>
-                  <div className={cn.infoItem}>
-                    <div className={cn.infoLabel}>Ism</div>
-                    <div className={cn.infoValue}>
-                      {profile?.first_name || "—"}
-                    </div>
-                  </div>
-                  <div className={cn.infoItem}>
-                    <div className={cn.infoLabel}>Familiya</div>
-                    <div className={cn.infoValue}>
-                      {profile?.last_name || "—"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  flexWrap: "wrap",
+      {activeTab === "dashboard" && (
+        <div className="rounded-2xl bg-white ring-1 ring-gray-100 shadow-[0_8px_30px_rgba(0,0,0,0.06)] p-5 mb-6">
+          {/* Profile card */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <img
+                className="w-20 h-20 rounded-2xl object-cover ring-1 ring-gray-200"
+                src={profile?.avatar || "/img/NaturalTitanium.jpg"}
+                alt="avatar"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
                 }}
-              >
-                <div
-                  className={`${cn.glass} ${cn.card}`}
-                  style={{ flex: "1 1 260px" }}
-                >
-                  <div className={cn.meta}>Hisobingizda</div>
-                  <div className={cn.title}>
-                    {formatPrice(profile?.balance || 0, "UZS")}
-                  </div>
-                  <div className={cn.small}>Taxminiy balans</div>
+              />
+              <div className="flex flex-col gap-1">
+                <div className="text-lg md:text-xl font-bold">
+                  {(profile?.first_name || "") + (profile?.last_name ? " " + profile?.last_name : "") || "Foydalanuvchi"}
                 </div>
-                <div
-                  className={`${cn.glass} ${cn.card}`}
-                  style={{ flex: "1 1 260px" }}
-                >
-                  <div className={cn.meta}>Oqimlar</div>
-                  <div className={cn.title}>{flows.length}</div>
-                  <div className={cn.small}>Yaratilgan referal linklar</div>
+                {profile?.email && <div className="text-sm text-gray-500">{profile.email}</div>}
+                {profile?.location && (
+                  <div className="text-xs text-gray-500">Joylashuv: {profile.location}</div>
+                )}
+                <a href="/update-profile" className="mt-1 inline-flex h-9 items-center justify-center px-3 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 w-max">
+                  Profilni tahrirlash
+                </a>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 ring-1 ring-indigo-200/40 p-4">
+                <div className="text-xs uppercase tracking-wide text-indigo-600 font-semibold">Hisobingizda</div>
+                <div className="text-2xl font-extrabold text-gray-900 mt-1">
+                  {formatPrice(profile?.balance || 0, "UZS")}
                 </div>
+                <div className="text-xs text-gray-500">Taxminiy balans</div>
+              </div>
+              <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 ring-1 ring-blue-200/40 p-4">
+                <div className="text-xs uppercase tracking-wide text-blue-600 font-semibold">Oqimlar</div>
+                <div className="text-2xl font-extrabold text-gray-900 mt-1">{flows.length}</div>
+                <div className="text-xs text-gray-500">Yaratilgan referal linklar</div>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {activeTab === "market" && (
           <div className={`${cn.glass} ${cn.panel}`}>
@@ -380,7 +312,6 @@ export function Profile() {
           </div>
         )}
       </div>
-    </div>
   );
 }
 
