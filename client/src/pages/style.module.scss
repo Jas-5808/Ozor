@@ -1182,7 +1182,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 40; /* ниже z-50 у header */
   border-top: 1px solid #e5e7eb;
   border-bottom: 1px solid #e5e7eb;
 }
@@ -1226,7 +1226,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 40; /* ниже z-50 у header */
   border-top: 1px solid #e5e7eb;
   border-bottom: 1px solid #e5e7eb;
 }
@@ -1285,7 +1285,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 40; /* ниже z-50 у header */
   border-top: 1px solid #e5e7eb;
   border-bottom: 1px solid #e5e7eb;
 }

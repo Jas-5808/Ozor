@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 type Props = {
   isAuthenticated: boolean;
@@ -6,33 +7,33 @@ type Props = {
 
 export default function HeaderActions({ isAuthenticated }: Props) {
   return (
-    <ul className="flex items-center gap-3 md:gap-5">
+    <ul className="flex items-center gap-4">
       {isAuthenticated ? (
         <li>
-          <a href="/profile" className="inline-flex items-center gap-2 h-11 px-3 md:px-4 rounded-xl hover:bg-white/10 hover:text-white/90 transition">
+          <Link to="/profile" className="flex items-center justify-center gap-2 h-12 px-4 md:px-5 rounded-2xl bg-white/10 text-white/90 hover:bg-white/15 transition" aria-label="Профиль">
             <img src="/icons/user.svg" alt="" className="size-5" />
             <span>Profil</span>
-          </a>
+          </Link>
         </li>
       ) : (
         <li>
-          <a href="/login" className="inline-flex items-center gap-2 h-11 px-3 md:px-4 rounded-xl hover:bg-white/10 hover:text-white/90 transition">
+          <Link to="/login" className="flex items-center justify-center gap-2 h-12 px-4 md:px-5 rounded-2xl bg-white/10 text-white/90 hover:bg-white/15 transition" aria-label="Войти">
             <img src="/icons/user.svg" alt="" className="size-5" />
             <span>Kirish</span>
-          </a>
+          </Link>
         </li>
       )}
       <li>
-        <a href="/favorites" className="inline-flex items-center gap-2 h-11 px-3 md:px-4 rounded-xl hover:bg-white/10 hover:text-white/90 transition">
+        <Link to="/favorites" className="flex items-center justify-center gap-2 h-12 px-4 md:px-5 rounded-2xl bg-white/10 text-white/90 hover:bg-white/15 transition" aria-label="Избранное">
           <img src="/icons/like.svg" alt="" className="size-5" />
           <span>Saralangan</span>
-        </a>
+        </Link>
       </li>
       <li>
-        <a href="/cart" className="inline-flex items-center gap-2 h-11 px-3 md:px-4 rounded-xl hover:bg-white/10 hover:text-white/90 transition">
+        <Link to="/cart" className="flex items-center justify-center gap-2 h-12 px-4 md:px-5 rounded-2xl bg-white/10 text-white/90 hover:bg-white/15 transition" aria-label="Корзина">
           <img src="/icons/korzinka.svg" alt="" className="size-5" />
           <span>Savat</span>
-        </a>
+        </Link>
       </li>
     </ul>
   );

@@ -552,9 +552,10 @@ export function Product() {
                           }
                         ],
                         guest_user_number: phone || "",
+                        full_name: name || "",
                         city: cityCode,
                         order_region: getRegionForCityOrRegion(cityCode),
-                        order_comment: name || "",
+                        order_comment: extra?.comment || "",
                       } as any;
                       try {
                         await shopAPI.guestOrder(payload);
