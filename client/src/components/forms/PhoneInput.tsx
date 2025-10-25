@@ -6,9 +6,17 @@ interface PhoneInputProps {
   className?: string;
   placeholder?: string;
   required?: boolean;
+  onValidChange?: (isValid: boolean, cleanValue: string) => void;
 }
 
-export function PhoneInput({ value, onChange, className, placeholder, required }: PhoneInputProps) {
+export function PhoneInput({
+  value,
+  onChange,
+  className,
+  placeholder,
+  required,
+  onValidChange,
+}: PhoneInputProps) {
   const PREFIX = "+998 ";
   const [displayValue, setDisplayValue] = useState(PREFIX);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -24,19 +32,19 @@ export function PhoneInput({ value, onChange, className, placeholder, required }
 
   const formatPhoneNumber = (input: string) => {
     // Удаляем все кроме цифр
-    const numbers = input.replace(/\D/g, '');
-    
+    const numbers = input.replace(/\D/g, "");
+
     // Если начинается с 998, убираем его
     let cleanNumbers = numbers;
-    if (numbers.startsWith('998')) {
+    if (numbers.startsWith("998")) {
       cleanNumbers = numbers.substring(3);
     }
-    
+
     // Ограничиваем до 9 цифр (99 123 45 67)
     const limitedNumbers = cleanNumbers.substring(0, 9);
-    
+
     // Форматируем: +998 (99) 123 45 67
-    let formatted = PREFIX; // +998 
+    let formatted = PREFIX; // +998
     if (limitedNumbers.length > 0) {
       formatted += "(" + limitedNumbers.substring(0, 2);
     }
@@ -52,49 +60,86 @@ export function PhoneInput({ value, onChange, className, placeholder, required }
     if (limitedNumbers.length > 7) {
       formatted += " " + limitedNumbers.substring(7, 9);
     }
-    
+
     return formatted;
+  };
+
+  const getCleanPhoneNumber = (input: string) => {
+    // Удаляем все кроме цифр
+    const numbers = input.replace(/\D/g, "");
+
+    // Если начинается с 998, оставляем как есть
+    if (numbers.startsWith("998")) {
+      return "+" + numbers;
+    }
+
+    // Если не начинается с 998, добавляем +998
+    return "+998" + numbers;
+  };
+
+  const isValidPhoneNumber = (input: string) => {
+    const cleanNumber = getCleanPhoneNumber(input);
+    // Проверяем что номер начинается с +998 и содержит ровно 12 цифр после +
+    return /^\+998\d{9}$/.test(cleanNumber);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
-    
+
     // Если пытаются удалить "+998 ", не позволяем
     if (input.length < PREFIX.length) {
       setDisplayValue(PREFIX);
       onChange(PREFIX);
+      if (onValidChange) {
+        onValidChange(false, "");
+      }
       return;
     }
-    
+
     // Если пытаются изменить префикс, восстанавливаем
     if (!input.startsWith(PREFIX)) {
       setDisplayValue(PREFIX);
       onChange(PREFIX);
+      if (onValidChange) {
+        onValidChange(false, "");
+      }
       return;
     }
-    
+
     const formatted = formatPhoneNumber(input);
+    const cleanNumber = getCleanPhoneNumber(formatted);
+    const isValid = isValidPhoneNumber(formatted);
+
     setDisplayValue(formatted);
     onChange(formatted);
+
+    if (onValidChange) {
+      onValidChange(isValid, cleanNumber);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // Запрещаем удаление "+998 "
-    if (e.key === 'Backspace' && displayValue.length <= PREFIX.length) {
+    if (e.key === "Backspace" && displayValue.length <= PREFIX.length) {
       e.preventDefault();
       return;
     }
 
     // Если курсор в конце и строка заканчивается на ") ", позволяем удалить цифру кода оператора
-    if (e.key === 'Backspace' && inputRef.current) {
+    if (e.key === "Backspace" && inputRef.current) {
       const { selectionStart, selectionEnd } = inputRef.current;
-      const caretAtEnd = selectionStart === selectionEnd && selectionStart === displayValue.length;
+      const caretAtEnd =
+        selectionStart === selectionEnd &&
+        selectionStart === displayValue.length;
       if (caretAtEnd && displayValue.endsWith(") ")) {
         e.preventDefault();
-        const numbers = displayValue.replace(/\D/g, '');
-        const cleanNumbers = numbers.startsWith('998') ? numbers.substring(3) : numbers;
+        const numbers = displayValue.replace(/\D/g, "");
+        const cleanNumbers = numbers.startsWith("998")
+          ? numbers.substring(3)
+          : numbers;
         if (cleanNumbers.length >= 1) {
-          const nextInput = PREFIX + cleanNumbers.slice(0, cleanNumbers.length - 1);
+          const nextInput =
+            PREFIX + cleanNumbers.slice(0, cleanNumbers.length - 1);
           const formatted = formatPhoneNumber(nextInput);
           setDisplayValue(formatted);
           onChange(formatted);
@@ -108,7 +153,7 @@ export function PhoneInput({ value, onChange, className, placeholder, required }
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const pastedText = e.clipboardData.getData('text');
+    const pastedText = e.clipboardData.getData("text");
     const formatted = formatPhoneNumber(pastedText);
     setDisplayValue(formatted);
     onChange(formatted);

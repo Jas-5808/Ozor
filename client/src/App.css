@@ -1,8 +1,149 @@
-.wrapper{
+.wrapper {
   height: 100vh;
   display: flex;
   flex-direction: column;
 }
-.main{
+.main {
   flex: 1 1 auto;
+}
+
+/* Header responsive fixes */
+header {
+  width: 100%;
+  box-sizing: border-box;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+/* Force header container styles */
+header .header-container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+/* Mobile header fixes */
+@media (max-width: 768px) {
+  header {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+
+  /* Ensure proper spacing on mobile */
+  .main {
+    padding-top: 0;
+    margin-top: 0;
+  }
+
+  /* Mobile bottom navigation */
+  .mobile-bottom-nav {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+
+  header .header-container {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+
+/* Desktop header fixes */
+@media (min-width: 769px) {
+  header {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  header .header-container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  header .header-container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  header .header-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+/* Global Input Override - exclude header inputs */
+input[type="text"]:not(header input),
+input[type="email"]:not(header input),
+input[type="tel"]:not(header input),
+input[type="password"]:not(header input),
+input[type="number"]:not(header input),
+input[type="search"]:not(header input),
+textarea:not(header textarea),
+select:not(header select) {
+  color: #1f2937 !important;
+  background-color: white !important;
+}
+
+input[type="text"]:not(header input)::placeholder,
+input[type="email"]:not(header input)::placeholder,
+input[type="tel"]:not(header input)::placeholder,
+input[type="password"]:not(header input)::placeholder,
+input[type="number"]:not(header input)::placeholder,
+input[type="search"]:not(header input)::placeholder,
+textarea:not(header textarea)::placeholder {
+  color: #9ca3af !important;
+}
+
+input[type="text"]:not(header input):focus,
+input[type="email"]:not(header input):focus,
+input[type="tel"]:not(header input):focus,
+input[type="password"]:not(header input):focus,
+input[type="number"]:not(header input):focus,
+input[type="search"]:not(header input):focus,
+textarea:not(header textarea):focus,
+select:not(header select):focus {
+  color: #1f2937 !important;
+  background-color: white !important;
+}
+
+/* Header specific input styles */
+header input[type="text"],
+header input[type="email"],
+header input[type="tel"],
+header input[type="password"],
+header input[type="number"],
+header input[type="search"],
+header textarea,
+header select {
+  color: white !important;
+  background-color: transparent !important;
+}
+
+header input[type="text"]::placeholder,
+header input[type="email"]::placeholder,
+header input[type="tel"]::placeholder,
+header input[type="password"]::placeholder,
+header input[type="number"]::placeholder,
+header input[type="search"]::placeholder,
+header textarea::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+header input[type="text"]:focus,
+header input[type="email"]:focus,
+header input[type="tel"]:focus,
+header input[type="password"]:focus,
+header input[type="number"]:focus,
+header input[type="search"]:focus,
+header textarea:focus,
+header select:focus {
+  color: white !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
 }

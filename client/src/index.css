@@ -4,9 +4,23 @@
 /* Liquid Glass Design System */
 
 * {
+  box-sizing: border-box;
+}
+
+/* Reset only specific elements, not all */
+body,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+ul,
+ol,
+li {
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
 }
 
 html,
@@ -53,6 +67,46 @@ body {
 /* Button Reset */
 button {
   @apply border-none bg-transparent cursor-pointer;
+}
+
+/* Global Input Styles - exclude header inputs */
+input:not(header input),
+textarea:not(header textarea),
+select:not(header select) {
+  color: #1f2937 !important;
+  background-color: white !important;
+}
+
+input:not(header input)::placeholder,
+textarea:not(header textarea)::placeholder {
+  color: #9ca3af !important;
+}
+
+input:not(header input):focus,
+textarea:not(header textarea):focus,
+select:not(header select):focus {
+  color: #1f2937 !important;
+  background-color: white !important;
+}
+
+/* Header specific input styles */
+header input,
+header textarea,
+header select {
+  color: white !important;
+  background-color: transparent !important;
+}
+
+header input::placeholder,
+header textarea::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+header input:focus,
+header textarea:focus,
+header select:focus {
+  color: white !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Focus States */

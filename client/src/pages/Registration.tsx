@@ -1,15 +1,18 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-// CSS module removed - using Tailwind utilities
+import cn from "./style.module.scss";
 import { useAuth } from "../hooks/useAuth";
 import TelegramModal from "../components/TelegramModal";
 import PasswordModal from "../components/PasswordModal";
+import PhoneInput from "../components/forms/PhoneInput";
 import { authAPI } from "../services/api";
 
 export function Registration() {
   const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [cleanPhone, setCleanPhone] = useState("");
+  const [isPhoneValid, setIsPhoneValid] = useState(false);
+  const [password] = useState("");
+  const [confirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
@@ -44,16 +47,21 @@ export function Registration() {
     try {
       await signup(phone, password);
       navigate("/profile");
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  const handlePhoneChange = (isValid: boolean, cleanValue: string) => {
+    setIsPhoneValid(isValid);
+    setCleanPhone(cleanValue);
+  };
+
   const handleTelegramRegistration = async () => {
-    if (!phone) {
-      setError("Введите номер телефона");
+    if (!isPhoneValid || !cleanPhone) {
+      setError("Введите корректный номер телефона");
       return;
     }
 
@@ -61,7 +69,7 @@ export function Registration() {
     setError("");
 
     try {
-      await authAPI.sendCode(phone);
+      await authAPI.sendCode(cleanPhone);
       setIsTelegramModalOpen(true);
       window.open("https://t.me/send_verifix_code_bot", "_blank");
     } catch (err) {
@@ -72,12 +80,12 @@ export function Registration() {
     }
   };
 
-  const handleTelegramCodeSubmit = async (phone: string, code: string) => {
+  const handleTelegramCodeSubmit = async (_phone: string, code: string) => {
     setTelegramLoading(true);
     setError("");
 
     try {
-      await authAPI.verifyCode(phone, code);
+      await authAPI.verifyCode(cleanPhone, code);
       setIsTelegramModalOpen(false);
       setIsPasswordModalOpen(true);
     } catch (err) {
@@ -88,14 +96,14 @@ export function Registration() {
     }
   };
 
-  const handlePasswordSubmit = async (phone: string, password: string) => {
+  const handlePasswordSubmit = async (_phone: string, password: string) => {
     setTelegramLoading(true);
     setError("");
 
     try {
-      await authAPI.signup(phone, password);
+      await authAPI.signup(cleanPhone, password);
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      const response = await authAPI.signin(phone, password);
+      const response = await authAPI.signin(cleanPhone, password);
 
       if (response.data.access_token) {
         localStorage.setItem("access_token", response.data.access_token);
@@ -108,12 +116,15 @@ export function Registration() {
       navigate("/profile");
     } catch (err: any) {
       // Проверяем, если это 409 ошибка с сообщением "record already exists"
-      if (err.response && err.response.status === 409 && 
-          err.response.data?.detail?.includes("record already exists")) {
+      if (
+        err.response &&
+        err.response.status === 409 &&
+        err.response.data?.detail?.includes("record already exists")
+      ) {
         // Обрабатываем как успех и переходим на страницу обновления профиля
         try {
-          const response = await authAPI.signin(phone, password);
-          
+          const response = await authAPI.signin(cleanPhone, password);
+
           if (response.data.access_token) {
             localStorage.setItem("access_token", response.data.access_token);
           }
@@ -157,11 +168,11 @@ export function Registration() {
         {error && <div className={cn.error_message}>{error}</div>}
 
         <form onSubmit={handleSubmit} className={cn.form}>
-          <input
-            type="tel"
-            placeholder="+998 99 123 45 67"
+          <PhoneInput
+            placeholder="+998 (99) 123 45 67"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={setPhone}
+            onValidChange={handlePhoneChange}
             className={cn.input}
             required
           />
@@ -192,7 +203,7 @@ export function Registration() {
         onClose={handleCloseTelegramModal}
         onSubmit={handleTelegramCodeSubmit}
         loading={telegramLoading}
-        phone={phone}
+        phone={cleanPhone}
       />
 
       <PasswordModal
@@ -200,7 +211,7 @@ export function Registration() {
         onClose={handleClosePasswordModal}
         onSubmit={handlePasswordSubmit}
         loading={telegramLoading}
-        phone={phone}
+        phone={cleanPhone}
       />
     </div>
   );

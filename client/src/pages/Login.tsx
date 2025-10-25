@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import cn from "./style.module.scss";
 import { useAuth } from "../hooks/useAuth";
-import PhoneInput from "../components/PhoneInput";
+import PhoneInput from "../components/forms/PhoneInput";
 export function Login() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");

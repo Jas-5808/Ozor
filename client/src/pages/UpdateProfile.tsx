@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-// CSS module removed - using Tailwind utilities
+import cn from "./style.module.scss";
 import { userAPI } from "../services/api";
 
 export function UpdateProfile() {
@@ -9,7 +9,7 @@ export function UpdateProfile() {
     last_name: "",
     email: "",
     bio: "",
-    location: ""
+    location: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -25,11 +25,13 @@ export function UpdateProfile() {
     }
   }, [navigate]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -46,33 +48,36 @@ export function UpdateProfile() {
         last_name: formData.last_name.trim() || "",
         location: formData.location.trim() || "",
         email: formData.email.trim() || "",
-        bio: formData.bio.trim() || ""
+        bio: formData.bio.trim() || "",
       };
 
       console.log("Отправляем данные:", updateData);
 
       await userAPI.updateProfile(updateData);
       setSuccess(true);
-      
+
       // Через 2 секунды перенаправляем на главную страницу
       setTimeout(() => {
         navigate("/");
       }, 2000);
-
     } catch (err: any) {
       console.error("Ошибка обновления профиля:", err);
-      
+
       // Более детальная обработка ошибок
       if (err.response?.data?.detail) {
         const details = err.response.data.detail;
         if (Array.isArray(details)) {
-          const errorMessages = details.map((detail: any) => detail.msg).join(", ");
+          const errorMessages = details
+            .map((detail: any) => detail.msg)
+            .join(", ");
           setError(`Ошибка валидации: ${errorMessages}`);
         } else {
           setError(`Ошибка: ${details}`);
         }
       } else {
-        setError(err.response?.data?.message || "Ошибка при обновлении профиля");
+        setError(
+          err.response?.data?.message || "Ошибка при обновлении профиля"
+        );
       }
     } finally {
       setLoading(false);
@@ -87,8 +92,10 @@ export function UpdateProfile() {
     return (
       <div className="container">
         <div className={cn.regist_content}>
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <h2 style={{ color: 'green', marginBottom: '20px' }}>Профиль успешно обновлен!</h2>
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <h2 style={{ color: "green", marginBottom: "20px" }}>
+              Профиль успешно обновлен!
+            </h2>
             <p>Перенаправление на главную страницу...</p>
           </div>
         </div>
@@ -107,7 +114,7 @@ export function UpdateProfile() {
         {error && <div className={cn.error_message}>{error}</div>}
 
         <form onSubmit={handleSubmit} className={cn.form}>
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+          <div className={cn.name_row}>
             <input
               type="text"
               name="first_name"
@@ -133,7 +140,6 @@ export function UpdateProfile() {
             value={formData.email}
             onChange={handleInputChange}
             className={cn.input}
-            style={{ marginBottom: '15px' }}
           />
 
           <input
@@ -143,7 +149,6 @@ export function UpdateProfile() {
             value={formData.location}
             onChange={handleInputChange}
             className={cn.input}
-            style={{ marginBottom: '15px' }}
           />
 
           <textarea
@@ -151,26 +156,19 @@ export function UpdateProfile() {
             placeholder="О себе (необязательно)"
             value={formData.bio}
             onChange={handleInputChange}
-            className={cn.input}
+            className={cn.textarea}
             rows={3}
-            style={{ marginBottom: '20px', resize: 'vertical' }}
           />
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              type="submit"
-              className={`${cn.social_btn} ${cn.telegram}`}
-              disabled={loading}
-              style={{ flex: 1 }}
-            >
+          <div className={cn.button_row}>
+            <button type="submit" className={cn.btn_primary} disabled={loading}>
               {loading ? "Сохранение..." : "Сохранить"}
             </button>
             <button
               type="button"
               onClick={handleSkip}
-              className={cn.social_btn}
+              className={cn.btn_secondary}
               disabled={loading}
-              style={{ flex: 1, backgroundColor: '#6c757d' }}
             >
               Пропустить
             </button>
