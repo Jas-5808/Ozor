@@ -5,7 +5,7 @@ import { adminStore } from '../storage';
 import { shopAPI } from '../../services/api';
 import apiClient from '../../services/api';
 
-type Order = { id: string; customer: string; total: number; status: 'pending'|'paid'|'shipped'|'cancelled'; order_number?: string; created_at?: string };
+type Order = { id: string; customer: string; total: number; status: 'pending'|'paid'|'shipped'|'cancelled'; order_number?: string; created_at?: string; location?: string };
 
 export default function Orders() {
   const [items, setItems] = useState<Order[]>(adminStore.load<Order[]>('admin_orders', []));
@@ -14,6 +14,26 @@ export default function Orders() {
   const [loading, setLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [serverNow, setServerNow] = useState<Date | null>(null);
+
+  const normalizeOrders = (data: any[]): Order[] => data.map((o:any)=> {
+    const first = (o.buyer_firstname ?? '').trim();
+    const last = (o.buyer_lastname ?? '').trim();
+    const full = (o.full_name ?? '').trim();
+    const byNames = (first || last) ? `${first} ${last}`.trim() : '';
+    const customer = byNames || full || (o.order_comment || '').trim() || 'Guest';
+    const userLoc = (o.user_location ?? '').trim();
+    const cityApi = (o.city ?? '').trim();
+    const location = userLoc || cityApi || '';
+    return {
+      id: o.order_id || o.id,
+      customer,
+      total: o.total_price || 0,
+      status: o.status || 'pending',
+      order_number: o.order_number || o.number || o.code || '',
+      created_at: o.created_at || o.created || o.order_date || o.date || o.createdAt || null,
+      location,
+    };
+  });
 
   const filtered = useMemo(()=> items.filter(o =>
     (q ? (o.id.includes(q) || o.customer.toLowerCase().includes(q.toLowerCase()) || (o.order_number||'').includes(q)) : true)
@@ -30,14 +50,7 @@ export default function Orders() {
         const res = await shopAPI.getAllOrders();
         if (ignore) return;
         const data = Array.isArray(res.data) ? res.data : (res.data?.results || []);
-        const normalized: Order[] = data.map((o:any)=> ({
-          id: o.order_id || o.id,
-          customer: o.order_comment || `${o.buyer_firstname||''} ${o.buyer_lastname||''}`.trim() || 'Guest',
-          total: o.total_price || 0,
-          status: o.status || 'pending',
-          order_number: o.order_number || o.number || o.code || '',
-          created_at: o.created_at || o.created || o.order_date || o.date || o.createdAt || null,
-        }));
+        const normalized: Order[] = normalizeOrders(data);
         setItems(normalized);
       } catch (e) {
         // keep local
@@ -45,6 +58,21 @@ export default function Orders() {
     };
     fetchOrders();
     return ()=>{ ignore = true; };
+  }, []);
+
+  useEffect(()=>{
+    let ignore = false;
+    const tick = async ()=>{
+      try {
+        const res = await shopAPI.getAllOrders();
+        if (ignore) return;
+        const data = Array.isArray(res.data) ? res.data : (res.data?.results || []);
+        const normalized: Order[] = normalizeOrders(data);
+        setItems(normalized);
+      } catch {}
+    };
+    const id = setInterval(tick, 10000);
+    return ()=>{ ignore = true; clearInterval(id); };
   }, []);
 
   useEffect(()=>{
@@ -101,7 +129,7 @@ export default function Orders() {
       {loading && <div style={{fontSize:12, color:'#64748b', marginBottom:8}}>Loading…</div>}
       <table className={s.table}>
         <thead>
-          <tr><th>Order #</th><th>Customer</th><th>Total</th><th>Status</th><th>Time</th></tr>
+          <tr><th>Order #</th><th>Customer</th><th>Total</th><th>Status</th><th>City</th><th>Time</th></tr>
         </thead>
         <tbody>
           {filtered.map(o => (
@@ -134,6 +162,7 @@ export default function Orders() {
                 {o.status === 'shipped' && <span className={`${s.badge} ${s.badgeShipped}`}>Shipped</span>}
                 {o.status === 'cancelled' && <span className={`${s.badge} ${s.badgeCancelled}`}>Cancelled</span>}
               </td>
+              <td>{o.location || '-'}</td>
               <td style={{textAlign:'right', color: timeColor(o.created_at), fontVariantNumeric: 'tabular-nums'}}>{formatDateTime(o.created_at)}</td>
             </tr>
           ))}

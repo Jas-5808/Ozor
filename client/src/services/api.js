@@ -124,6 +124,7 @@ export const authAPI = {
 export const userAPI = {
   getProfile: () => apiClient.get("/profile"),
   getUsersInfo: () => apiClient.get("/profile/user-info"),
+  listUsers: (params = {}) => apiClient.get("/users/", { params }),
   updateProfile: (data) => {
     console.log("API updateProfile вызван с:", data);
     
