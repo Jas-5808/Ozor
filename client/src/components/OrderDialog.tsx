@@ -51,13 +51,14 @@ export default function OrderDialog({ open, onClose, product, variant, deliveryP
 
   const total = useMemo(() => (price * qty) + (deliveryPrice ?? 0), [price, qty, deliveryPrice]);
 
-  if (!open) return null;
-
   useEffect(() => {
+    if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
-  }, []);
+  }, [open]);
+
+  if (!open) return null;
 
   return ReactDOM.createPortal(
     <div className={s.overlay} onClick={onClose}>
