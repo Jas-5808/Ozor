@@ -240,21 +240,32 @@ export function Profile() {
                             "/img/NaturalTitanium.jpg";
                         }}
                       />
-                      <div style={{ marginTop: 8 }}>
-                        <div className={`${cn.productTitle} ${cn.textDark}`} style={{ fontSize: '1.05rem', fontWeight: 700 }}>
+                      <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
+                        <div className={`${cn.productTitle} ${cn.textDark}`} style={{ fontSize: '1.125rem', fontWeight: 800, lineHeight: 1.2 }}>
                           {p.product_name}
                         </div>
-                        <div className={cn.priceRow} style={{ fontSize: '.95rem' }}>
-                          {formatPrice(p.price || 0)} • Daromad:{" "}
-                          {formatPrice(p.refferal_price || 0)}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <div style={{ fontSize: '1rem', fontWeight: 700 }}>{formatPrice(p.price || 0)}</div>
+                          <span
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 6,
+                              padding: '4px 10px', borderRadius: 999,
+                              background: '#ecfdf5', border: '1px solid #6ee7b7', color: '#047857',
+                              fontWeight: 700, fontSize: 12
+                            }}
+                          >
+                            + {formatPrice(p.refferal_price || 0)}
+                          </span>
                         </div>
+                        <div className={cn.small} style={{ color: '#64748b' }}>Daromad — siz uchun komissiya</div>
                       </div>
                     </div>
-                    <div className={cn.actions}>
+                    <div className={cn.actions} style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
                       <button
                         className={cn.button}
                         onClick={(e) => { e.stopPropagation(); handleGenerate(p); }}
                         disabled={createLoading}
+                        style={{ height: 40, padding: '0 14px', fontWeight: 700 }}
                       >
                         {createLoading ? "Yaratilmoqda..." : "Nusxa yaratish"}
                       </button>
