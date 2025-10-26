@@ -171,4 +171,9 @@ export const orderAPI = {
   getOrderById: (orderId) => apiClient.get(`/orders/${orderId}`),
 };
 
+// Payments
+export const paymentAPI = {
+  getUserBalance: () => apiClient.get("/payment/get_user_balance"),
+};
+
 export default apiClient;

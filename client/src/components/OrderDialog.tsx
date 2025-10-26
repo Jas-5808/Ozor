@@ -14,7 +14,7 @@ interface Props {
   product: ProductDetail;
   variant: ProductDetail['variants'][0] | null;
   deliveryPrice?: number | null;
-  onBuyNow: (qty: number, extra?: { city?: string; order_region?: string }) => void;
+  onBuyNow: (qty: number, extra?: { city?: string; order_region?: string; comment?: string }) => void;
   onAddToCart: (qty: number) => void;
 }
 

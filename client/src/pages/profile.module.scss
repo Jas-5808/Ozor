@@ -80,9 +80,42 @@
   padding: 12px;
 }
 
+/* Market card enhancements */
+.cardProduct {
+  padding: 14px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+}
+
+.cardProduct:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 85, 191, 0.12);
+}
+
+.priceRow {
+  font-size: 12px;
+  color: #0b1a33;
+  opacity: 0.9;
+}
+
 .productHead {
   display: flex;
   gap: 10px;
+}
+
+/* Вариант без флекса: картинка сверху, текст снизу */
+.productHeadCol {
+  display: block;
+}
+
+/* Large image for Market cards */
+.productImgXL {
+  width: 100%;
+  height: 180px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: block;
 }
 
 .productImg {
@@ -91,6 +124,14 @@
   border-radius: 8px;
   object-fit: cover;
   border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.productImgLg {
+  width: 96px;
+  height: 96px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .productTitle {
@@ -211,6 +252,22 @@
   border: 1px solid rgba(255, 255, 255, 0.35);
   box-shadow: 0 12px 32px rgba(0, 85, 191, 0.35),
     inset 0 0 60px rgba(255, 255, 255, 0.06);
+}
+
+.dialogWide {
+  width: min(900px, 96%);
+}
+
+.modalGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 14px;
+}
+
+.modalSubtitle {
+  font-size: 13px;
+  color: #0b1a33;
+  opacity: 0.9;
 }
 
 .copyInput {
