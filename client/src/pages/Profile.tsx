@@ -215,16 +215,17 @@ export function Profile() {
       )}
 
         {activeTab === "market" && (
-          <div className={`${cn.glass} ${cn.panel}`}>
-            {productsLoading && <p>Yuklanmoqda...</p>}
+          <div className={`${cn.glass} ${cn.panel}`} style={{ padding: 20, borderRadius: 0 }}>
+            {productsLoading && <p style={{ fontSize: 16 }}>Yuklanmoqda...</p>}
             {productsError && <p>Xatolik: {String(productsError)}</p>}
             {!productsLoading && !productsError && (
-              <div className={cn.grid}>
+              <div className={cn.grid} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
                 {products.map((p: any) => (
                   
                   <div
                     key={p.product_id}
                     className={`${cn.cardWhite} ${cn.cardProduct}`}
+                    style={{ borderRadius: 0, padding: 16, border: '1px solid #e5e7eb', boxShadow: '0 8px 30px rgba(0,0,0,0.04)' }}
                   >
                     <div
                       className={cn.productHeadCol}
@@ -240,10 +241,10 @@ export function Profile() {
                         }}
                       />
                       <div style={{ marginTop: 8 }}>
-                        <div className={`${cn.productTitle} ${cn.textDark}`}>
+                        <div className={`${cn.productTitle} ${cn.textDark}`} style={{ fontSize: '1.05rem', fontWeight: 700 }}>
                           {p.product_name}
                         </div>
-                        <div className={cn.priceRow}>
+                        <div className={cn.priceRow} style={{ fontSize: '.95rem' }}>
                           {formatPrice(p.price || 0)} • Daromad:{" "}
                           {formatPrice(p.refferal_price || 0)}
                         </div>
@@ -255,18 +256,7 @@ export function Profile() {
                         onClick={(e) => { e.stopPropagation(); handleGenerate(p); }}
                         disabled={createLoading}
                       >
-                        {createLoading ? "Yaratilmoqda..." : "POST yaratish"}
-                      </button>
-                      <button
-                        className={`${cn.secondaryBlue}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCopy(makeReferralLink(p.product_id));
-                        }}
-                      >
-                        {copied === makeReferralLink(p.product_id)
-                          ? "Nusxa olindi"
-                          : "Linkni nusxalash"}
+                        {createLoading ? "Yaratilmoqda..." : "Nusxa yaratish"}
                       </button>
                     </div>
                   </div>

@@ -125,6 +125,7 @@ export const userAPI = {
   getProfile: () => apiClient.get("/profile"),
   getUsersInfo: () => apiClient.get("/profile/user-info"),
   listUsers: (params = {}) => apiClient.get("/users/", { params }),
+  updateUserRole: (userId, role) => apiClient.patch(`/users/${userId}/role`, { role }),
   updateProfile: (data) => {
     console.log("API updateProfile вызван с:", data);
     

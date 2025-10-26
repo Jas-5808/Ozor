@@ -4,7 +4,19 @@ import s from '../AdminLayout.module.scss';
 import { adminStore } from '../storage';
 import { userAPI } from '../../services/api';
 
-type User = { id: string; name: string; phone: string; role: 'admin'|'manager'|'customer'|'ceo'|'client'; email?: string; date_joined?: string; is_active?: boolean };
+type User = { id: string; name: string; phone: string; role: string; email?: string; date_joined?: string; is_active?: boolean };
+
+const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'client', label: 'Client' },
+  { value: 'sale', label: 'Sale' },
+  { value: 'sale_manager', label: 'Sale Manager' },
+  { value: 'driver', label: 'Driver' },
+  { value: 'driver_manager', label: 'Driver Manager' },
+  { value: 'manager', label: 'Manager' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'ceo', label: 'CEO' },
+  { value: 'chief executive officer', label: 'Chief Executive Officer' },
+];
 
 export default function Users() {
   const [items, setItems] = useState<User[]>(adminStore.load<User[]>('admin_users', []));
@@ -15,6 +27,7 @@ export default function Users() {
   const [totalPages, setTotalPages] = useState(1);
   const [debouncedQ, setDebouncedQ] = useState('');
   const [loading, setLoading] = useState(false);
+  const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
   const filtered = items;
 
   const addUser = () => {
@@ -43,11 +56,7 @@ export default function Users() {
         const data = payload.users || [];
         const normalized: User[] = data.map((u:any)=> {
           const apiRole = String(u.role || '').toLowerCase();
-          let mappedRole: User['role'];
-          if (['admin','staff'].includes(apiRole)) mappedRole = 'admin';
-          else if (apiRole === 'manager') mappedRole = 'manager';
-          else if (apiRole === 'ceo') mappedRole = 'ceo';
-          else mappedRole = (u.is_staff ? 'admin' : 'client');
+          const mappedRole = (['admin','staff'].includes(apiRole)) ? 'admin' : apiRole;
           return {
             id: u.id,
             name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || (u.username || u.email || u.phone_number || 'User'),
@@ -92,7 +101,7 @@ export default function Users() {
       {loading && <div style={{fontSize:12, color:'#64748b', marginBottom:8}}>Loading…</div>}
       <table className={s.table}>
         <thead>
-          <tr><th>Name</th><th>Phone</th><th>Email</th><th>Joined</th><th>Status</th><th>Role</th></tr>
+          <tr><th>Name</th><th>Phone</th><th>Email</th><th>Joined</th><th>Status</th><th>Role</th><th></th></tr>
         </thead>
         <tbody>
           {filtered.map(u => (
@@ -103,10 +112,30 @@ export default function Users() {
               <td>{u.date_joined ? new Date(u.date_joined).toLocaleString() : '-'}</td>
               <td>{u.is_active ? <span className={`${s.badge} ${s.badgeActive}`}>Active</span> : <span className={`${s.badge} ${s.badgeInactive}`}>Inactive</span>}</td>
               <td>
-                {u.role === 'admin' && <span className={`${s.badge} ${s.badgeShipped}`}>Admin</span>}
-                {u.role === 'manager' && <span className={`${s.badge} ${s.badgeInfo || ''}`}>Manager</span>}
-                {u.role === 'client' && <span className={`${s.badge} ${s.badgePaid}`}>Client</span>}
-                {u.role === 'ceo' && <span className={`${s.badge} ${s.badgePending}`}>CEO</span>}
+                {u.role}
+              </td>
+              <td>
+                <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+                  <select
+                    className={s.input}
+                    value={u.role}
+                    onChange={async (e)=>{
+                      const newRole = e.target.value;
+                      try {
+                        setUpdatingRoleId(u.id);
+                        await userAPI.updateUserRole(u.id, newRole);
+                        setItems(prev => prev.map(p => p.id===u.id ? { ...p, role: newRole } : p));
+                      } catch {}
+                      finally { setUpdatingRoleId(null); }
+                    }}
+                    disabled={updatingRoleId === u.id}
+                    style={{minWidth:160}}
+                  >
+                    {ROLE_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
               </td>
             </tr>
           ))}
