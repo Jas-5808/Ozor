@@ -19,6 +19,11 @@ export function Profile() {
     error: productsError,
   } = useProducts();
   const { flows, addFlow, removeFlow, clearFlows } = useFlows();
+  const [apiFlows, setApiFlows] = useState<any[]>([]);
+  const [apiFlowsLoading, setApiFlowsLoading] = useState<boolean>(false);
+  const [apiFlowsError, setApiFlowsError] = useState<string | null>(null);
+  const [referralNotice, setReferralNotice] = useState<{ type: 'success'|'error'; message: string } | null>(null);
+  const [deletingReferralId, setDeletingReferralId] = useState<string | null>(null);
   const [copied, setCopied] = useState<string>("");
   const [dialog, setDialog] = useState<{
     open: boolean;
@@ -123,6 +128,22 @@ export function Profile() {
       setTimeout(() => setCopied(""), 1500);
     } catch {}
   };
+
+  useEffect(() => {
+    const loadReferrals = async () => {
+      try {
+        setApiFlowsLoading(true); setApiFlowsError(null);
+        const res = await shopAPI.getReferrals();
+        const data = Array.isArray(res.data) ? res.data : (res.data?.users || res.data?.data || []);
+        setApiFlows(data);
+      } catch (e: any) {
+        setApiFlowsError(e?.message || 'Yuklashda xatolik');
+      } finally {
+        setApiFlowsLoading(false);
+      }
+    };
+    if (activeTab === 'oqim') loadReferrals();
+  }, [activeTab]);
 
   if (!isAuthenticated) {
     return (
@@ -279,36 +300,91 @@ export function Profile() {
 
         {activeTab === "oqim" && (
           <div className={`${cn.glass} ${cn.panel}`}>
-            {flows.length === 0 ? (
-              <p>Hozircha oqimlar yo'q. Marketdan link yarating.</p>
-            ) : (
+            {apiFlowsLoading && <p style={{ fontSize: 16 }}>Yuklanmoqda...</p>}
+            {apiFlowsError && <p style={{ color: '#b91c1c' }}>{apiFlowsError}</p>}
+            {referralNotice && (
+              <div
+                style={{
+                  marginBottom: 10,
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  border: referralNotice.type === 'success' ? '1px solid #86efac' : '1px solid #fecaca',
+                  background: referralNotice.type === 'success' ? '#ecfdf5' : '#fef2f2',
+                  color: referralNotice.type === 'success' ? '#065f46' : '#7f1d1d',
+                  fontWeight: 600,
+                }}
+                role="status"
+                aria-live="polite"
+              >
+                {referralNotice.message}
+              </div>
+            )}
+            {!apiFlowsLoading && !apiFlowsError && (
               <div className={cn.list}>
+                {apiFlows.length === 0 && flows.length === 0 && (
+                  <p>Hozircha oqimlar yo'q. Marketdan link yarating.</p>
+                )}
+                {apiFlows.map((r: any) => (
+                  <div key={r.id} className={`${cn.glass} ${cn.flowRow}`}>
+                    <div className={cn.flowInfo}>
+                      <div className={cn.productTitle}>{r.title || r.code}</div>
+                      <div className={cn.small}>
+                        Kod: {r.code} • {new Date(r.created_at).toLocaleString()}
+                      </div>
+                      <div className={cn.small}>
+                        Jami daromad: {formatPrice(r.total_earned || 0)}
+                      </div>
+                      <div className={cn.small} style={{ wordBreak: 'break-all' }}>
+                        {window.location.origin + '/product/' + r.product_id + '?ref=' + r.code}
+                      </div>
+                    </div>
+                    <div className={cn.actions}>
+                      <button className={cn.button} onClick={() => handleCopy(window.location.origin + '/product/' + r.product_id + '?ref=' + r.code)}>
+                        {copied === (window.location.origin + '/product/' + r.product_id + '?ref=' + r.code) ? 'Nusxa olindi' : 'Nusxalash'}
+                      </button>
+                      <button
+                        className={`${cn.button} ${cn.secondary}`}
+                        onClick={async ()=>{
+                          try {
+                            setDeletingReferralId(r.id);
+                            await shopAPI.deleteReferral(r.id);
+                            setApiFlows(prev => prev.filter(x => x.id !== r.id));
+                            setReferralNotice({ type: 'success', message: 'Havola muvaffaqiyatli o\'chirildi' });
+                            setTimeout(()=> setReferralNotice(null), 2500);
+                          } catch (e:any) {
+                            const msg = e?.response?.data?.detail || e?.message || 'O‘chirishda xatolik';
+                            const friendly = msg.includes('Нельзя удалить реферальный код')
+                              ? 'Ushbu havola faol buyurtmalarda ishlatilgan, o‘chirish mumkin emas'
+                              : msg;
+                            setReferralNotice({ type: 'error', message: friendly });
+                            setTimeout(()=> setReferralNotice(null), 3500);
+                          } finally {
+                            setDeletingReferralId(null);
+                          }
+                        }}
+                        disabled={deletingReferralId === r.id}
+                      >
+                        {deletingReferralId === r.id ? 'O\'chirilmoqda…' : 'O\'chirish'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
                 {flows.map((f) => (
                   <div key={f.id} className={`${cn.glass} ${cn.flowRow}`}>
                     <div className={cn.flowInfo}>
                       <div className={cn.productTitle}>{f.productName}</div>
                       <div className={cn.small}>
-                        Daromad: {formatPrice(f.commission || 0)} •{" "}
-                        {new Date(f.createdAt).toLocaleString()}
+                        Daromad: {formatPrice(f.commission || 0)} • {new Date(f.createdAt).toLocaleString()}
                       </div>
-                      <div
-                        className={cn.small}
-                        style={{ wordBreak: "break-all" }}
-                      >
+                      <div className={cn.small} style={{ wordBreak: 'break-all' }}>
                         {f.link}
                       </div>
                     </div>
                     <div className={cn.actions}>
-                      <button
-                        className={cn.button}
-                        onClick={() => handleCopy(f.link)}
-                      >
-                        {copied === f.link ? "Nusxa olindi" : "Nusxalash"}
+                      <button className={cn.button} onClick={() => handleCopy(f.link)}>
+                        {copied === f.link ? 'Nusxa olindi' : 'Nusxalash'}
                       </button>
-                      <button
-                        className={`${cn.button} ${cn.secondary}`}
-                        onClick={() => removeFlow(f.id)}
-                      >
+                      <button className={`${cn.button} ${cn.secondary}`} onClick={() => removeFlow(f.id)}>
                         O'chirish
                       </button>
                     </div>
@@ -316,10 +392,7 @@ export function Profile() {
                 ))}
                 {flows.length > 0 && (
                   <div className={cn.actions}>
-                    <button
-                      className={`${cn.button} ${cn.secondary}`}
-                      onClick={clearFlows}
-                    >
+                    <button className={`${cn.button} ${cn.secondary}`} onClick={clearFlows}>
                       Barchasini tozalash
                     </button>
                   </div>

@@ -58,6 +58,7 @@ export const shopAPI = {
   // Referral links
   getReferrals: () => apiClient.get(`/shop/referral`),
   createReferral: (payload) => apiClient.post(`/shop/referral`, payload),
+  deleteReferral: (referralId) => apiClient.delete(`/shop/referral/${referralId}`),
 };
 
 export const authAPI = {

@@ -89,6 +89,7 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
 export function Product() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const referralCode = useMemo(()=> new URLSearchParams(location.search).get('ref') || '', [location.search]);
   const routeState = (location.state ?? {}) as LocationState;
   const [fetchedProduct, setFetchedProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -263,6 +264,7 @@ export function Product() {
       name: product.product_name,
       refferal_price: product.refferal_price || 0,
       base_price: (selectedVariant?.base_price ?? selectedVariant?.price ?? product.price ?? 0),
+      referral_code: referralCode || undefined,
     };
     addToCart(item, 1);
   };
@@ -549,6 +551,7 @@ export function Product() {
                           {
                             variant_id: variantId,
                             quantity: qty,
+                            referral_code: referralCode || undefined,
                           }
                         ],
                         guest_user_number: phone || "",
@@ -570,6 +573,7 @@ export function Product() {
                         name: product.product_name,
                         refferal_price: product.refferal_price || 0,
                         base_price: price,
+                        referral_code: referralCode || undefined,
                       }, qty);
                     }}
                   />
