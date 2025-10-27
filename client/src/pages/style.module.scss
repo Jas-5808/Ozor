@@ -672,6 +672,21 @@
     cursor: not-allowed;
   }
   
+  &:disabled::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(156,163,175,.35) 0,
+      rgba(156,163,175,.35) 2px,
+      transparent 2px,
+      transparent 10px
+    );
+    pointer-events: none;
+  }
+  
   .out_of_stock {
     position: absolute;
     top: -8px;

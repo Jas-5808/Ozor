@@ -21,6 +21,7 @@ interface Props {
 export default function OrderDialog({ open, onClose, product, variant, deliveryPrice, onBuyNow, onAddToCart }: Props) {
   const [qty, setQty] = useState<number>(1);
   const [busy, setBusy] = useState<boolean>(false);
+  const [success, setSuccess] = useState<boolean>(false);
   const price = variant?.price ?? product.price ?? 0;
   const { state } = useApp();
   const hasCity = Boolean(state.location.data?.city);
@@ -62,7 +63,26 @@ export default function OrderDialog({ open, onClose, product, variant, deliveryP
 
   return ReactDOM.createPortal(
     <div className={s.overlay} onClick={onClose}>
-      <div className={s.dialog} onClick={(e)=>e.stopPropagation()}>
+      <div className={s.dialog} onClick={(e)=>e.stopPropagation()} style={{ position: 'relative' }}>
+        {success && (
+          <div role="status" aria-live="polite" className={s.successLayer}>
+            <div className={s.confetti} aria-hidden>
+              <span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span>
+            </div>
+            <div className={s.successWrap}>
+              <svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="48" cy="48" r="42" stroke="#10b981" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="264 264">
+                  <animate attributeName="stroke-dasharray" from="0 264" to="264 264" dur="0.6s" fill="freeze" />
+                </circle>
+                <path d="M30 50 L44 64 L68 40" stroke="#10b981" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="80 80">
+                  <animate attributeName="stroke-dasharray" from="0 80" to="80 80" dur="0.4s" begin="0.4s" fill="freeze" />
+                </path>
+              </svg>
+              <div className={s.successText}>Xarid muvaffaqiyatli</div>
+            </div>
+          </div>
+        )}
         {stage === 'review' ? (
           <>
             <div className={s.row}>
@@ -95,9 +115,9 @@ export default function OrderDialog({ open, onClose, product, variant, deliveryP
               <button
                 type="button"
                 className={s.primary}
-                disabled={busy}
+                disabled={busy || success}
                 onClick={async ()=>{
-                  if (busy) return;
+                  if (busy || success) return;
                   if (!hasCity) {
                     setStage('location');
                     return;
@@ -105,20 +125,22 @@ export default function OrderDialog({ open, onClose, product, variant, deliveryP
                   try {
                     setBusy(true);
                     await Promise.resolve(onBuyNow(qty));
-                    onClose();
-                  } finally {
+                    setSuccess(true);
                     setBusy(false);
+                    setTimeout(()=>{ setSuccess(false); onClose(); }, 1200);
+                  } finally {
+                    // keep toast visible
                   }
                 }}
               >
-                {busy ? 'Iltimos, kuting...' : 'Hozir sotib olish'}
+                {success ? 'Muvaffaqiyatli' : (busy ? 'Iltimos, kuting...' : 'Hozir sotib olish')}
               </button>
               <button
                 type="button"
                 className={s.secondary}
-                disabled={busy}
+                disabled={busy || success}
                 onClick={async ()=>{
-                  if (busy) return;
+                  if (busy || success) return;
                   try {
                     setBusy(true);
                     await Promise.resolve(onAddToCart(qty));
@@ -149,15 +171,17 @@ export default function OrderDialog({ open, onClose, product, variant, deliveryP
               <button
                 type="button"
                 className={s.primary}
-                disabled={busy || !fallbackCityCode}
+                disabled={busy || !fallbackCityCode || success}
                 onClick={async ()=>{
-                  if (busy || !fallbackCityCode) return;
+                  if (busy || !fallbackCityCode || success) return;
                   try {
                     setBusy(true);
                     await Promise.resolve(onBuyNow(qty, { city: fallbackCityCode }));
-                    onClose();
-                  } finally {
+                    setSuccess(true);
                     setBusy(false);
+                    setTimeout(()=>{ setSuccess(false); onClose(); }, 1200);
+                  } finally {
+                    // keep toast visible
                   }
                 }}
               >Продолжить</button>

@@ -215,7 +215,8 @@ export function Product() {
       };
       const deduped = [item, ...list.filter((p) => p.product_id !== item.product_id)].slice(0, 12);
       storage.set(key, deduped);
-      setRecentlyViewed(deduped.filter((p) => p.product_id !== product.product_id).slice(0, 8));
+      // Показываем и текущий товар, чтобы не оставлять секцию пустой при первом просмотре
+      setRecentlyViewed(deduped.slice(0, 8));
     } catch {}
   }, [product, selectedVariant]);
 
@@ -391,7 +392,7 @@ export function Product() {
                     className={`${cn.thumb} ${i === lightboxIndex ? 'active' : ''}`}
                     type="button"
                     aria-label={`Превью ${i + 1}`}
-                    onClick={() => openLightbox(i)}
+                    onClick={() => setLightboxIndex(i)}
                   >
                     <img src={img} alt="" />
                   </button>
@@ -452,8 +453,6 @@ export function Product() {
                               disabled={!variant || variant.stock === 0 || variant.price === null}
                             >
                               {value}
-                              {variant && variant.stock === 0 && <span className={cn.out_of_stock}>Нет в наличии</span>}
-                              {variant && variant.price === null && <span className={cn.out_of_stock}>Цена не указана</span>}
                             </button>
                           ));
                         })()}
