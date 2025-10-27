@@ -7,15 +7,15 @@ import { userAPI } from '../../services/api';
 type User = { id: string; name: string; phone: string; role: string; email?: string; date_joined?: string; is_active?: boolean };
 
 const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: 'client', label: 'Client' },
-  { value: 'sale', label: 'Sale' },
+  { value: 'ceo', label: 'Chief Executive Officer' },
   { value: 'sale_manager', label: 'Sale Manager' },
-  { value: 'driver', label: 'Driver' },
   { value: 'driver_manager', label: 'Driver Manager' },
-  { value: 'manager', label: 'Manager' },
+  { value: 'client', label: 'Client' },
+  { value: 'driver', label: 'Driver' },
+  { value: 'sale_operator', label: 'Sale Operator' },
+  { value: 'warehouse_manager', label: 'Warehouse Manager' },
+  // legacy/fallback option to avoid breaking select when existing users have admin
   { value: 'admin', label: 'Admin' },
-  { value: 'ceo', label: 'CEO' },
-  { value: 'chief executive officer', label: 'Chief Executive Officer' },
 ];
 
 export default function Users() {
@@ -85,10 +85,9 @@ export default function Users() {
           <input className={s.input} placeholder="Search name/email/username" value={q} onChange={(e)=>{ setPage(1); setQ(e.target.value); }} />
           <select className={s.input} value={role} onChange={(e)=>{ setPage(1); setRole(e.target.value); }}>
             <option value="">All roles</option>
-            <option value="client">Client</option>
-            <option value="manager">Manager</option>
-            <option value="admin">Admin</option>
-            <option value="ceo">CEO</option>
+            {ROLE_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
           </select>
           <select className={s.input} value={limit} onChange={(e)=>{ setPage(1); setLimit(Number(e.target.value)||10); }}>
             <option value={10}>10</option>
@@ -112,7 +111,7 @@ export default function Users() {
               <td>{u.date_joined ? new Date(u.date_joined).toLocaleString() : '-'}</td>
               <td>{u.is_active ? <span className={`${s.badge} ${s.badgeActive}`}>Active</span> : <span className={`${s.badge} ${s.badgeInactive}`}>Inactive</span>}</td>
               <td>
-                {u.role}
+                {ROLE_OPTIONS.find(r => r.value === u.role)?.label || u.role}
               </td>
               <td>
                 <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>

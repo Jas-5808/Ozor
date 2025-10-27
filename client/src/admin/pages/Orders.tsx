@@ -5,7 +5,19 @@ import { adminStore } from '../storage';
 import { shopAPI } from '../../services/api';
 import apiClient from '../../services/api';
 
-type Order = { id: string; customer: string; total: number; status: 'pending'|'paid'|'shipped'|'cancelled'; order_number?: string; created_at?: string; location?: string };
+type OrderStatus =
+  | 'pending'
+  | 'accepted'
+  | 'packing'
+  | 'packed'
+  | 'processing'
+  | 'shipped'
+  | 'delivered'
+  | 'cancelled'
+  | 'refunded'
+  | 'paid'; // legacy support
+
+type Order = { id: string; customer: string; total: number; status: OrderStatus; order_number?: string; created_at?: string; location?: string };
 
 export default function Orders() {
   const [items, setItems] = useState<Order[]>(adminStore.load<Order[]>('admin_orders', []));
@@ -118,11 +130,17 @@ export default function Orders() {
         <div style={{display:'flex', gap:8}}>
           <input className={s.input} placeholder="Search by ID/Order #/Customer" value={q} onChange={(e)=>setQ(e.target.value)} />
           <select className={s.input} value={status} onChange={(e)=>setStatus(e.target.value)}>
-            <option value="">All statuses</option>
-            <option value="pending">Pending</option>
-            <option value="paid">Paid</option>
-            <option value="shipped">Shipped</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="">Все статусы</option>
+            <option value="pending">В ожидании</option>
+            <option value="accepted">Принят</option>
+            <option value="packing">Упаковывается</option>
+            <option value="packed">Упакован</option>
+            <option value="processing">В обработке</option>
+            <option value="shipped">Отправлен</option>
+            <option value="delivered">Доставлен</option>
+            <option value="cancelled">Отменён</option>
+            <option value="refunded">Возврат средств</option>
+            <option value="paid">Оплачен</option>
           </select>
         </div>
       </div>
@@ -157,10 +175,16 @@ export default function Orders() {
               <td>{o.customer}</td>
               <td>{o.total.toLocaleString()}</td>
               <td>
-                {o.status === 'pending' && <span className={`${s.badge} ${s.badgePending}`}>Pending</span>}
-                {o.status === 'paid' && <span className={`${s.badge} ${s.badgePaid}`}>Paid</span>}
-                {o.status === 'shipped' && <span className={`${s.badge} ${s.badgeShipped}`}>Shipped</span>}
-                {o.status === 'cancelled' && <span className={`${s.badge} ${s.badgeCancelled}`}>Cancelled</span>}
+                {o.status === 'pending' && <span className={`${s.badge} ${s.badgePending}`}>В ожидании</span>}
+                {o.status === 'accepted' && <span className={`${s.badge} ${s.badgeAccepted}`}>Принят</span>}
+                {o.status === 'packing' && <span className={`${s.badge} ${s.badgePacking}`}>Упаковывается</span>}
+                {o.status === 'packed' && <span className={`${s.badge} ${s.badgePacked}`}>Упакован</span>}
+                {o.status === 'processing' && <span className={`${s.badge} ${s.badgeProcessing}`}>В обработке</span>}
+                {o.status === 'shipped' && <span className={`${s.badge} ${s.badgeShipped}`}>Отправлен</span>}
+                {o.status === 'delivered' && <span className={`${s.badge} ${s.badgeDelivered}`}>Доставлен</span>}
+                {o.status === 'cancelled' && <span className={`${s.badge} ${s.badgeCancelled}`}>Отменён</span>}
+                {o.status === 'refunded' && <span className={`${s.badge} ${s.badgeRefunded}`}>Возврат средств</span>}
+                {o.status === 'paid' && <span className={`${s.badge} ${s.badgePaid}`}>Оплачен</span>}
               </td>
               <td>{o.location || '-'}</td>
               <td style={{textAlign:'right', color: timeColor(o.created_at), fontVariantNumeric: 'tabular-nums'}}>{formatDateTime(o.created_at)}</td>

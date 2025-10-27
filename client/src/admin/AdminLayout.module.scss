@@ -130,6 +130,13 @@
 .badgeInfo { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
 .badgeActive { background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; }
 .badgeInactive { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+/* New order status badges */
+.badgeAccepted { background: #eef2ff; color: #3730a3; border: 1px solid #c7d2fe; }
+.badgePacking { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.badgePacked { background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+.badgeProcessing { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
+.badgeDelivered { background: #ecfdf5; color: #166534; border: 1px solid #86efac; }
+.badgeRefunded { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
 
 .form {
   display: grid;
