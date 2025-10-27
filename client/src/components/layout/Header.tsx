@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import SideCatalog from "./SideCatalog";
-import LanguageSwitcher from "./LanguageSwitcher";
-import SearchBar from "./SearchBar";
-import HeaderActions from "./HeaderActions";
-import { useApp } from "../context/AppContext";
-import { useAuth } from "../hooks/useAuth";
+import SideCatalog from "../SideCatalog";
+import LanguageSwitcher from "../LanguageSwitcher";
+import SearchBar from "../SearchBar";
+import HeaderActions from "../HeaderActions";
+import { useApp } from "../../context/AppContext";
+import { useAuth } from "../../hooks/useAuth";
 export function Header() {
   const { state, showLocationModal, getCartItemCount } = useApp();
   const cartCount = getCartItemCount();

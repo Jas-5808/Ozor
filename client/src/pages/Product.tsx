@@ -7,8 +7,8 @@ import { Product as ProductType, ProductDetail } from "../types";
 import { shopAPI } from "../services/api";
 import { uzbekistanLocations } from "../data/uzbekistanLocations";
 import { useApp } from "../context/AppContext";
-import ProductCard from "../components/ProductCard";
-import PhoneInput from "../components/PhoneInput";
+import ProductCard from "../components/ui/ProductCard";
+import PhoneInput from "../components/forms/PhoneInput";
 import OrderDialog from "../components/OrderDialog";
 
 type LocationState = { product?: ProductType };
