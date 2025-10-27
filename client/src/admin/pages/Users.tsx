@@ -18,11 +18,13 @@ export default function Users() {
   const [items, setItems] = useState<User[]>(adminStore.load<User[]>('admin_users', []));
   const [q, setQ] = useState('');
   const [role, setRole] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [debouncedQ, setDebouncedQ] = useState('');
   const [loading, setLoading] = useState(false);
-  const filtered = useMemo(()=> items.filter(u =>
-    (q ? (u.name.toLowerCase().includes(q.toLowerCase()) || u.phone.includes(q)) : true)
-    && (role ? u.role === role : true)
-  ), [items, q, role]);
+  const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
+  const filtered = items;
 
   const addUser = () => {
     const u: User = { id: Math.random().toString(36).slice(2), name: `User ${items.length+1}`, phone: '+998', role: 'client' };
@@ -32,13 +34,22 @@ export default function Users() {
   useEffect(()=>{ adminStore.save('admin_users', items); }, [items]);
 
   useEffect(()=>{
+    const id = setTimeout(()=> setDebouncedQ(q), 1000);
+    return ()=> clearTimeout(id);
+  }, [q]);
+
+  useEffect(()=>{
     let ignore = false;
     const fetchUsers = async ()=>{
       try {
         setLoading(true);
-        const res = await userAPI.getUsersInfo();
+        const params:any = { page, limit };
+        if (role) params.role = role;
+        if (debouncedQ) params.search = debouncedQ;
+        const res = await userAPI.listUsers(params);
         if (ignore) return;
-        const data = Array.isArray(res.data) ? res.data : (res.data?.results || [res.data]);
+        const payload = res.data || {};
+        const data = payload.users || [];
         const normalized: User[] = data.map((u:any)=> {
           const apiRole = String(u.role || '').toLowerCase();
           let mappedRole: 'ceo'|'sale_manager'|'driver_manager'|'client'|'driver'|'sale_operator'|'warehouse_manager';
@@ -81,7 +92,7 @@ export default function Users() {
           }
           return {
             id: u.id,
-            name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || (u.email || u.phone_number || 'User'),
+            name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || (u.username || u.email || u.phone_number || 'User'),
             phone: u.phone_number || '',
             role: mappedRole,
             email: u.email || '',
@@ -90,21 +101,22 @@ export default function Users() {
           };
         });
         setItems(normalized);
+        setTotalPages(payload.total_pages || 1);
       } catch (e) {
         // keep local
       } finally { setLoading(false); }
     };
     fetchUsers();
     return ()=>{ ignore = true; };
-  }, []);
+  }, [debouncedQ, role, page, limit]);
 
   return (
     <div className={s.panel}>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12}}>
         <div style={{fontWeight:700}}>Users</div>
         <div style={{display:'flex', gap:8}}>
-          <input className={s.input} placeholder="Search name/phone" value={q} onChange={(e)=>setQ(e.target.value)} />
-          <select className={s.input} value={role} onChange={(e)=>setRole(e.target.value)}>
+          <input className={s.input} placeholder="Search name/email/username" value={q} onChange={(e)=>{ setPage(1); setQ(e.target.value); }} />
+          <select className={s.input} value={role} onChange={(e)=>{ setPage(1); setRole(e.target.value); }}>
             <option value="">All roles</option>
             <option value="ceo">CEO</option>
             <option value="sale_manager">Sale Manager</option>
@@ -114,13 +126,12 @@ export default function Users() {
             <option value="sale_operator">Sale Operator</option>
             <option value="warehouse_manager">Warehouse Manager</option>
           </select>
-          <button className={`${s.btn} ${s.primary}`} onClick={addUser}>Add</button>
         </div>
       </div>
       {loading && <div style={{fontSize:12, color:'#64748b', marginBottom:8}}>Loading…</div>}
       <table className={s.table}>
         <thead>
-          <tr><th>Name</th><th>Phone</th><th>Email</th><th>Joined</th><th>Status</th><th>Role</th></tr>
+          <tr><th>Name</th><th>Phone</th><th>Email</th><th>Joined</th><th>Status</th><th>Role</th><th></th></tr>
         </thead>
         <tbody>
           {filtered.map(u => (
@@ -143,6 +154,13 @@ export default function Users() {
           ))}
         </tbody>
       </table>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:12}}>
+        <div style={{fontSize:12, color:'#64748b'}}>Page {page} of {totalPages}</div>
+        <div className={s.actions}>
+          <button className={`${s.btn} ${s.muted}`} disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>Prev</button>
+          <button className={`${s.btn} ${s.muted}`} disabled={page>=totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))}>Next</button>
+        </div>
+      </div>
     </div>
   );
 }

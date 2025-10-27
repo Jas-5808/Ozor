@@ -1,14 +1,5 @@
-import axios, { AxiosResponse } from "axios";
+import axios from "axios";
 import { config } from "../utils/config";
-import {
-  Product,
-  Category,
-  User,
-  CartItem,
-  Order,
-  ApiResponse,
-  PaginatedResponse,
-} from "../types";
 
 const API_BASE_URL = config.api.baseUrl;
 const API_TIMEOUT = config.api.timeout;
@@ -23,6 +14,32 @@ const apiClient = axios.create({
   },
   withCredentials: false,
 });
+
+// Global in-flight GET de-duplication
+const inflightGet = new Map(); // key -> Promise
+const stableStringify = (value) => {
+  if (value === null || typeof value !== 'object') return String(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const keys = Object.keys(value).sort();
+  return `{${keys.map((k)=>`${JSON.stringify(k)}:${stableStringify(value[k])}`).join(',')}}`;
+};
+const originalGet = apiClient.get.bind(apiClient);
+apiClient.get = (url, config = {}) => {
+  try {
+    const paramsKey = stableStringify(config.params || {});
+    const key = `${url}?${paramsKey}`;
+    if (inflightGet.has(key)) {
+      return inflightGet.get(key);
+    }
+    const promise = originalGet(url, config);
+    inflightGet.set(key, promise);
+    const cleanup = () => inflightGet.delete(key);
+    promise.then(cleanup).catch(cleanup);
+    return promise;
+  } catch (_) {
+    return originalGet(url, config);
+  }
+};
 
 apiClient.interceptors.request.use(
   (config) => {
@@ -45,45 +62,78 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error(
-      "API Error:",
-      error.response?.status,
-      error.response?.data,
-      error.config?.url
-    );
+    console.error("API Error:", error.response?.status, error.response?.data, error.config?.url);
     return Promise.reject(error);
   }
 );
 
 export const shopAPI = {
-  getProducts: (
-    params: Record<string, any> = {}
-  ): Promise<AxiosResponse<Product[]>> =>
-    apiClient.get("/shop/products", { params }),
-  getProductById: (id: string): Promise<AxiosResponse<Product>> =>
-    apiClient.get(`/shop/product/${id}`),
-  getProductsByCategory: (
-    categoryId: string,
-    params: Record<string, any> = {}
-  ): Promise<AxiosResponse<Product[]>> =>
-    apiClient.get(`/shop/products`, {
-      params: { category: categoryId, ...params },
-    }),
-  getCategories: (): Promise<AxiosResponse<Category[]>> =>
-    apiClient.get("/shop/categories"),
-  getCategoryById: (categoryId: string): Promise<AxiosResponse<Category>> =>
+  getProducts: (params = {}) => apiClient.get("/shop/products", { params }),
+  getProductById: (id) => apiClient.get(`/shop/product/${id}`),
+  getProductsByCategory: (categoryId, params = {}) =>
+    apiClient.get(`/shop/products`, { params: { category: categoryId, ...params } }),
+  getCategories: (() => {
+    // simple in-memory cache with TTL
+    let cached = null; // { time: number, response: any, promise: Promise<any> | null }
+    const TTL = 180_000; // 3 minutes
+    return () => {
+      const now = Date.now();
+      if (cached && cached.response && (now - cached.time) < TTL) {
+        return Promise.resolve(cached.response);
+      }
+      if (cached && cached.promise) {
+        return cached.promise;
+      }
+      const promise = apiClient.get("/shop/categories").then((res) => {
+        cached = { time: Date.now(), response: res, promise: null };
+        return res;
+      }).catch((e) => {
+        // do not lock on error
+        cached = null;
+        throw e;
+      });
+      cached = { time: 0, response: null, promise };
+      return promise;
+    };
+  })(),
+  createCategory: (payload) => apiClient.post("/shop/category", payload),
+  getCategoryById: (categoryId) =>
     apiClient.get(`/shop/category/${categoryId}`),
   // Расширенный метод для получения всех вариантов товара
-  getAllProductVariants: (
-    productId: string
-  ): Promise<AxiosResponse<Product[]>> =>
-    apiClient.get(`/shop/products`, { params: { product_id: productId } }),
+  getAllProductVariants: (() => {
+    const cache = new Map(); // key: productId -> { time, response, promise }
+    const TTL = 180_000; // 3 minutes
+    return (productId) => {
+      const key = String(productId || "");
+      const now = Date.now();
+      const entry = cache.get(key);
+      if (entry && entry.response && (now - entry.time) < TTL) {
+        return Promise.resolve(entry.response);
+      }
+      if (entry && entry.promise) {
+        return entry.promise;
+      }
+      const promise = apiClient.get(`/shop/products`, { params: { product_id: productId } }).then((res) => {
+        cache.set(key, { time: Date.now(), response: res, promise: null });
+        return res;
+      }).catch((e) => {
+        cache.delete(key);
+        throw e;
+      });
+      cache.set(key, { time: 0, response: null, promise });
+      return promise;
+    };
+  })(),
   guestOrder: (payload) => apiClient.post(`/shop/guest/order`, payload),
   getAllOrders: () => apiClient.get(`/shop/orders/all`),
+  // Referral links
+  getReferrals: () => apiClient.get(`/shop/referral`),
+  createReferral: (payload) => apiClient.post(`/shop/referral`, payload),
+  deleteReferral: (referralId) => apiClient.delete(`/shop/referral/${referralId}`),
 };
 
 export const authAPI = {
-  signin: (phone: string, password: string): Promise<AxiosResponse<any>> => {
+  signin: (phone, password) => {
     console.log("API signin вызван с:", { phone, password });
 
     const formData = new URLSearchParams();
@@ -97,7 +147,7 @@ export const authAPI = {
     });
   },
 
-  signup: (phone: string, password: string): Promise<AxiosResponse<any>> => {
+  signup: (phone, password) => {
     console.log("API signup вызван с:", { phone, password });
 
     const formData = new URLSearchParams();
@@ -111,7 +161,7 @@ export const authAPI = {
     });
   },
 
-  sendCode: (phone: string): Promise<AxiosResponse<any>> => {
+  sendCode: (phone) => {
     console.log("API sendCode вызван с:", { phone });
 
     const formData = new URLSearchParams();
@@ -124,7 +174,7 @@ export const authAPI = {
     });
   },
 
-  verifyCode: (phone: string, code: string): Promise<AxiosResponse<any>> => {
+  verifyCode: (phone, code) => {
     console.log("API verifyCode вызван с:", { phone, code });
 
     const formData = new URLSearchParams();
@@ -138,19 +188,42 @@ export const authAPI = {
     });
   },
 
-  refreshToken: (refreshToken: string): Promise<AxiosResponse<any>> =>
+  refreshToken: (refreshToken) =>
     apiClient.post("/auth/refresh", { refresh_token: refreshToken }),
-  logout: (): Promise<AxiosResponse<any>> => apiClient.post("/auth/logout"),
+  logout: () => apiClient.post("/auth/logout"),
 };
 
 export const userAPI = {
-  getProfile: () => apiClient.get("/profile"),
+  getProfile: (() => {
+    let cached = null; // { time, response, promise }
+    const TTL = 60_000; // 1 minute
+    return () => {
+      const now = Date.now();
+      if (cached && cached.response && (now - cached.time) < TTL) {
+        return Promise.resolve(cached.response);
+      }
+      if (cached && cached.promise) {
+        return cached.promise;
+      }
+      const promise = apiClient.get("/profile").then((res) => {
+        cached = { time: Date.now(), response: res, promise: null };
+        return res;
+      }).catch((e) => {
+        cached = null;
+        throw e;
+      });
+      cached = { time: 0, response: null, promise };
+      return promise;
+    };
+  })(),
   getUsersInfo: () => apiClient.get("/profile/user-info"),
+  listUsers: (params = {}) => apiClient.get("/users/", { params }),
+  updateUserRole: (userId, role) => apiClient.patch(`/users/${userId}/role`, { role }),
   updateProfile: (data) => {
     console.log("API updateProfile вызван с:", data);
-
+    
     const formData = new URLSearchParams();
-
+    
     // Добавляем только те поля, которые есть в данных
     if (data.first_name !== undefined) {
       formData.append("first_name", data.first_name);
@@ -174,34 +247,28 @@ export const userAPI = {
       },
     });
   },
-  getBalance: (): Promise<AxiosResponse<{ balance: number }>> =>
-    apiClient.get("/profile/balance"),
-  updateUserData: (data: Partial<User>): Promise<AxiosResponse<User>> =>
-    apiClient.patch("/profile", data),
+  getBalance: () => apiClient.get("/profile/balance"),
+  updateUserData: (data) => apiClient.patch("/profile", data),
 };
 
 export const cartAPI = {
-  getCart: (): Promise<AxiosResponse<CartItem[]>> => apiClient.get("/cart"),
-  addToCart: (
-    productId: string,
-    quantity: number = 1
-  ): Promise<AxiosResponse<CartItem>> =>
+  getCart: () => apiClient.get("/cart"),
+  addToCart: (productId, quantity = 1) =>
     apiClient.post("/cart/items", { productId, quantity }),
-  removeFromCart: (itemId: string): Promise<AxiosResponse<void>> =>
-    apiClient.delete(`/cart/items/${itemId}`),
-  updateCartItem: (
-    itemId: string,
-    quantity: number
-  ): Promise<AxiosResponse<CartItem>> =>
+  removeFromCart: (itemId) => apiClient.delete(`/cart/items/${itemId}`),
+  updateCartItem: (itemId, quantity) =>
     apiClient.put(`/cart/items/${itemId}`, { quantity }),
 };
 
 export const orderAPI = {
-  getOrders: (): Promise<AxiosResponse<Order[]>> => apiClient.get("/orders"),
-  createOrder: (orderData: Partial<Order>): Promise<AxiosResponse<Order>> =>
-    apiClient.post("/orders", orderData),
-  getOrderById: (orderId: string): Promise<AxiosResponse<Order>> =>
-    apiClient.get(`/orders/${orderId}`),
+  getOrders: () => apiClient.get("/orders"),
+  createOrder: (orderData) => apiClient.post("/orders", orderData),
+  getOrderById: (orderId) => apiClient.get(`/orders/${orderId}`),
+};
+
+// Payments
+export const paymentAPI = {
+  getUserBalance: () => apiClient.get("/payment/get_user_balance"),
 };
 
 export default apiClient;

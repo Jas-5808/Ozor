@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { userAPI } from "../services/api";
-import cn from "./profile.module.scss";
+import { userAPI, shopAPI, paymentAPI } from "../services/api";
 import { useProducts } from "../hooks/useProducts";
-import { formatPrice, getProductImageUrl } from "../utils/helpers";
+// @ts-ignore – модуль стилей объявлен через d.ts
+import cn from "./profile.module.scss";
+import { formatPrice, getProductImageUrl, getVariantMainImage } from "../utils/helpers";
 import { useFlows } from "../hooks/useFlows";
+import SkeletonGrid from "../components/SkeletonGrid";
 
 export function Profile() {
   const { profile, isAuthenticated, logout, fetchUserProfile } =
@@ -18,6 +20,11 @@ export function Profile() {
     error: productsError,
   } = useProducts();
   const { flows, addFlow, removeFlow, clearFlows } = useFlows();
+  const [apiFlows, setApiFlows] = useState<any[]>([]);
+  const [apiFlowsLoading, setApiFlowsLoading] = useState<boolean>(false);
+  const [apiFlowsError, setApiFlowsError] = useState<string | null>(null);
+  const [referralNotice, setReferralNotice] = useState<{ type: 'success'|'error'; message: string } | null>(null);
+  const [deletingReferralId, setDeletingReferralId] = useState<string | null>(null);
   const [copied, setCopied] = useState<string>("");
   const [dialog, setDialog] = useState<{
     open: boolean;
@@ -25,12 +32,40 @@ export function Profile() {
     link?: string;
     title?: string;
   }>({ open: false });
+  const [createLoading, setCreateLoading] = useState<boolean>(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  // removed image preview modal
+  const [createModal, setCreateModal] = useState<{
+    open: boolean;
+    product?: any;
+    title: string;
+    agree: boolean;
+    createdLink?: string | null;
+  }>({ open: false, title: "", agree: false, createdLink: null });
+  const [userBalance, setUserBalance] = useState<number | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (isAuthenticated && !profile) {
       fetchUserProfile?.();
     }
   }, [isAuthenticated, profile, fetchUserProfile]);
+
+  useEffect(() => {
+    const loadBalance = async () => {
+      try {
+        setBalanceLoading(true);
+        const res = await paymentAPI.getUserBalance();
+        const value = typeof res?.data?.balance === "number" ? res.data.balance : 0;
+        setUserBalance(value);
+      } catch {
+        setUserBalance(null);
+      } finally {
+        setBalanceLoading(false);
+      }
+    };
+    if (isAuthenticated) loadBalance();
+  }, [isAuthenticated]);
 
   const userId = profile?.user_id || "guest";
 
@@ -40,19 +75,51 @@ export function Profile() {
   };
 
   const handleGenerate = (product: any) => {
-    const link = makeReferralLink(product.product_id);
-    addFlow({
-      productId: product.product_id,
-      productName: product.product_name,
-      link,
-      commission: product.refferal_price || 0,
-    });
-    setDialog({
+    setCreateError(null);
+    setCreateModal({
       open: true,
-      productId: product.product_id,
-      link,
-      title: product.product_name,
+      product,
+      title: product?.product_name || "",
+      agree: false,
+      createdLink: null,
     });
+  };
+
+  const submitCreateReferral = async () => {
+    if (!createModal.product) return;
+    try {
+      setCreateLoading(true);
+      setCreateError(null);
+      const res = await shopAPI.createReferral({
+        product_id: createModal.product.product_id,
+        title: createModal.title || "",
+      });
+      const code = res?.data?.code;
+      const origin = window.location.origin;
+      const link = code
+        ? `${origin}/product/${createModal.product.product_id}?ref=${code}`
+        : `${origin}/product/${createModal.product.product_id}`;
+
+      addFlow({
+        productId: createModal.product.product_id,
+        productName: createModal.product.product_name,
+        link,
+        commission: createModal.product.refferal_price || 0,
+      });
+
+      // keep modal open and show copy UI
+      setCreateModal({
+        open: true,
+        product: createModal.product,
+        title: createModal.title,
+        agree: createModal.agree,
+        createdLink: link,
+      });
+    } catch (e: any) {
+      setCreateError(e?.message || "Xatolik yuz berdi");
+    } finally {
+      setCreateLoading(false);
+    }
   };
 
   const handleCopy = async (text: string) => {
@@ -63,209 +130,203 @@ export function Profile() {
     } catch {}
   };
 
+  useEffect(() => {
+    const loadReferrals = async () => {
+      try {
+        setApiFlowsLoading(true); setApiFlowsError(null);
+        const res = await shopAPI.getReferrals();
+        const data = Array.isArray(res.data) ? res.data : (res.data?.users || res.data?.data || []);
+        setApiFlows(data);
+      } catch (e: any) {
+        setApiFlowsError(e?.message || 'Yuklashda xatolik');
+      } finally {
+        setApiFlowsLoading(false);
+      }
+    };
+    if (activeTab === 'oqim' || activeTab === 'stats') loadReferrals();
+  }, [activeTab]);
+
+  const productById = useMemo(() => {
+    const map = new Map<string, any>();
+    (products || []).forEach((p: any) => {
+      if (p?.product_id) map.set(p.product_id, p);
+    });
+    return map;
+  }, [products]);
+
+  const computedStats = useMemo(() => {
+    return (apiFlows || []).map((r: any) => {
+      const orders = Array.isArray(r?.orders) ? r.orders : [];
+      const total = orders.length;
+      const paid = orders.filter((o: any) => String(o?.status || '').toLowerCase() === 'delivered').length;
+      const hold = total - paid;
+      const product = productById.get(r.product_id);
+      const commission: number = Number(product?.refferal_price) || 0;
+      const earned = commission > 0 ? commission * paid : (typeof r?.total_earned === 'number' ? r.total_earned : 0);
+      return { id: r.id, title: r.title, code: r.code, total, hold, paid, earned };
+    });
+  }, [apiFlows, productById]);
+
+  const totals = useMemo(() => {
+    const list = computedStats || [];
+    return {
+      total: list.reduce((s: number, x: any) => s + (x.total || 0), 0),
+      hold: list.reduce((s: number, x: any) => s + (x.hold || 0), 0),
+      paid: list.reduce((s: number, x: any) => s + (x.paid || 0), 0),
+      earned: list.reduce((s: number, x: any) => s + (x.earned || 0), 0),
+    };
+  }, [computedStats]);
+
   if (!isAuthenticated) {
     return (
-      <div className="container">
-        <div className={cn.profileWrapper}>
-          <div className={`${cn.glass} ${cn.panel}`}>
-            <p>Profilni ko'rish uchun tizimga kiring.</p>
-          </div>
+      <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-5 md:px-6 py-6">
+        <div className="rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)] ring-1 ring-gray-100 p-6 text-gray-800">
+          <p className="text-center">Profilni ko'rish uchun tizimga kiring.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container">
-      <div className={cn.profileWrapper}>
-        <div className={cn.headerBar}>
-          <h2 className={cn.title}>Mening kabinetim</h2>
-          <button className={cn.logoutBtn} onClick={logout}>
-            Chiqish
-          </button>
-        </div>
+    <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-5 md:px-6 py-6 text-gray-800">
+      {/* Header bar */}
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 bg-clip-text text-transparent">
+          Mening kabinetim
+        </h2>
+        <button onClick={logout} className={`${cn.button} ${cn.danger} ${cn.compact}`}>
+          Chiqish
+        </button>
+      </div>
 
-        <div className={cn.tabs}>
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-gray-200 mb-5">
+        {[
+          { id: "dashboard", label: "Dashboard" },
+          { id: "market", label: "Market" },
+          { id: "oqim", label: "Oqim" },
+          { id: "stats", label: "Statistika" },
+          { id: "payments", label: "To'lov" },
+        ].map((t) => (
           <button
-            className={`${cn.tab} ${
-              activeTab === "dashboard" ? cn.tabActive : ""
+            key={t.id}
+            onClick={() => setActiveTab(t.id as any)}
+            className={`px-4 py-2 rounded-t-xl text-sm font-semibold transition-colors ${
+              activeTab === (t.id as any)
+                ? "bg-white text-gray-900 border border-gray-200 border-b-white"
+                : "text-gray-500 hover:text-gray-700"
             }`}
-            onClick={() => setActiveTab("dashboard")}
           >
-            Dashboard
+            {t.label}
           </button>
-          <button
-            className={`${cn.tab} ${
-              activeTab === "market" ? cn.tabActive : ""
-            }`}
-            onClick={() => setActiveTab("market")}
-          >
-            Market
-          </button>
-          <button
-            className={`${cn.tab} ${activeTab === "oqim" ? cn.tabActive : ""}`}
-            onClick={() => setActiveTab("oqim")}
-          >
-            Oqim
-          </button>
-          <button
-            className={`${cn.tab} ${activeTab === "stats" ? cn.tabActive : ""}`}
-            onClick={() => setActiveTab("stats")}
-          >
-            Statistika
-          </button>
-          <button
-            className={`${cn.tab} ${
-              activeTab === "payments" ? cn.tabActive : ""
-            }`}
-            onClick={() => setActiveTab("payments")}
-          >
-            To'lov
-          </button>
-        </div>
+        ))}
+      </div>
 
-        {activeTab === "dashboard" && (
-          <div className={`${cn.glass} ${cn.panel}`}>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 12,
-              }}
-            >
-              <div className={`${cn.cardWhite}`}>
-                <div className={cn.profileCard}>
-                  <img
-                    className={cn.profileAvatar}
-                    src={profile?.avatar || "/img/NaturalTitanium.jpg"}
-                    alt="avatar"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src =
-                        "/img/NaturalTitanium.jpg";
-                    }}
-                  />
-                  <div>
-                    <div className={cn.profileName}>
-                      {(profile?.first_name || "") +
-                        (profile?.last_name ? " " + profile?.last_name : "") ||
-                        "Foydalanuvchi"}
-                    </div>
-                    {profile?.email && (
-                      <div className={cn.profileEmail}>{profile.email}</div>
-                    )}
-                    {profile?.location && (
-                      <div className={cn.small}>
-                        Joylashuv: {profile.location}
-                      </div>
-                    )}
-                    <a href="/update-profile" className={cn.linkBtn}>
-                      Profilni tahrirlash
-                    </a>
-                  </div>
-                </div>
-                <div className={cn.infoGrid}>
-                  <div className={cn.infoItem}>
-                    <div className={cn.infoLabel}>User ID</div>
-                    <div className={cn.infoValue}>
-                      {profile?.user_id || "—"}
-                    </div>
-                  </div>
-                  <div className={cn.infoItem}>
-                    <div className={cn.infoLabel}>Balans</div>
-                    <div className={cn.infoValue}>
-                      {formatPrice(profile?.balance || 0, "UZS")}
-                    </div>
-                  </div>
-                  <div className={cn.infoItem}>
-                    <div className={cn.infoLabel}>Ism</div>
-                    <div className={cn.infoValue}>
-                      {profile?.first_name || "—"}
-                    </div>
-                  </div>
-                  <div className={cn.infoItem}>
-                    <div className={cn.infoLabel}>Familiya</div>
-                    <div className={cn.infoValue}>
-                      {profile?.last_name || "—"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  flexWrap: "wrap",
+      {activeTab === "dashboard" && (
+        <div className="rounded-2xl bg-white ring-1 ring-gray-100 shadow-[0_8px_30px_rgba(0,0,0,0.06)] p-5 mb-6">
+          {/* Profile card */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <img
+                className="w-20 h-20 rounded-2xl object-cover ring-1 ring-gray-200"
+                src={profile?.avatar || "/img/NaturalTitanium.jpg"}
+                alt="avatar"
+                loading="lazy"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
                 }}
-              >
-                <div
-                  className={`${cn.glass} ${cn.card}`}
-                  style={{ flex: "1 1 260px" }}
-                >
-                  <div className={cn.meta}>Hisobingizda</div>
-                  <div className={cn.title}>
-                    {formatPrice(profile?.balance || 0, "UZS")}
-                  </div>
-                  <div className={cn.small}>Taxminiy balans</div>
+              />
+              <div className="flex flex-col gap-1">
+                <div className="text-lg md:text-xl font-bold">
+                  {(profile?.first_name || "") + (profile?.last_name ? " " + profile?.last_name : "") || "Foydalanuvchi"}
                 </div>
-                <div
-                  className={`${cn.glass} ${cn.card}`}
-                  style={{ flex: "1 1 260px" }}
-                >
-                  <div className={cn.meta}>Oqimlar</div>
-                  <div className={cn.title}>{flows.length}</div>
-                  <div className={cn.small}>Yaratilgan referal linklar</div>
+                {profile?.email && <div className="text-sm text-gray-500">{profile.email}</div>}
+                {profile?.location && (
+                  <div className="text-xs text-gray-500">Joylashuv: {profile.location}</div>
+                )}
+                <a href="/update-profile" className={`${cn.button} ${cn.secondaryBlue} ${cn.compact}`} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 36, marginTop: 4 }}>
+                  Profilni tahrirlash
+                </a>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 ring-1 ring-indigo-200/40 p-4">
+                <div className="text-xs uppercase tracking-wide text-indigo-600 font-semibold">Hisobingizda</div>
+                <div className="text-2xl font-extrabold text-gray-900 mt-1">
+                  {formatPrice((userBalance ?? profile?.balance ?? 0), "UZS")}
                 </div>
+                <div className="text-xs text-gray-500">Taxminiy balans</div>
+              </div>
+              <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 ring-1 ring-blue-200/40 p-4">
+                <div className="text-xs uppercase tracking-wide text-blue-600 font-semibold">Oqimlar</div>
+                <div className="text-2xl font-extrabold text-gray-900 mt-1">{flows.length}</div>
+                <div className="text-xs text-gray-500">Yaratilgan referal linklar</div>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {activeTab === "market" && (
-          <div className={`${cn.glass} ${cn.panel}`}>
-            {productsLoading && <p>Yuklanmoqda...</p>}
+          <div className={`${cn.glass} ${cn.panel}`} style={{ padding: 20, borderRadius: 0 }}>
+            {productsLoading && (
+              <div style={{ padding: 8 }}>
+                <SkeletonGrid count={8} columns={4} />
+              </div>
+            )}
             {productsError && <p>Xatolik: {String(productsError)}</p>}
             {!productsLoading && !productsError && (
-              <div className={cn.grid}>
+              <div className={cn.grid} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
                 {products.map((p: any) => (
-                  <div key={p.product_id} className={cn.cardWhite}>
-                    <div className={cn.productHead}>
+                  
+                  <div
+                    key={p.product_id}
+                    className={`${cn.cardWhite} ${cn.cardProduct}`}
+                    style={{ borderRadius: 0, padding: 16, border: '1px solid #e5e7eb', boxShadow: '0 8px 30px rgba(0,0,0,0.04)' }}
+                  >
+                    <div
+                      className={cn.productHeadCol}
+                      onClick={() => (window.location.href = `/product/${p.product_id}`)}
+                    >
                       <img
-                        className={cn.productImg}
-                        src={getProductImageUrl(p.main_image)}
+                        className={cn.productImgXL}
+                        src={getVariantMainImage(p.variant_media) || getProductImageUrl(p.main_image)}
                         alt={p.product_name}
+                        loading="lazy"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src =
                             "/img/NaturalTitanium.jpg";
                         }}
                       />
-                      <div>
-                        <div className={`${cn.productTitle} ${cn.textDark}`}>
+                      <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
+                        <div className={`${cn.productTitle} ${cn.textDark}`} style={{ fontSize: '1.125rem', fontWeight: 800, lineHeight: 1.2 }}>
                           {p.product_name}
                         </div>
-                        <div className={cn.textDark} style={{ fontSize: 12 }}>
-                          {formatPrice(p.price || 0)} • Daromad:{" "}
-                          {formatPrice(p.refferal_price || 0)}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <div style={{ fontSize: '1rem', fontWeight: 700 }}>{formatPrice(p.price || 0)}</div>
+                          <span
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 6,
+                              padding: '4px 10px', borderRadius: 999,
+                              background: '#ecfdf5', border: '1px solid #6ee7b7', color: '#047857',
+                              fontWeight: 700, fontSize: 12
+                            }}
+                          >
+                            + {formatPrice(p.refferal_price || 0)}
+                          </span>
                         </div>
+                        <div className={cn.small} style={{ color: '#64748b' }}>Daromad — siz uchun komissiya</div>
                       </div>
                     </div>
-                    <div className={cn.actions}>
+                    <div className={cn.actions} style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
                       <button
-                        className={cn.button}
-                        onClick={() => handleGenerate(p)}
+                        className={`${cn.button} ${cn.compact}`}
+                        onClick={(e) => { e.stopPropagation(); handleGenerate(p); }}
+                        disabled={createLoading}
+                        style={{ height: 40, padding: '0 14px', fontWeight: 700 }}
                       >
-                        Link yaratish
-                      </button>
-                      <button
-                        className={`${cn.secondaryBlue}`}
-                        onClick={() =>
-                          handleCopy(makeReferralLink(p.product_id))
-                        }
-                      >
-                        {copied === makeReferralLink(p.product_id)
-                          ? "Nusxa olindi"
-                          : "Linkni nusxalash"}
+                        {createLoading ? "Yaratilmoqda..." : "Nusxa yaratish"}
                       </button>
                     </div>
                   </div>
@@ -277,47 +338,169 @@ export function Profile() {
 
         {activeTab === "oqim" && (
           <div className={`${cn.glass} ${cn.panel}`}>
-            {flows.length === 0 ? (
-              <p>Hozircha oqimlar yo'q. Marketdan link yarating.</p>
-            ) : (
-              <div className={cn.list}>
-                {flows.map((f) => (
-                  <div key={f.id} className={`${cn.glass} ${cn.flowRow}`}>
-                    <div className={cn.flowInfo}>
-                      <div className={cn.productTitle}>{f.productName}</div>
-                      <div className={cn.small}>
-                        Daromad: {formatPrice(f.commission || 0)} •{" "}
-                        {new Date(f.createdAt).toLocaleString()}
+            {apiFlowsLoading && (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="p-4 border border-gray-200 rounded-2xl bg-white animate-pulse">
+                    <div className="h-4 w-1/3 bg-slate-200 rounded mb-3" />
+                    <div className="h-8 bg-slate-200 rounded mb-3" />
+                    <div className="flex gap-2">
+                      <div className="h-8 flex-1 bg-slate-200 rounded" />
+                      <div className="h-8 w-8 bg-slate-200 rounded" />
+                      <div className="h-8 w-8 bg-slate-200 rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {apiFlowsError && <p style={{ color: '#b91c1c' }}>{apiFlowsError}</p>}
+            {referralNotice && (
+              <div
+                style={{
+                  marginBottom: 10,
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  border: referralNotice.type === 'success' ? '1px solid #86efac' : '1px solid #fecaca',
+                  background: referralNotice.type === 'success' ? '#ecfdf5' : '#fef2f2',
+                  color: referralNotice.type === 'success' ? '#065f46' : '#7f1d1d',
+                  fontWeight: 600,
+                }}
+                role="status"
+                aria-live="polite"
+              >
+                {referralNotice.message}
+              </div>
+            )}
+            {!apiFlowsLoading && !apiFlowsError && (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {apiFlows.length === 0 && flows.length === 0 && (
+                  <p>Hozircha oqimlar yo'q. Marketdan link yarating.</p>
+                )}
+                {apiFlows.map((r: any) => (
+                  <div
+                    key={r.id}
+                    className={`${cn.glass} ${cn.flowRow} p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
+                  >
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Left: title + code */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-base font-extrabold text-slate-900">{r.title || r.code}</div>
+                        <span className="inline-flex h-6 items-center px-2 rounded-full text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50">{r.code}</span>
                       </div>
-                      <div
-                        className={cn.small}
-                        style={{ wordBreak: "break-all" }}
-                      >
-                        {f.link}
+                      <br />
+                      {/* Middle: link */}
+                      <div className="flex-1 min-w-[220px]">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 text-xs text-slate-600 break-all bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+                            {window.location.origin + '/product/' + r.product_id + '?ref=' + r.code}
+                          </div>
+                          <div className="inline-flex items-center gap-2 shrink-0">
+                            <button
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50"
+                              title="Nusxalash"
+                              aria-label="Nusxalash"
+                              onClick={() => handleCopy(window.location.origin + '/product/' + r.product_id + '?ref=' + r.code)}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="9" y="9" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
+                                <rect x="3" y="3" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
+                              </svg>
+                            </button>
+                            <button
+                              className={`h-8 w-8 inline-flex items-center justify-center rounded-lg border ${deletingReferralId===r.id? 'opacity-50 cursor-not-allowed' : ''} border-red-200 hover:bg-red-50`}
+                              title="O'chirish"
+                              aria-label="O'chirish"
+                              onClick={async ()=>{
+                                try {
+                                  setDeletingReferralId(r.id);
+                                  await shopAPI.deleteReferral(r.id);
+                                  setApiFlows(prev => prev.filter(x => x.id !== r.id));
+                                  setReferralNotice({ type: 'success', message: 'Havola muvaffaqiyatli o\'chirildi' });
+                                  setTimeout(()=> setReferralNotice(null), 2500);
+                                } catch (e:any) {
+                                  const msg = e?.response?.data?.detail || e?.message || 'O‘chirishda xatolik';
+                                  const friendly = msg.includes('Нельзя удалить реферальный код')
+                                    ? 'Ushbu havola faol buyurtmalarda ishlatilgan, o‘chirish mumkin emas'
+                                    : msg;
+                                  setReferralNotice({ type: 'error', message: friendly });
+                                  setTimeout(()=> setReferralNotice(null), 3500);
+                                } finally {
+                                  setDeletingReferralId(null);
+                                }
+                              }}
+                              disabled={deletingReferralId === r.id}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 6h18" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"/>
+                                <path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#dc2626" strokeWidth="2"/>
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="#dc2626" strokeWidth="2"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Right: date + earned */}
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-xs text-slate-500">{new Date(r.created_at).toLocaleString()}</div>
+                        <span className="inline-flex h-6 items-center px-2 rounded-full text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50">{formatPrice(r.total_earned || 0)}</span>
                       </div>
                     </div>
-                    <div className={cn.actions}>
-                      <button
-                        className={cn.button}
-                        onClick={() => handleCopy(f.link)}
-                      >
-                        {copied === f.link ? "Nusxa olindi" : "Nusxalash"}
-                      </button>
-                      <button
-                        className={`${cn.button} ${cn.secondary}`}
-                        onClick={() => removeFlow(f.id)}
-                      >
-                        O'chirish
-                      </button>
+                  </div>
+                ))}
+                {flows.map((f) => (
+                  <div
+                    key={f.id}
+                    className={`${cn.glass} ${cn.flowRow} p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
+                  >
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Left: title + commission */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-base font-extrabold text-slate-900">{f.productName}</div>
+                        <span className="inline-flex h-6 items-center px-2 rounded-full text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50">+ {formatPrice(f.commission || 0)}</span>
+                      </div>
+                      {/* Middle: link */}
+                      <div className="flex-1 min-w-[220px]">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 text-xs text-slate-600 break-all bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+                            {f.link}
+                          </div>
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50"
+                              title="Nusxalash"
+                              aria-label="Nusxalash"
+                              onClick={() => handleCopy(f.link)}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="9" y="9" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
+                                <rect x="3" y="3" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
+                              </svg>
+                            </button>
+                            <button
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-red-200 hover:bg-red-50"
+                              title="O'chirish"
+                              aria-label="O'chirish"
+                              onClick={() => removeFlow(f.id)}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 6h18" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"/>
+                                <path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#dc2626" strokeWidth="2"/>
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="#dc2626" strokeWidth="2"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Right: date */}
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-xs text-slate-500">{new Date(f.createdAt).toLocaleString()}</div>
+                      </div>
                     </div>
                   </div>
                 ))}
                 {flows.length > 0 && (
-                  <div className={cn.actions}>
-                    <button
-                      className={`${cn.button} ${cn.secondary}`}
-                      onClick={clearFlows}
-                    >
+                  <div className={`${cn.actions} sm:col-span-2 lg:col-span-3`}>
+                    <button className={`${cn.button} ${cn.secondary} ${cn.compact}`} onClick={clearFlows}>
                       Barchasini tozalash
                     </button>
                   </div>
@@ -329,7 +512,66 @@ export function Profile() {
 
         {activeTab === "stats" && (
           <div className={`${cn.glass} ${cn.panel}`}>
-            <p>Statistika tez orada qo'shiladi.</p>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
+              <div className="rounded-2xl border border-indigo-200/60 bg-indigo-50 p-4">
+                <div className="text-xs tracking-wide uppercase text-indigo-700 font-bold">Umumiy arizalar</div>
+                <div className="text-3xl font-black text-indigo-900 mt-1">{totals.total}</div>
+                <div className="text-xs text-indigo-700/80">Barcha referral havolalar bo'yicha</div>
+              </div>
+              <div className="rounded-2xl border border-amber-200/60 bg-amber-50 p-4">
+                <div className="text-xs tracking-wide uppercase text-amber-700 font-bold">Ushlab turilgan</div>
+                <div className="text-3xl font-black text-amber-900 mt-1">{totals.hold}</div>
+                <div className="text-xs text-amber-700/80">Tekshiruv jarayonida</div>
+              </div>
+              <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50 p-4">
+                <div className="text-xs tracking-wide uppercase text-emerald-700 font-bold">To'langan</div>
+                <div className="text-3xl font-black text-emerald-900 mt-1">{totals.paid}</div>
+                <div className="text-xs text-emerald-700/80">Muvaffaqiyatli to'lovlar</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="text-xs tracking-wide uppercase text-slate-600 font-bold">Balans</div>
+                <div className="text-3xl font-black text-slate-900 mt-1">{formatPrice((userBalance ?? profile?.balance ?? 0), "UZS")}</div>
+                <div className="text-xs text-slate-500">Hozirgi hisob</div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-base font-extrabold text-slate-900">Havolalar bo'yicha statistikalar</div>
+                <div className="text-xs text-slate-500">Namuna ma'lumotlari</div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-slate-500">
+                      <th className="text-left py-2">Sarlavha</th>
+                      <th className="text-left py-2">Kod</th>
+                      <th className="text-right py-2">Arizalar</th>
+                      <th className="text-right py-2">Ushlab turilgan</th>
+                      <th className="text-right py-2">To'langan</th>
+                      <th className="text-right py-2">Jami daromad</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(computedStats || []).map((s:any)=> (
+                      <tr key={s.id} className="border-t border-gray-100">
+                        <td className="py-2 font-semibold text-slate-900">{s.title || '—'}</td>
+                        <td className="py-2 text-slate-600">{s.code}</td>
+                        <td className="py-2 text-right font-semibold">{s.total}</td>
+                        <td className="py-2 text-right text-amber-600 font-semibold">{s.hold}</td>
+                        <td className="py-2 text-right text-emerald-700 font-semibold">{s.paid}</td>
+                        <td className="py-2 text-right font-black">{formatPrice(s.earned, 'UZS')}</td>
+                      </tr>
+                    ))}
+                    {(!computedStats || computedStats.length===0) && (
+                      <tr className="border-t border-gray-100">
+                        <td colSpan={6} className="py-4 text-center text-slate-500">Hali ma'lumotlar yo'q</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
@@ -362,7 +604,7 @@ export function Profile() {
               />
               <div className={cn.actions}>
                 <button
-                  className={cn.button}
+                  className={`${cn.button} ${cn.compact}`}
                   onClick={() => dialog.link && handleCopy(dialog.link)}
                 >
                   {dialog.link && copied === dialog.link
@@ -370,7 +612,7 @@ export function Profile() {
                     : "Nusxalash"}
                 </button>
                 <button
-                  className={`${cn.button} ${cn.secondary}`}
+                  className={`${cn.button} ${cn.secondary} ${cn.compact}`}
                   onClick={() => setDialog({ open: false })}
                 >
                   Yopish
@@ -379,8 +621,65 @@ export function Profile() {
             </div>
           </div>
         )}
+
+        {/* image preview modal removed */}
+
+        {createModal.open && (
+          <div
+            className={cn.dialogOverlay}
+            onClick={() => setCreateModal({ open: false, title: "", agree: false })}
+          >
+            <div
+              className={`${cn.glass} ${cn.dialog} ${cn.dialogWide}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={cn.title} style={{ marginBottom: 10 }}>{createModal.product?.product_name}</div>
+              <div>
+                <input
+                  value={createModal.title}
+                  onChange={(e) => setCreateModal({ ...createModal, title: e.target.value })}
+                  placeholder="Sarlavha (title)"
+                  className={cn.copyInput}
+                />
+                <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={createModal.agree}
+                    onChange={(e) => setCreateModal({ ...createModal, agree: e.target.checked })}
+                  />
+                  <span className={cn.small}>Шартлар билан танышдим (пока без логики)</span>
+                </label>
+                {createError && (
+                  <div className={cn.small} style={{ color: "#d12", marginTop: 6 }}>{createError}</div>
+                )}
+                <div className={cn.actions}>
+                  <button className={`${cn.button} ${cn.compact}`} onClick={submitCreateReferral} disabled={createLoading}>
+                    {createLoading ? "Yaratilmoqda..." : "Создать"}
+                  </button>
+                  <button className={`${cn.button} ${cn.secondary} ${cn.compact}`} onClick={() => setCreateModal({ open: false, title: "", agree: false })}>
+                    Отмена
+                  </button>
+                </div>
+                {createModal.createdLink && (
+                  <div style={{ marginTop: 10 }}>
+                    <div className={cn.small} style={{ marginBottom: 6 }}>Ссылка создана, можно скопировать:</div>
+                    <div className={cn.linkRow}>
+                      <input readOnly value={createModal.createdLink} className={cn.copyInput} />
+                      <button
+                        className={cn.miniBtn}
+                        onClick={() => handleCopy(createModal.createdLink!)}
+                        title="Nusxalash"
+                      >
+                        📋
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
   );
 }
 
