@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
 // @ts-ignore – модуль стилей объявлен через d.ts
 import s from "./OrderDialog.module.scss";
@@ -14,7 +14,7 @@ interface Props {
   product: ProductDetail;
   variant: ProductDetail['variants'][0] | null;
   deliveryPrice?: number | null;
-  onBuyNow: (qty: number, extra?: { city?: string; order_region?: string }) => void;
+  onBuyNow: (qty: number, extra?: { city?: string; order_region?: string; comment?: string }) => void;
   onAddToCart: (qty: number) => void;
 }
 
@@ -50,6 +50,13 @@ export default function OrderDialog({ open, onClose, product, variant, deliveryP
   }, [variant, product]);
 
   const total = useMemo(() => (price * qty) + (deliveryPrice ?? 0), [price, qty, deliveryPrice]);
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
 
   if (!open) return null;
 
