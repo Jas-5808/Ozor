@@ -18,7 +18,9 @@ export const useCategories = () => {
     }
   };
   useEffect(() => {
-    fetchCategories();
+    let cancelled = false;
+    fetchCategories().finally(()=>{ if (cancelled) return; });
+    return ()=>{ cancelled = true; };
   }, []);
   const refetch = () => {
     fetchCategories();
@@ -67,4 +69,4 @@ export const getSubcategories = (categories, parentId) => {
 };
 export const getMainCategories = (categories) => {
   return categories.filter(category => category.parent_id === null);
-};
+};

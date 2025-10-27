@@ -7,11 +7,9 @@ import { AuthProvider } from './hooks/useAuth'
 import { AppProvider } from './context/AppContext'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <AuthProvider>
-      <AppProvider>
-        <RouterProvider router={router}></RouterProvider>
-      </AppProvider>
-    </AuthProvider>
-  </React.StrictMode>,
+  <AuthProvider>
+    <AppProvider>
+      <RouterProvider router={router}></RouterProvider>
+    </AppProvider>
+  </AuthProvider>,
 )

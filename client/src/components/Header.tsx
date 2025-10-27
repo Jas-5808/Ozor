@@ -7,7 +7,9 @@ import HeaderActions from "./HeaderActions";
 import { useApp } from "../context/AppContext";
 import { useAuth } from "../hooks/useAuth";
 export function Header() {
-  const { state, showLocationModal } = useApp();
+  const { state, showLocationModal, getCartItemCount } = useApp();
+  const cartCount = getCartItemCount();
+  const likedCount = state.likedProducts?.size || 0;
   const { isAuthenticated } = useAuth();
   const [isSideCatalogOpen, setIsSideCatalogOpen] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
@@ -97,10 +99,15 @@ export function Header() {
               <li>
                 <Link
                   to="/cart"
-                  className="inline-flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-white/10 active:bg-white/15 transition"
+                  className="inline-flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-white/10 active:bg-white/15 transition relative"
                   aria-label="Корзина"
                 >
                   <img src="/icons/korzinka2.svg" alt="" className="h-7 w-7" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-red-500 text-[10px] leading-4 text-white text-center font-bold">
+                      {cartCount}
+                    </span>
+                  )}
                 </Link>
               </li>
               <li className="relative">
@@ -110,9 +117,11 @@ export function Header() {
                   aria-label="Избранное"
                 >
                   <img src="/icons/like4.svg" alt="" className="h-7 w-7" />
-                  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-red-500 text-[10px] leading-4 text-white text-center">
-                    1
-                  </span>
+                  {likedCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-red-500 text-[10px] leading-4 text-white text-center font-bold">
+                      {likedCount}
+                    </span>
+                  )}
                 </Link>
               </li>
               <li>
@@ -128,10 +137,12 @@ export function Header() {
           </div>
         </div>
       </div>
-      <SideCatalog
-        open={isSideCatalogOpen}
-        onClose={() => setIsSideCatalogOpen(false)}
-      />
+      {isSideCatalogOpen && (
+        <SideCatalog
+          open={isSideCatalogOpen}
+          onClose={() => setIsSideCatalogOpen(false)}
+        />
+      )}
     </>
   );
 }

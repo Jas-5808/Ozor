@@ -167,6 +167,8 @@ export function Product() {
         .finally(() => { if (!ignore) setLoading(false); });
     }
     return () => { ignore = true; };
+  // depend only on id to avoid re-fetches
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Сбор изображений для галереи/лайтбокса

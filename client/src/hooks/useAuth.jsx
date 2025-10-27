@@ -24,15 +24,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
   useEffect(() => {
+    let cancelled = false;
     const initializeAuth = async () => {
       const token = localStorage.getItem('access_token');
       if (token) {
         setUser({ token });
         await fetchUserProfile();
       }
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     };
     initializeAuth();
+    return ()=>{ cancelled = true; };
   }, []);
   const signin = async (phone, password) => {
     try {

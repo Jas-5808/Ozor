@@ -22,7 +22,9 @@ export const useProducts = () => {
     }
   };
   useEffect(() => {
-    fetchProducts();
+    let cancelled = false;
+    fetchProducts().finally(()=>{ if (cancelled) return; });
+    return ()=>{ cancelled = true; };
   }, []);
   const refetch = () => {
     fetchProducts();
@@ -56,7 +58,9 @@ export const useProductById = (productId) => {
     }
   };
   useEffect(() => {
-    fetchProduct();
+    let cancelled = false;
+    fetchProduct().finally(()=>{ if (cancelled) return; });
+    return ()=>{ cancelled = true; };
   }, [productId]);
   return {
     product,
@@ -91,7 +95,9 @@ export const useProductsByCategory = (categoryId) => {
     }
   };
   useEffect(() => {
-    fetchProductsByCategory();
+    let cancelled = false;
+    fetchProductsByCategory().finally(()=>{ if (cancelled) return; });
+    return ()=>{ cancelled = true; };
   }, [categoryId]);
   return {
     products,

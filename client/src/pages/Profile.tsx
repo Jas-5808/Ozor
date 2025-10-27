@@ -4,8 +4,9 @@ import { userAPI, shopAPI, paymentAPI } from "../services/api";
 import { useProducts } from "../hooks/useProducts";
 // @ts-ignore – модуль стилей объявлен через d.ts
 import cn from "./profile.module.scss";
-import { formatPrice, getProductImageUrl } from "../utils/helpers";
+import { formatPrice, getProductImageUrl, getVariantMainImage } from "../utils/helpers";
 import { useFlows } from "../hooks/useFlows";
+import SkeletonGrid from "../components/SkeletonGrid";
 
 export function Profile() {
   const { profile, isAuthenticated, logout, fetchUserProfile } =
@@ -142,8 +143,39 @@ export function Profile() {
         setApiFlowsLoading(false);
       }
     };
-    if (activeTab === 'oqim') loadReferrals();
+    if (activeTab === 'oqim' || activeTab === 'stats') loadReferrals();
   }, [activeTab]);
+
+  const productById = useMemo(() => {
+    const map = new Map<string, any>();
+    (products || []).forEach((p: any) => {
+      if (p?.product_id) map.set(p.product_id, p);
+    });
+    return map;
+  }, [products]);
+
+  const computedStats = useMemo(() => {
+    return (apiFlows || []).map((r: any) => {
+      const orders = Array.isArray(r?.orders) ? r.orders : [];
+      const total = orders.length;
+      const paid = orders.filter((o: any) => String(o?.status || '').toLowerCase() === 'delivered').length;
+      const hold = total - paid;
+      const product = productById.get(r.product_id);
+      const commission: number = Number(product?.refferal_price) || 0;
+      const earned = commission > 0 ? commission * paid : (typeof r?.total_earned === 'number' ? r.total_earned : 0);
+      return { id: r.id, title: r.title, code: r.code, total, hold, paid, earned };
+    });
+  }, [apiFlows, productById]);
+
+  const totals = useMemo(() => {
+    const list = computedStats || [];
+    return {
+      total: list.reduce((s: number, x: any) => s + (x.total || 0), 0),
+      hold: list.reduce((s: number, x: any) => s + (x.hold || 0), 0),
+      paid: list.reduce((s: number, x: any) => s + (x.paid || 0), 0),
+      earned: list.reduce((s: number, x: any) => s + (x.earned || 0), 0),
+    };
+  }, [computedStats]);
 
   if (!isAuthenticated) {
     return (
@@ -162,7 +194,7 @@ export function Profile() {
         <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 bg-clip-text text-transparent">
           Mening kabinetim
         </h2>
-        <button onClick={logout} className="h-10 px-4 rounded-xl bg-red-500/90 hover:bg-red-600 text-white font-semibold shadow-sm">
+        <button onClick={logout} className={`${cn.button} ${cn.danger} ${cn.compact}`}>
           Chiqish
         </button>
       </div>
@@ -199,6 +231,7 @@ export function Profile() {
                 className="w-20 h-20 rounded-2xl object-cover ring-1 ring-gray-200"
                 src={profile?.avatar || "/img/NaturalTitanium.jpg"}
                 alt="avatar"
+                loading="lazy"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
                 }}
@@ -211,7 +244,7 @@ export function Profile() {
                 {profile?.location && (
                   <div className="text-xs text-gray-500">Joylashuv: {profile.location}</div>
                 )}
-                <a href="/update-profile" className="mt-1 inline-flex h-9 items-center justify-center px-3 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 w-max">
+                <a href="/update-profile" className={`${cn.button} ${cn.secondaryBlue} ${cn.compact}`} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 36, marginTop: 4 }}>
                   Profilni tahrirlash
                 </a>
               </div>
@@ -237,7 +270,11 @@ export function Profile() {
 
         {activeTab === "market" && (
           <div className={`${cn.glass} ${cn.panel}`} style={{ padding: 20, borderRadius: 0 }}>
-            {productsLoading && <p style={{ fontSize: 16 }}>Yuklanmoqda...</p>}
+            {productsLoading && (
+              <div style={{ padding: 8 }}>
+                <SkeletonGrid count={8} columns={4} />
+              </div>
+            )}
             {productsError && <p>Xatolik: {String(productsError)}</p>}
             {!productsLoading && !productsError && (
               <div className={cn.grid} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
@@ -254,8 +291,9 @@ export function Profile() {
                     >
                       <img
                         className={cn.productImgXL}
-                        src={getProductImageUrl(p.main_image)}
+                        src={getVariantMainImage(p.variant_media) || getProductImageUrl(p.main_image)}
                         alt={p.product_name}
+                        loading="lazy"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src =
                             "/img/NaturalTitanium.jpg";
@@ -283,7 +321,7 @@ export function Profile() {
                     </div>
                     <div className={cn.actions} style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
                       <button
-                        className={cn.button}
+                        className={`${cn.button} ${cn.compact}`}
                         onClick={(e) => { e.stopPropagation(); handleGenerate(p); }}
                         disabled={createLoading}
                         style={{ height: 40, padding: '0 14px', fontWeight: 700 }}
@@ -300,7 +338,21 @@ export function Profile() {
 
         {activeTab === "oqim" && (
           <div className={`${cn.glass} ${cn.panel}`}>
-            {apiFlowsLoading && <p style={{ fontSize: 16 }}>Yuklanmoqda...</p>}
+            {apiFlowsLoading && (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="p-4 border border-gray-200 rounded-2xl bg-white animate-pulse">
+                    <div className="h-4 w-1/3 bg-slate-200 rounded mb-3" />
+                    <div className="h-8 bg-slate-200 rounded mb-3" />
+                    <div className="flex gap-2">
+                      <div className="h-8 flex-1 bg-slate-200 rounded" />
+                      <div className="h-8 w-8 bg-slate-200 rounded" />
+                      <div className="h-8 w-8 bg-slate-200 rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             {apiFlowsError && <p style={{ color: '#b91c1c' }}>{apiFlowsError}</p>}
             {referralNotice && (
               <div
@@ -320,79 +372,135 @@ export function Profile() {
               </div>
             )}
             {!apiFlowsLoading && !apiFlowsError && (
-              <div className={cn.list}>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {apiFlows.length === 0 && flows.length === 0 && (
                   <p>Hozircha oqimlar yo'q. Marketdan link yarating.</p>
                 )}
                 {apiFlows.map((r: any) => (
-                  <div key={r.id} className={`${cn.glass} ${cn.flowRow}`}>
-                    <div className={cn.flowInfo}>
-                      <div className={cn.productTitle}>{r.title || r.code}</div>
-                      <div className={cn.small}>
-                        Kod: {r.code} • {new Date(r.created_at).toLocaleString()}
+                  <div
+                    key={r.id}
+                    className={`${cn.glass} ${cn.flowRow} p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
+                  >
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Left: title + code */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-base font-extrabold text-slate-900">{r.title || r.code}</div>
+                        <span className="inline-flex h-6 items-center px-2 rounded-full text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50">{r.code}</span>
                       </div>
-                      <div className={cn.small}>
-                        Jami daromad: {formatPrice(r.total_earned || 0)}
+                      <br />
+                      {/* Middle: link */}
+                      <div className="flex-1 min-w-[220px]">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 text-xs text-slate-600 break-all bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+                            {window.location.origin + '/product/' + r.product_id + '?ref=' + r.code}
+                          </div>
+                          <div className="inline-flex items-center gap-2 shrink-0">
+                            <button
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50"
+                              title="Nusxalash"
+                              aria-label="Nusxalash"
+                              onClick={() => handleCopy(window.location.origin + '/product/' + r.product_id + '?ref=' + r.code)}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="9" y="9" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
+                                <rect x="3" y="3" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
+                              </svg>
+                            </button>
+                            <button
+                              className={`h-8 w-8 inline-flex items-center justify-center rounded-lg border ${deletingReferralId===r.id? 'opacity-50 cursor-not-allowed' : ''} border-red-200 hover:bg-red-50`}
+                              title="O'chirish"
+                              aria-label="O'chirish"
+                              onClick={async ()=>{
+                                try {
+                                  setDeletingReferralId(r.id);
+                                  await shopAPI.deleteReferral(r.id);
+                                  setApiFlows(prev => prev.filter(x => x.id !== r.id));
+                                  setReferralNotice({ type: 'success', message: 'Havola muvaffaqiyatli o\'chirildi' });
+                                  setTimeout(()=> setReferralNotice(null), 2500);
+                                } catch (e:any) {
+                                  const msg = e?.response?.data?.detail || e?.message || 'O‘chirishda xatolik';
+                                  const friendly = msg.includes('Нельзя удалить реферальный код')
+                                    ? 'Ushbu havola faol buyurtmalarda ishlatilgan, o‘chirish mumkin emas'
+                                    : msg;
+                                  setReferralNotice({ type: 'error', message: friendly });
+                                  setTimeout(()=> setReferralNotice(null), 3500);
+                                } finally {
+                                  setDeletingReferralId(null);
+                                }
+                              }}
+                              disabled={deletingReferralId === r.id}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 6h18" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"/>
+                                <path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#dc2626" strokeWidth="2"/>
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="#dc2626" strokeWidth="2"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <div className={cn.small} style={{ wordBreak: 'break-all' }}>
-                        {window.location.origin + '/product/' + r.product_id + '?ref=' + r.code}
+                      {/* Right: date + earned */}
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-xs text-slate-500">{new Date(r.created_at).toLocaleString()}</div>
+                        <span className="inline-flex h-6 items-center px-2 rounded-full text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50">{formatPrice(r.total_earned || 0)}</span>
                       </div>
-                    </div>
-                    <div className={cn.actions}>
-                      <button className={cn.button} onClick={() => handleCopy(window.location.origin + '/product/' + r.product_id + '?ref=' + r.code)}>
-                        {copied === (window.location.origin + '/product/' + r.product_id + '?ref=' + r.code) ? 'Nusxa olindi' : 'Nusxalash'}
-                      </button>
-                      <button
-                        className={`${cn.button} ${cn.secondary}`}
-                        onClick={async ()=>{
-                          try {
-                            setDeletingReferralId(r.id);
-                            await shopAPI.deleteReferral(r.id);
-                            setApiFlows(prev => prev.filter(x => x.id !== r.id));
-                            setReferralNotice({ type: 'success', message: 'Havola muvaffaqiyatli o\'chirildi' });
-                            setTimeout(()=> setReferralNotice(null), 2500);
-                          } catch (e:any) {
-                            const msg = e?.response?.data?.detail || e?.message || 'O‘chirishda xatolik';
-                            const friendly = msg.includes('Нельзя удалить реферальный код')
-                              ? 'Ushbu havola faol buyurtmalarda ishlatilgan, o‘chirish mumkin emas'
-                              : msg;
-                            setReferralNotice({ type: 'error', message: friendly });
-                            setTimeout(()=> setReferralNotice(null), 3500);
-                          } finally {
-                            setDeletingReferralId(null);
-                          }
-                        }}
-                        disabled={deletingReferralId === r.id}
-                      >
-                        {deletingReferralId === r.id ? 'O\'chirilmoqda…' : 'O\'chirish'}
-                      </button>
                     </div>
                   </div>
                 ))}
                 {flows.map((f) => (
-                  <div key={f.id} className={`${cn.glass} ${cn.flowRow}`}>
-                    <div className={cn.flowInfo}>
-                      <div className={cn.productTitle}>{f.productName}</div>
-                      <div className={cn.small}>
-                        Daromad: {formatPrice(f.commission || 0)} • {new Date(f.createdAt).toLocaleString()}
+                  <div
+                    key={f.id}
+                    className={`${cn.glass} ${cn.flowRow} p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
+                  >
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Left: title + commission */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-base font-extrabold text-slate-900">{f.productName}</div>
+                        <span className="inline-flex h-6 items-center px-2 rounded-full text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50">+ {formatPrice(f.commission || 0)}</span>
                       </div>
-                      <div className={cn.small} style={{ wordBreak: 'break-all' }}>
-                        {f.link}
+                      {/* Middle: link */}
+                      <div className="flex-1 min-w-[220px]">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 text-xs text-slate-600 break-all bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+                            {f.link}
+                          </div>
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50"
+                              title="Nusxalash"
+                              aria-label="Nusxalash"
+                              onClick={() => handleCopy(f.link)}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="9" y="9" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
+                                <rect x="3" y="3" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
+                              </svg>
+                            </button>
+                            <button
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-red-200 hover:bg-red-50"
+                              title="O'chirish"
+                              aria-label="O'chirish"
+                              onClick={() => removeFlow(f.id)}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 6h18" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"/>
+                                <path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#dc2626" strokeWidth="2"/>
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="#dc2626" strokeWidth="2"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className={cn.actions}>
-                      <button className={cn.button} onClick={() => handleCopy(f.link)}>
-                        {copied === f.link ? 'Nusxa olindi' : 'Nusxalash'}
-                      </button>
-                      <button className={`${cn.button} ${cn.secondary}`} onClick={() => removeFlow(f.id)}>
-                        O'chirish
-                      </button>
+                      {/* Right: date */}
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-xs text-slate-500">{new Date(f.createdAt).toLocaleString()}</div>
+                      </div>
                     </div>
                   </div>
                 ))}
                 {flows.length > 0 && (
-                  <div className={cn.actions}>
-                    <button className={`${cn.button} ${cn.secondary}`} onClick={clearFlows}>
+                  <div className={`${cn.actions} sm:col-span-2 lg:col-span-3`}>
+                    <button className={`${cn.button} ${cn.secondary} ${cn.compact}`} onClick={clearFlows}>
                       Barchasini tozalash
                     </button>
                   </div>
@@ -404,7 +512,66 @@ export function Profile() {
 
         {activeTab === "stats" && (
           <div className={`${cn.glass} ${cn.panel}`}>
-            <p>Statistika tez orada qo'shiladi.</p>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
+              <div className="rounded-2xl border border-indigo-200/60 bg-indigo-50 p-4">
+                <div className="text-xs tracking-wide uppercase text-indigo-700 font-bold">Umumiy arizalar</div>
+                <div className="text-3xl font-black text-indigo-900 mt-1">{totals.total}</div>
+                <div className="text-xs text-indigo-700/80">Barcha referral havolalar bo'yicha</div>
+              </div>
+              <div className="rounded-2xl border border-amber-200/60 bg-amber-50 p-4">
+                <div className="text-xs tracking-wide uppercase text-amber-700 font-bold">Ushlab turilgan</div>
+                <div className="text-3xl font-black text-amber-900 mt-1">{totals.hold}</div>
+                <div className="text-xs text-amber-700/80">Tekshiruv jarayonida</div>
+              </div>
+              <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50 p-4">
+                <div className="text-xs tracking-wide uppercase text-emerald-700 font-bold">To'langan</div>
+                <div className="text-3xl font-black text-emerald-900 mt-1">{totals.paid}</div>
+                <div className="text-xs text-emerald-700/80">Muvaffaqiyatli to'lovlar</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="text-xs tracking-wide uppercase text-slate-600 font-bold">Balans</div>
+                <div className="text-3xl font-black text-slate-900 mt-1">{formatPrice((userBalance ?? profile?.balance ?? 0), "UZS")}</div>
+                <div className="text-xs text-slate-500">Hozirgi hisob</div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-base font-extrabold text-slate-900">Havolalar bo'yicha statistikalar</div>
+                <div className="text-xs text-slate-500">Namuna ma'lumotlari</div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-slate-500">
+                      <th className="text-left py-2">Sarlavha</th>
+                      <th className="text-left py-2">Kod</th>
+                      <th className="text-right py-2">Arizalar</th>
+                      <th className="text-right py-2">Ushlab turilgan</th>
+                      <th className="text-right py-2">To'langan</th>
+                      <th className="text-right py-2">Jami daromad</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(computedStats || []).map((s:any)=> (
+                      <tr key={s.id} className="border-t border-gray-100">
+                        <td className="py-2 font-semibold text-slate-900">{s.title || '—'}</td>
+                        <td className="py-2 text-slate-600">{s.code}</td>
+                        <td className="py-2 text-right font-semibold">{s.total}</td>
+                        <td className="py-2 text-right text-amber-600 font-semibold">{s.hold}</td>
+                        <td className="py-2 text-right text-emerald-700 font-semibold">{s.paid}</td>
+                        <td className="py-2 text-right font-black">{formatPrice(s.earned, 'UZS')}</td>
+                      </tr>
+                    ))}
+                    {(!computedStats || computedStats.length===0) && (
+                      <tr className="border-t border-gray-100">
+                        <td colSpan={6} className="py-4 text-center text-slate-500">Hali ma'lumotlar yo'q</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
@@ -437,7 +604,7 @@ export function Profile() {
               />
               <div className={cn.actions}>
                 <button
-                  className={cn.button}
+                  className={`${cn.button} ${cn.compact}`}
                   onClick={() => dialog.link && handleCopy(dialog.link)}
                 >
                   {dialog.link && copied === dialog.link
@@ -445,7 +612,7 @@ export function Profile() {
                     : "Nusxalash"}
                 </button>
                 <button
-                  className={`${cn.button} ${cn.secondary}`}
+                  className={`${cn.button} ${cn.secondary} ${cn.compact}`}
                   onClick={() => setDialog({ open: false })}
                 >
                   Yopish
@@ -486,10 +653,10 @@ export function Profile() {
                   <div className={cn.small} style={{ color: "#d12", marginTop: 6 }}>{createError}</div>
                 )}
                 <div className={cn.actions}>
-                  <button className={cn.button} onClick={submitCreateReferral} disabled={createLoading}>
+                  <button className={`${cn.button} ${cn.compact}`} onClick={submitCreateReferral} disabled={createLoading}>
                     {createLoading ? "Yaratilmoqda..." : "Создать"}
                   </button>
-                  <button className={`${cn.button} ${cn.secondary}`} onClick={() => setCreateModal({ open: false, title: "", agree: false })}>
+                  <button className={`${cn.button} ${cn.secondary} ${cn.compact}`} onClick={() => setCreateModal({ open: false, title: "", agree: false })}>
                     Отмена
                   </button>
                 </div>
