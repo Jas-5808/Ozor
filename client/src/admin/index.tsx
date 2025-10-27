@@ -6,4 +6,5 @@ export { default as Banners } from './pages/Banners';
 export { default as Orders } from './pages/Orders';
 export { default as Users } from './pages/Users';
 export { default as Audit } from './pages/Audit';
+export { default as Warehouse } from './pages/Warehouse';
 

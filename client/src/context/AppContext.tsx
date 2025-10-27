@@ -7,6 +7,7 @@ interface CartItem {
     name: string;
     refferal_price: number;
     base_price: number;
+    referral_code?: string;
   };
 }
 interface LocationData {
@@ -259,6 +260,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           name: product.name,
           refferal_price: product.refferal_price,
           base_price: product.base_price,
+          referral_code: product.referral_code,
         },
       },
     });
