@@ -10,10 +10,17 @@
     "install-client": "cd client && npm install",
     "install-all": "npm run install-client"
   },
-  "keywords": ["ecommerce", "uzbekistan", "shop"],
+  "keywords": [
+    "ecommerce",
+    "uzbekistan",
+    "shop"
+  ],
   "author": "Ozor Team",
   "license": "MIT",
   "workspaces": [
     "client"
-  ]
+  ],
+  "dependencies": {
+    "http-proxy-middleware": "^3.0.5"
+  }
 }

@@ -7,7 +7,9 @@ export default defineConfig({
   plugins: [tailwindcss(), react()],
   server: {
     port: 5174,
+    host: '0.0.0.0',
     cors: false,
+    allowedHosts: ['ozar.uz', 'www.ozar.uz', 'localhost'],
     proxy: {
       "/api": {
         target: "https://api.ozar.uz",

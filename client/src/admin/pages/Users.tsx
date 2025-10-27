@@ -1,10 +1,18 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 // @ts-ignore
 import s from '../AdminLayout.module.scss';
 import { adminStore } from '../storage';
 import { userAPI } from '../../services/api';
 
-type User = { id: string; name: string; phone: string; role: 'admin'|'manager'|'customer'; email?: string; date_joined?: string; is_active?: boolean };
+type User = { 
+  id: string; 
+  name: string; 
+  phone: string; 
+  role: 'ceo'|'sale_manager'|'driver_manager'|'client'|'driver'|'sale_operator'|'warehouse_manager'; 
+  email?: string; 
+  date_joined?: string; 
+  is_active?: boolean 
+};
 
 export default function Users() {
   const [items, setItems] = useState<User[]>(adminStore.load<User[]>('admin_users', []));
@@ -17,7 +25,7 @@ export default function Users() {
   ), [items, q, role]);
 
   const addUser = () => {
-    const u: User = { id: Math.random().toString(36).slice(2), name: `User ${items.length+1}`, phone: '+998', role: 'customer' };
+    const u: User = { id: Math.random().toString(36).slice(2), name: `User ${items.length+1}`, phone: '+998', role: 'client' };
     setItems([u, ...items]);
   };
 
@@ -33,11 +41,44 @@ export default function Users() {
         const data = Array.isArray(res.data) ? res.data : (res.data?.results || [res.data]);
         const normalized: User[] = data.map((u:any)=> {
           const apiRole = String(u.role || '').toLowerCase();
-          let mappedRole: 'admin'|'manager'|'customer';
-          if (apiRole === 'admin' || apiRole === 'staff') mappedRole = 'admin';
-          else if (apiRole === 'manager') mappedRole = 'manager';
-          else if (apiRole === 'client' || apiRole === 'customer' || apiRole === '') mappedRole = (u.is_staff ? 'admin' : 'customer');
-          else mappedRole = (u.is_staff ? 'admin' : 'customer');
+          let mappedRole: 'ceo'|'sale_manager'|'driver_manager'|'client'|'driver'|'sale_operator'|'warehouse_manager';
+          
+          // Маппинг ролей из API в новые роли
+          switch (apiRole) {
+            case 'ceo':
+            case 'chief executive officer':
+              mappedRole = 'ceo';
+              break;
+            case 'sale_manager':
+            case 'sale manager':
+              mappedRole = 'sale_manager';
+              break;
+            case 'driver_manager':
+            case 'driver manager':
+              mappedRole = 'driver_manager';
+              break;
+            case 'client':
+            case 'customer':
+              mappedRole = 'client';
+              break;
+            case 'driver':
+              mappedRole = 'driver';
+              break;
+            case 'sale_operator':
+            case 'sale operator':
+              mappedRole = 'sale_operator';
+              break;
+            case 'warehouse_manager':
+            case 'warehouse manager':
+              mappedRole = 'warehouse_manager';
+              break;
+            default:
+              // Для старых ролей или неизвестных
+              if (apiRole === 'admin' || apiRole === 'staff') mappedRole = 'ceo';
+              else if (apiRole === 'manager') mappedRole = 'sale_manager';
+              else mappedRole = 'client';
+              break;
+          }
           return {
             id: u.id,
             name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || (u.email || u.phone_number || 'User'),
@@ -65,9 +106,13 @@ export default function Users() {
           <input className={s.input} placeholder="Search name/phone" value={q} onChange={(e)=>setQ(e.target.value)} />
           <select className={s.input} value={role} onChange={(e)=>setRole(e.target.value)}>
             <option value="">All roles</option>
-            <option value="admin">Admin</option>
-            <option value="manager">Manager</option>
-            <option value="customer">Customer</option>
+            <option value="ceo">CEO</option>
+            <option value="sale_manager">Sale Manager</option>
+            <option value="driver_manager">Driver Manager</option>
+            <option value="client">Client</option>
+            <option value="driver">Driver</option>
+            <option value="sale_operator">Sale Operator</option>
+            <option value="warehouse_manager">Warehouse Manager</option>
           </select>
           <button className={`${s.btn} ${s.primary}`} onClick={addUser}>Add</button>
         </div>
@@ -86,9 +131,13 @@ export default function Users() {
               <td>{u.date_joined ? new Date(u.date_joined).toLocaleString() : '-'}</td>
               <td>{u.is_active ? <span className={`${s.badge} ${s.badgeActive}`}>Active</span> : <span className={`${s.badge} ${s.badgeInactive}`}>Inactive</span>}</td>
               <td>
-                {u.role === 'admin' && <span className={`${s.badge} ${s.badgeShipped}`}>Admin</span>}
-                {u.role === 'manager' && <span className={`${s.badge} ${s.badgeInfo || ''}`}>Manager</span>}
-                {u.role === 'customer' && <span className={`${s.badge} ${s.badgePaid}`}>Customer</span>}
+                {u.role === 'ceo' && <span className={`${s.badge} ${s.badgeShipped}`}>CEO</span>}
+                {u.role === 'sale_manager' && <span className={`${s.badge} ${s.badgeInfo || ''}`}>Sale Manager</span>}
+                {u.role === 'driver_manager' && <span className={`${s.badge} ${s.badgeInfo || ''}`}>Driver Manager</span>}
+                {u.role === 'client' && <span className={`${s.badge} ${s.badgePaid}`}>Client</span>}
+                {u.role === 'driver' && <span className={`${s.badge} ${s.badgeInfo || ''}`}>Driver</span>}
+                {u.role === 'sale_operator' && <span className={`${s.badge} ${s.badgeInfo || ''}`}>Sale Operator</span>}
+                {u.role === 'warehouse_manager' && <span className={`${s.badge} ${s.badgeInfo || ''}`}>Warehouse Manager</span>}
               </td>
             </tr>
           ))}

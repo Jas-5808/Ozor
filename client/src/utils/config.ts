@@ -3,7 +3,7 @@ export const config = {
   api: {
     baseUrl: import.meta.env.DEV
       ? '/api/v1'
-      : (import.meta.env.VITE_API_BASE_URL || 'https://api.ozar.uz/api/v1'),
+      : (import.meta.env.VITE_API_BASE_URL || 'https://api.ozar.uz/v1'),
     timeout: parseInt(import.meta.env.VITE_API_TIMEOUT || '10000'),
   },
   app: {
