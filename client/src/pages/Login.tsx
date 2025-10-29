@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import cn from "./style.module.scss";
 import { useAuth } from "../hooks/useAuth";
 import PhoneInput from "../components/forms/PhoneInput";
@@ -10,11 +10,13 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const { signin, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as any)?.from || "/profile";
   React.useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, from]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -23,7 +25,7 @@ export function Login() {
       const normalizedPhone = '+' + phone.replace(/\D/g, '');
       console.log('Отправляем данные:', { phone: normalizedPhone, password });
       await signin(normalizedPhone, password);
-      navigate('/profile');
+      navigate(from, { replace: true });
     } catch (err) {
       console.error('Ошибка входа:', err);
       setError(err.message);

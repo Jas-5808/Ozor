@@ -60,19 +60,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return response.data;
     } catch (err) {
       console.error("Ошибка при получении профиля:", err);
-      return null;
+      throw err;
     }
   };
   useEffect(() => {
+    let cancelled = false;
     const initializeAuth = async () => {
       const token = localStorage.getItem("access_token");
       if (token) {
-        setUser({ token });
-        await fetchUserProfile();
+        try {
+          await fetchUserProfile();
+          if (!cancelled) setUser({ token });
+        } catch (_) {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          if (!cancelled) {
+            setUser(null);
+            setProfile(null);
+          }
+        }
       }
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     };
     initializeAuth();
+    return () => { cancelled = true; };
   }, []);
   const signin = async (phone: string, password: string) => {
     try {

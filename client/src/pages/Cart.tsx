@@ -31,6 +31,8 @@ export function Cart() {
   }
 
   const total = getCartTotal();
+  const delivery = 30000;
+  const grandTotal = total + delivery;
 
   return (
     <div className="container">
@@ -45,7 +47,7 @@ export function Cart() {
 
               <div className="grid gap-3">
                 {items.map((item) => {
-                  const subtotal = item.product.refferal_price * item.quantity;
+                  const subtotal = item.product.base_price * item.quantity;
                   return (
                     <div
                       key={item.productId}
@@ -53,7 +55,7 @@ export function Cart() {
                     >
                       <div>
                         <div className="font-extrabold text-slate-900">{item.product.name}</div>
-                        <div className="text-xs text-slate-500 mt-1">Narx: {formatPrice(item.product.refferal_price)}</div>
+                        <div className="text-xs text-slate-500 mt-1">Narx: {formatPrice(item.product.base_price)}</div>
                       </div>
                       <div className="inline-flex items-center gap-2" aria-label="Miqdor">
                         <button
@@ -83,11 +85,18 @@ export function Cart() {
             <aside>
               <div className="sticky top-4 grid gap-3 p-4 bg-white border border-gray-200 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
                 <div className="flex items-center justify-between">
-                  <div className="text-slate-500 font-bold">Jami</div>
-                  <div className="text-[20px] font-black">{formatPrice(total)}</div>
+                  <div className="text-slate-500 font-bold">Mahsulotlar</div>
+                  <div className="text-[16px] font-extrabold">{formatPrice(total)}</div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="text-slate-500 font-bold">Yetkazib berish</div>
+                  <div className="text-[16px] font-extrabold">{formatPrice(delivery)}</div>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                  <div className="text-slate-700 font-black">Jami</div>
+                  <div className="text-[20px] font-black">{formatPrice(grandTotal)}</div>
                 </div>
                 <button className={`${cn.primary_btn} h-11`}>Buyurtmani rasmiylashtirish</button>
-                <div className="text-xs text-slate-500">Yetkazib berish narxi kassada hisoblanadi.</div>
               </div>
             </aside>
           </div>

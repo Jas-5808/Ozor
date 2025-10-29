@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
       return response.data;
     } catch (err) {
       console.error('Ошибка при получении профиля:', err);
-      return null;
+      throw err;
     }
   };
   useEffect(() => {
@@ -28,8 +28,18 @@ export const AuthProvider = ({ children }) => {
     const initializeAuth = async () => {
       const token = localStorage.getItem('access_token');
       if (token) {
-        setUser({ token });
-        await fetchUserProfile();
+        try {
+          await fetchUserProfile();
+          if (!cancelled) setUser({ token });
+        } catch (_) {
+          // Токен невалиден — очищаем и считаем пользователя неавторизованным
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          if (!cancelled) {
+            setUser(null);
+            setProfile(null);
+          }
+        }
       }
       if (!cancelled) setLoading(false);
     };
