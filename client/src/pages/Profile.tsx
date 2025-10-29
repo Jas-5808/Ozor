@@ -143,7 +143,7 @@ export function Profile() {
         setApiFlowsLoading(false);
       }
     };
-    if (activeTab === 'oqim' || activeTab === 'stats') loadReferrals();
+    if (activeTab === 'oqim' || activeTab === 'stats' || activeTab === 'dashboard') loadReferrals();
   }, [activeTab]);
 
   const productById = useMemo(() => {
@@ -260,7 +260,7 @@ export function Profile() {
               </div>
               <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 ring-1 ring-blue-200/40 p-4">
                 <div className="text-xs uppercase tracking-wide text-blue-600 font-semibold">Oqimlar</div>
-                <div className="text-2xl font-extrabold text-gray-900 mt-1">{flows.length}</div>
+                <div className="text-2xl font-extrabold text-gray-900 mt-1">{(apiFlows?.length || 0) + (flows?.length || 0)}</div>
                 <div className="text-xs text-gray-500">Yaratilgan referal linklar</div>
               </div>
             </div>
