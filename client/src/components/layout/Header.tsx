@@ -88,13 +88,14 @@ export function Header() {
                 </Link>
               </li>
               <li>
-                <a
-                  href="#"
+                <button
+                  type="button"
+                  onClick={() => setIsSideCatalogOpen((prev) => !prev)}
                   className="inline-flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-white/10 active:bg-white/10 transition"
                   aria-label="Каталог"
                 >
                   <img src="/icons/catalog.png" alt="" className="h-7 w-7" />
-                </a>
+                </button>
               </li>
               <li>
                 <Link
@@ -127,6 +128,7 @@ export function Header() {
               <li>
                 <Link
                   to={isAuthenticated ? "/profile" : "/login"}
+                  state={isAuthenticated ? undefined : { from: '/profile' }}
                   className="inline-flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-white/10 active:bg-white/15 transition"
                   aria-label={isAuthenticated ? "Профиль" : "Войти"}
                 >

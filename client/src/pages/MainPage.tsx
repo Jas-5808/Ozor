@@ -1,8 +1,25 @@
 import React from "react";
+import useSEO from "../hooks/useSEO";
 import ProductsList from "../components/ProductsList";
 import SimpleSlider from "../components/SimpleSlider";
 
 export function MainPage() {
+  useSEO({
+    title: "OZOR — onlayn do'kon",
+    description: "Smartfonlar, elektronika va maishiy texnika. O'zbekiston bo'ylab tez yetkazib berish.",
+    canonical: typeof window !== 'undefined' ? window.location.origin + '/' : undefined,
+    openGraph: {
+      'og:title': "OZOR — onlayn do'kon",
+      'og:description': "Smartfonlar, elektronika va maishiy texnika. O'zbekiston bo'ylab tez yetkazib berish.",
+      'og:type': 'website',
+      'og:url': typeof window !== 'undefined' ? window.location.origin + '/' : '',
+    },
+    twitter: {
+      'twitter:card': 'summary_large_image',
+      'twitter:title': "OZOR — onlayn do'kon",
+      'twitter:description': "Smartfonlar, elektronika va maishiy texnika. O'zbekiston bo'ylab tez yetkazib berish."
+    }
+  });
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="container mx-auto px-4 py-6">

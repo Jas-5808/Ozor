@@ -3,8 +3,14 @@ import cn from "./style.module.scss";
 import ProductCard from "../components/ui/ProductCard";
 import { useApp } from "../context/AppContext";
 import { useProducts } from "../hooks/useProducts";
+import useSEO from "../hooks/useSEO";
 
 export function Favorites() {
+  useSEO({
+    title: "Saralangan — OZOR",
+    robots: "noindex,nofollow",
+    canonical: typeof window !== 'undefined' ? window.location.origin + '/favorites' : undefined,
+  });
   const { state } = useApp();
   const { products, loading, error, refetch } = useProducts();
 

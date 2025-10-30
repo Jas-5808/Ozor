@@ -10,6 +10,7 @@ import { useApp } from "../context/AppContext";
 import ProductCard from "../components/ui/ProductCard";
 import PhoneInput from "../components/forms/PhoneInput";
 import OrderDialog from "../components/OrderDialog";
+import useSEO from "../hooks/useSEO";
 
 type LocationState = { product?: ProductType };
 
@@ -119,6 +120,56 @@ export function Product() {
     return null;
   }, [productFromState, fetchedProduct]);
   const { addToCart, state: appState } = useApp();
+
+  // SEO
+  const primaryImage = useMemo(() => {
+    const fromMedia = getVariantMainImage((selectedVariant as any)?.variant_media ? (selectedVariant as any).variant_media : (product as any)?.variant_media) || null;
+    const main = product ? getProductImageUrl(product.main_image) : null;
+    return (fromMedia || main) || undefined;
+  }, [selectedVariant, product]);
+
+  useSEO(useMemo(()=>{
+    const title = product ? `${product.product_name} — OZOR` : 'Tovar — OZOR';
+    const desc = product?.product_description ? product.product_description.slice(0, 200) : 'Tovar tavsifi.';
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = origin + (typeof window !== 'undefined' ? window.location.pathname + window.location.search : '');
+    const price = (selectedVariant?.price ?? product?.price ?? 0) || 0;
+    const inStock = selectedVariant ? (selectedVariant.stock > 0) : (product ? product.stock > 0 : false);
+    const jsonLd: any = product ? {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: product.product_name,
+      description: product.product_description || '',
+      image: primaryImage ? [primaryImage] : undefined,
+      sku: selectedVariant?.sku || product.variant_sku,
+      offers: {
+        '@type': 'Offer',
+        priceCurrency: 'UZS',
+        price: String(price || 0),
+        availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        url
+      }
+    } : undefined;
+    return {
+      title,
+      description: desc,
+      canonical: url,
+      openGraph: {
+        'og:type': 'product',
+        'og:title': title,
+        'og:description': desc,
+        'og:url': url,
+        ...(primaryImage ? { 'og:image': primaryImage } : {}),
+      },
+      twitter: {
+        'twitter:card': primaryImage ? 'summary_large_image' : 'summary',
+        'twitter:title': title,
+        'twitter:description': desc,
+        ...(primaryImage ? { 'twitter:image': primaryImage } : {}),
+      },
+      jsonLd
+    };
+  }, [product, selectedVariant, primaryImage]));
 
   const toCityCode = (value?: string): string => {
     if (!value) return "";

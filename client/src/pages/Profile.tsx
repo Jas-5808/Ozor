@@ -7,6 +7,7 @@ import cn from "./profile.module.scss";
 import { formatPrice, getProductImageUrl, getVariantMainImage } from "../utils/helpers";
 import { useFlows } from "../hooks/useFlows";
 import SkeletonGrid from "../components/SkeletonGrid";
+import useSEO from "../hooks/useSEO";
 
 export function Profile() {
   const { profile, isAuthenticated, logout, fetchUserProfile } =
@@ -44,6 +45,13 @@ export function Profile() {
   }>({ open: false, title: "", agree: false, createdLink: null });
   const [userBalance, setUserBalance] = useState<number | null>(null);
   const [balanceLoading, setBalanceLoading] = useState<boolean>(false);
+
+  // SEO: закрыть личный кабинет от индексации
+  useSEO({
+    title: "Profil — OZOR",
+    robots: "noindex,nofollow",
+    canonical: typeof window !== 'undefined' ? window.location.origin + '/profile' : undefined,
+  });
 
   useEffect(() => {
     if (isAuthenticated && !profile) {
@@ -133,7 +141,8 @@ export function Profile() {
   useEffect(() => {
     const loadReferrals = async () => {
       try {
-        setApiFlowsLoading(true); setApiFlowsError(null);
+        setApiFlowsLoading(true);
+        setApiFlowsError(null);
         const res = await shopAPI.getReferrals();
         const data = Array.isArray(res.data) ? res.data : (res.data?.users || res.data?.data || []);
         setApiFlows(data);
@@ -143,8 +152,12 @@ export function Profile() {
         setApiFlowsLoading(false);
       }
     };
-    if (activeTab === 'oqim' || activeTab === 'stats') loadReferrals();
-  }, [activeTab]);
+    if (!isAuthenticated) return;
+    // Загружаем ссылки один раз при входе в профиль
+    if (apiFlows.length === 0) {
+      loadReferrals();
+    }
+  }, [isAuthenticated]);
 
   const productById = useMemo(() => {
     const map = new Map<string, any>();
@@ -253,14 +266,22 @@ export function Profile() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="rounded-xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 ring-1 ring-indigo-200/40 p-4">
                 <div className="text-xs uppercase tracking-wide text-indigo-600 font-semibold">Hisobingizda</div>
-                <div className="text-2xl font-extrabold text-gray-900 mt-1">
-                  {formatPrice((userBalance ?? profile?.balance ?? 0), "UZS")}
-                </div>
+                {balanceLoading ? (
+                  <div className="mt-2 h-7 w-28 bg-slate-200 rounded animate-pulse" />
+                ) : (
+                  <div className="text-2xl font-extrabold text-gray-900 mt-1">
+                    {formatPrice((userBalance ?? profile?.balance ?? 0), "UZS")}
+                  </div>
+                )}
                 <div className="text-xs text-gray-500">Taxminiy balans</div>
               </div>
               <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 ring-1 ring-blue-200/40 p-4">
                 <div className="text-xs uppercase tracking-wide text-blue-600 font-semibold">Oqimlar</div>
-                <div className="text-2xl font-extrabold text-gray-900 mt-1">{flows.length}</div>
+                {apiFlowsLoading ? (
+                  <div className="mt-2 h-7 w-12 bg-slate-200 rounded animate-pulse" />
+                ) : (
+                  <div className="text-2xl font-extrabold text-gray-900 mt-1">{(apiFlows?.length || 0) + (flows?.length || 0)}</div>
+                )}
                 <div className="text-xs text-gray-500">Yaratilgan referal linklar</div>
               </div>
             </div>
