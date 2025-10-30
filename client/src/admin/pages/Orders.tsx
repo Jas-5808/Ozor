@@ -43,6 +43,7 @@ export default function Orders() {
   const [ordersLimit, setOrdersLimit] = useState(20);
   const [ccPage, setCcPage] = useState(1);
   const [ccLimit, setCcLimit] = useState(20);
+  const [ccStatus, setCcStatus] = useState<string>('');
 
   useEffect(()=>{
     const id = setInterval(()=> setCcTick(t=>t+1), 1000);
@@ -135,6 +136,13 @@ export default function Orders() {
     return filtered.slice(start, start + ordersLimit);
   }, [filtered, ordersPage, ordersLimit]);
 
+  const filteredCc = useMemo(()=>{
+    const list = ccOrders || [];
+    if (!ccStatus) return list;
+    const st = ccStatus.toLowerCase();
+    return list.filter((o:any)=> String(o?.status||'').toLowerCase() === st);
+  }, [ccOrders, ccStatus]);
+
   useEffect(()=>{ adminStore.save('admin_orders', items); }, [items]);
 
   // debounce search input for large datasets
@@ -217,8 +225,7 @@ export default function Orders() {
       }
     };
     loadCc();
-    const id = setInterval(loadCc, 10000);
-    return ()=>{ ignore = true; clearInterval(id); };
+    return ()=>{ ignore = true; };
   }, [isSale]);
 
   useEffect(()=>{
@@ -292,11 +299,10 @@ export default function Orders() {
           }}>SALE</span>
         )}
       </div>
-      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12}}>
+      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12, gap:12, flexWrap:'wrap'}}>
         <div style={{fontWeight:700}}>Orders</div>
-        <div style={{display:'flex', gap:8}}>
-          <input className={s.input} placeholder="Search by ID/Order #/Customer" value={q} onChange={(e)=>setQ(e.target.value)} />
-          <select className={s.input} value={status} onChange={(e)=>setStatus(e.target.value)}>
+        <div style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center'}}>
+          <select className={s.input} value={status} onChange={(e)=>setStatus(e.target.value)} style={{height:32, borderRadius:10}}>
             <option value="">Все статусы</option>
             <option value="pending">В ожидании</option>
             <option value="accepted">Принят</option>
@@ -309,6 +315,7 @@ export default function Orders() {
             <option value="refunded">Возврат средств</option>
             <option value="paid">Оплачен</option>
           </select>
+          <input className={s.input} placeholder="Search by ID/Order #/Customer" value={q} onChange={(e)=>setQ(e.target.value)} style={{minWidth:240}} />
         </div>
       </div>
       {notice && (
@@ -326,7 +333,7 @@ export default function Orders() {
       <div style={{overflowX:'auto'}}>
       <table className={s.table}>
         <thead>
-          <tr style={{background:'#f8fafc'}}><th>Order #</th><th>Customer</th><th>Total</th><th>Status</th><th>City</th><th>Time</th><th>Action</th></tr>
+          <tr style={{background:'#f8fafc', position:'sticky', top:0, zIndex:1}}><th>Order #</th><th>Customer</th><th>Total</th><th>Status</th><th>City</th><th>Time</th><th>Action</th></tr>
         </thead>
         <tbody>
           {loading && Array.from({length: Math.min(ordersLimit, 10)}).map((_, i)=> (
@@ -439,13 +446,32 @@ export default function Orders() {
             marginBottom:8
           }}>
             <div style={{fontWeight:900}}>Mening buyurtmalarim (Call-center)</div>
-            <span style={{fontSize:12, color:'#64748b'}}>Автообновление: 10s</span>
+            <div style={{display:'flex', gap:8, alignItems:'center'}}>
+              <select
+                className={s.input}
+                value={ccStatus}
+                onChange={(e)=>{ setCcPage(1); setCcStatus(e.target.value); }}
+                style={{height:32, borderRadius:10}}
+              >
+                <option value="">Barcha statuslar</option>
+                <option value="pending">В ожидании</option>
+                <option value="accepted">Принят</option>
+                <option value="packing">Упаковывается</option>
+                <option value="packed">Упакован</option>
+                <option value="processing">В обработке</option>
+                <option value="shipped">Отправлен</option>
+                <option value="delivered">Доставлен</option>
+                <option value="cancelled">Отменён</option>
+                <option value="refunded">Возврат</option>
+                <option value="paid">Оплачен</option>
+              </select>
+            </div>
           </div>
           {ccLoading && <div style={{fontSize:12, color:'#64748b', marginBottom:8}}>Loading…</div>}
           <div style={{overflowX:'auto'}}>
           <table className={s.table}>
             <thead>
-              <tr style={{background:'#f8fafc'}}>
+              <tr style={{background:'#f8fafc', position:'sticky', top:0, zIndex:1}}>
                 <th>Order #</th>
                 <th>Phone</th>
                 <th>City</th>
@@ -470,7 +496,7 @@ export default function Orders() {
                   </td>
                 </tr>
               ))}
-              {!ccLoading && (ccOrders || []).slice((ccPage-1)*ccLimit, (ccPage-1)*ccLimit + ccLimit).map((o:any)=> (
+              {!ccLoading && (filteredCc || []).slice((ccPage-1)*ccLimit, (ccPage-1)*ccLimit + ccLimit).map((o:any)=> (
                 <tr key={o.id}>
                   <td>{o.order_number || '—'}</td>
                   <td>{o.client_phone || '—'}</td>
@@ -622,15 +648,15 @@ export default function Orders() {
                   </td>
                 </tr>
               ))}
-              {(!ccOrders || ccOrders.length===0) && (
+              {(!filteredCc || filteredCc.length===0) && (
                 <tr><td colSpan={10} style={{textAlign:'center', color:'#64748b'}}>Hali buyurtmalar yo'q</td></tr>
               )}
             </tbody>
           </table>
           </div>
-          {!ccLoading && ccOrders && ccOrders.length>0 && (
+          {!ccLoading && filteredCc && filteredCc.length>0 && (
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8}}>
-              <div style={{fontSize:12, color:'#64748b'}}>Page {ccPage} of {Math.max(1, Math.ceil(ccOrders.length / ccLimit))}</div>
+              <div style={{fontSize:12, color:'#64748b'}}>Page {ccPage} of {Math.max(1, Math.ceil(filteredCc.length / ccLimit))}</div>
               <div style={{display:'flex', gap:8, alignItems:'center'}}>
                 <select className={s.input} value={ccLimit} onChange={(e)=>{ setCcPage(1); setCcLimit(Number(e.target.value)||20); }}>
                   <option value={10}>10</option>
@@ -640,7 +666,7 @@ export default function Orders() {
                 </select>
                 <div className={s.actions}>
                   <button className={`${s.btn} ${s.muted}`} disabled={ccPage<=1} onClick={()=>setCcPage(p=>Math.max(1,p-1))}>Prev</button>
-                  <button className={`${s.btn} ${s.muted}`} disabled={ccPage>=Math.ceil((ccOrders.length||0)/ccLimit)} onClick={()=>setCcPage(p=>Math.min(Math.ceil((ccOrders.length||0)/ccLimit)||1,p+1))}>Next</button>
+                  <button className={`${s.btn} ${s.muted}`} disabled={ccPage>=Math.ceil((filteredCc.length||0)/ccLimit)} onClick={()=>setCcPage(p=>Math.min(Math.ceil((filteredCc.length||0)/ccLimit)||1,p+1))}>Next</button>
                 </div>
               </div>
             </div>
