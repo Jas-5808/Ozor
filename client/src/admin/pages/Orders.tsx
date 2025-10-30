@@ -473,6 +473,7 @@ export default function Orders() {
             <thead>
               <tr style={{background:'#f8fafc', position:'sticky', top:0, zIndex:1}}>
                 <th>Order #</th>
+                <th>Full name</th>
                 <th>Phone</th>
                 <th>City</th>
                 <th>Region</th>
@@ -487,9 +488,9 @@ export default function Orders() {
             <tbody>
               {ccLoading && Array.from({length: Math.min(ccLimit, 8)}).map((_, i)=> (
                 <tr key={`cc-sk-${i}`}>
-                  <td colSpan={10}>
-                    <div style={{display:'grid', gridTemplateColumns:'140px 160px 160px 160px 100px 120px 140px 200px 220px 320px', gap:12}}>
-                      {Array.from({length:10}).map((__, j)=> (
+                  <td colSpan={11}>
+                    <div style={{display:'grid', gridTemplateColumns:'140px 200px 160px 160px 160px 100px 120px 140px 200px 220px 320px', gap:12}}>
+                      {Array.from({length:11}).map((__, j)=> (
                         <div key={j} style={{height:16, background:'#e5e7eb', borderRadius:8}} />
                       ))}
                     </div>
@@ -499,6 +500,7 @@ export default function Orders() {
               {!ccLoading && (filteredCc || []).slice((ccPage-1)*ccLimit, (ccPage-1)*ccLimit + ccLimit).map((o:any)=> (
                 <tr key={o.id}>
                   <td>{o.order_number || '—'}</td>
+                  <td>{o.full_name || '—'}</td>
                   <td>{o.client_phone || '—'}</td>
                   <td>
                     <select
@@ -649,7 +651,7 @@ export default function Orders() {
                 </tr>
               ))}
               {(!filteredCc || filteredCc.length===0) && (
-                <tr><td colSpan={10} style={{textAlign:'center', color:'#64748b'}}>Hali buyurtmalar yo'q</td></tr>
+                <tr><td colSpan={11} style={{textAlign:'center', color:'#64748b'}}>Hali buyurtmalar yo'q</td></tr>
               )}
             </tbody>
           </table>
