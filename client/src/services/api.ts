@@ -140,6 +140,12 @@ export const shopAPI = {
   })(),
   guestOrder: (payload) => apiClient.post(`/shop/guest/order`, payload),
   getAllOrders: () => apiClient.get(`/shop/orders/all`),
+  // Call-center endpoints
+  takeOrderCallCenter: (orderId: string) =>
+    apiClient.post(`/shop/order/call-center`, null, { params: { order_id: orderId } }),
+  getCallCenterOrders: () => apiClient.get(`/shop/orders/call-center`),
+  updateOrderLocation: (orderId: string, payload: { city?: string; region?: string; order_comment?: string; status?: string; }) =>
+    apiClient.put(`/shop/order/${orderId}/location`, payload),
   // Referral links
   getReferrals: () => apiClient.get(`/shop/referral`),
   createReferral: (payload) => apiClient.post(`/shop/referral`, payload),
@@ -231,6 +237,7 @@ export const userAPI = {
     };
   })(),
   getUsersInfo: () => apiClient.get("/profile/user-info"),
+  getUserById: (userId: string) => apiClient.get(`/users/${userId}`),
   listUsers: (params = {}) => apiClient.get("/users/", { params }),
   updateUserRole: (userId, role) => apiClient.patch(`/users/${userId}/role`, { role }),
   updateProfile: (data) => {

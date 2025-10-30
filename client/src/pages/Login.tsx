@@ -3,7 +3,13 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import cn from "./style.module.scss";
 import { useAuth } from "../hooks/useAuth";
 import PhoneInput from "../components/forms/PhoneInput";
+import useSEO from "../hooks/useSEO";
 export function Login() {
+  useSEO({
+    title: "Kirish — OZOR",
+    robots: "noindex,nofollow",
+    canonical: typeof window !== 'undefined' ? window.location.origin + '/login' : undefined,
+  });
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");

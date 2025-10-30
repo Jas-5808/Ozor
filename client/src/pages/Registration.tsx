@@ -6,8 +6,14 @@ import TelegramModal from "../components/TelegramModal";
 import PasswordModal from "../components/PasswordModal";
 import PhoneInput from "../components/forms/PhoneInput";
 import { authAPI } from "../services/api";
+import useSEO from "../hooks/useSEO";
 
 export function Registration() {
+  useSEO({
+    title: "Ro'yxatdan o'tish — OZOR",
+    robots: "noindex,nofollow",
+    canonical: typeof window !== 'undefined' ? window.location.origin + '/registration' : undefined,
+  });
   const [phone, setPhone] = useState("");
   const [cleanPhone, setCleanPhone] = useState("");
   const [isPhoneValid, setIsPhoneValid] = useState(false);

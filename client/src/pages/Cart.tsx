@@ -2,8 +2,14 @@ import React from "react";
 import cn from "./style.module.scss";
 import { useApp } from "../context/AppContext";
 import { formatPrice } from "../utils/helpers";
+import useSEO from "../hooks/useSEO";
 
 export function Cart() {
+  useSEO({
+    title: "Savat — OZOR",
+    robots: "noindex,nofollow",
+    canonical: typeof window !== 'undefined' ? window.location.origin + '/cart' : undefined,
+  });
   const { state, updateCartItem, removeFromCart, clearCart, getCartTotal } = useApp();
   const items = state.cart;
 

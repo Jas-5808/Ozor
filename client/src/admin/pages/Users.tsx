@@ -12,11 +12,25 @@ const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'driver_manager', label: 'Driver Manager' },
   { value: 'client', label: 'Client' },
   { value: 'driver', label: 'Driver' },
-  { value: 'sale_operator', label: 'Sale Operator' },
+  { value: 'sale', label: 'Sale' },
   { value: 'warehouse_manager', label: 'Warehouse Manager' },
   // legacy/fallback option to avoid breaking select when existing users have admin
   { value: 'admin', label: 'Admin' },
 ];
+
+const apiRoleToUiRole = (role: string): string => {
+  const r = String(role || '').toLowerCase();
+  if (['admin','staff'].includes(r)) return 'admin';
+  if (r === 'sale_operator') return 'sale';
+  return r;
+};
+
+const uiRoleToApiRole = (role: string): string => {
+  const r = String(role || '').toLowerCase();
+  if (r === 'sale') return 'sale';
+  if (r === 'admin') return 'admin';
+  return r;
+};
 
 export default function Users() {
   const [items, setItems] = useState<User[]>(adminStore.load<User[]>('admin_users', []));
@@ -28,6 +42,8 @@ export default function Users() {
   const [debouncedQ, setDebouncedQ] = useState('');
   const [loading, setLoading] = useState(false);
   const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
+  const [forbidden, setForbidden] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const filtered = items;
 
   const addUser = () => {
@@ -48,7 +64,7 @@ export default function Users() {
       try {
         setLoading(true);
         const params:any = { page, limit };
-        if (role) params.role = role;
+        if (role) params.role = uiRoleToApiRole(role);
         if (debouncedQ) params.search = debouncedQ;
         const res = await userAPI.listUsers(params);
         if (ignore) return;
@@ -56,7 +72,7 @@ export default function Users() {
         const data = payload.users || [];
         const normalized: User[] = data.map((u:any)=> {
           const apiRole = String(u.role || '').toLowerCase();
-          const mappedRole = (['admin','staff'].includes(apiRole)) ? 'admin' : apiRole;
+          const mappedRole = apiRoleToUiRole(apiRole);
           return {
             id: u.id,
             name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || (u.username || u.email || u.phone_number || 'User'),
@@ -67,10 +83,19 @@ export default function Users() {
             is_active: u.is_active,
           };
         });
+        setForbidden(false);
+        setErrorMsg(null);
         setItems(normalized);
         setTotalPages(payload.total_pages || 1);
-      } catch (e) {
-        // keep local
+      } catch (e:any) {
+        // Обработка 403: доступ только для CEO
+        if (!ignore && e?.response?.status === 403) {
+          setForbidden(true);
+          const msg = e?.response?.data?.detail || e?.response?.data?.message || 'Доступ разрешён только для CEO';
+          setErrorMsg(msg);
+          setItems([]);
+          setTotalPages(1);
+        }
       } finally { setLoading(false); }
     };
     fetchUsers();
@@ -82,14 +107,14 @@ export default function Users() {
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12}}>
         <div style={{fontWeight:700}}>Users</div>
         <div style={{display:'flex', gap:8}}>
-          <input className={s.input} placeholder="Search name/email/username" value={q} onChange={(e)=>{ setPage(1); setQ(e.target.value); }} />
-          <select className={s.input} value={role} onChange={(e)=>{ setPage(1); setRole(e.target.value); }}>
+          <input className={s.input} placeholder="Search name/email/username" value={q} onChange={(e)=>{ setPage(1); setQ(e.target.value); }} disabled={forbidden} />
+          <select className={s.input} value={role} onChange={(e)=>{ setPage(1); setRole(e.target.value); }} disabled={forbidden}>
             <option value="">All roles</option>
             {ROLE_OPTIONS.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <select className={s.input} value={limit} onChange={(e)=>{ setPage(1); setLimit(Number(e.target.value)||10); }}>
+          <select className={s.input} value={limit} onChange={(e)=>{ setPage(1); setLimit(Number(e.target.value)||10); }} disabled={forbidden}>
             <option value={10}>10</option>
             <option value={20}>20</option>
             <option value={50}>50</option>
@@ -97,6 +122,19 @@ export default function Users() {
           </select>
         </div>
       </div>
+      {errorMsg && (
+        <div style={{
+          marginBottom: 12,
+          padding: '10px 12px',
+          border: '1px solid #fecaca',
+          background: '#fef2f2',
+          color: '#7f1d1d',
+          borderRadius: 12,
+          fontWeight: 600,
+        }}>
+          {errorMsg}
+        </div>
+      )}
       {loading && <div style={{fontSize:12, color:'#64748b', marginBottom:8}}>Loading…</div>}
       <table className={s.table}>
         <thead>
@@ -122,7 +160,7 @@ export default function Users() {
                       const newRole = e.target.value;
                       try {
                         setUpdatingRoleId(u.id);
-                        await userAPI.updateUserRole(u.id, newRole);
+                        await userAPI.updateUserRole(u.id, uiRoleToApiRole(newRole));
                         setItems(prev => prev.map(p => p.id===u.id ? { ...p, role: newRole } : p));
                       } catch {}
                       finally { setUpdatingRoleId(null); }
