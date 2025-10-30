@@ -25,6 +25,7 @@ export default function OrderDialog({ open, onClose, product, variant, deliveryP
   const price = variant?.price ?? product.price ?? 0;
   const { state } = useApp();
   const hasCity = Boolean(state.location.data?.city);
+  const hasSelectedAddress = Boolean(state.delivery?.selectedAddress);
   const [fallbackCityCode, setFallbackCityCode] = useState<string>("");
   const [stage, setStage] = useState<'review' | 'location'>("review");
 
@@ -118,7 +119,7 @@ export default function OrderDialog({ open, onClose, product, variant, deliveryP
                 disabled={busy || success}
                 onClick={async ()=>{
                   if (busy || success) return;
-                  if (!hasCity) {
+                  if (!hasCity || !hasSelectedAddress) {
                     setStage('location');
                     return;
                   }

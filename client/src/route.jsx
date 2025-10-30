@@ -16,8 +16,15 @@ import { AdminLayout } from './admin';
 import SaleLayout from './admin/SaleLayout';
 import AdminSkeleton from './admin/AdminSkeleton';
 
+const AdminDashboard = lazy(()=> import('./admin/pages/Dashboard'));
 const AdminOrders = lazy(()=> import('./admin/pages/Orders'));
-// other admin pages disabled
+const AdminUsers = lazy(()=> import('./admin/pages/Users'));
+const AdminProducts = lazy(()=> import('./admin/pages/Products'));
+const AdminWarehouse = lazy(()=> import('./admin/pages/Warehouse'));
+const AdminCategories = lazy(()=> import('./admin/pages/Categories'));
+const AdminBanners = lazy(()=> import('./admin/pages/Banners'));
+const AdminAudit = lazy(()=> import('./admin/pages/Audit'));
+// other admin pages enabled
 import { useAuth } from './hooks/useAuth';
 import { userAPI } from './services/api';
 
@@ -122,8 +129,14 @@ export const router = createBrowserRouter([
     ),
     errorElement: <ErrorPage />,
     children: [
+      { path: "/admin", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminDashboard /></Suspense> },
       { path: "/admin/orders", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminOrders /></Suspense> },
-      { path: "/admin", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminOrders /></Suspense> },
+      { path: "/admin/users", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminUsers /></Suspense> },
+      { path: "/admin/products", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminProducts /></Suspense> },
+      { path: "/admin/warehouse", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminWarehouse /></Suspense> },
+      { path: "/admin/categories", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminCategories /></Suspense> },
+      { path: "/admin/banners", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminBanners /></Suspense> },
+      { path: "/admin/audit", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminAudit /></Suspense> },
     ],
   },
   {

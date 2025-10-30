@@ -1,20 +1,87 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 // @ts-ignore
 import s from '../AdminLayout.module.scss';
+import { shopAPI, userAPI } from '../../services/api';
 
 export default function Dashboard() {
-  // мок-статы для карточек
-  const warehouseStats = useMemo(()=> ({ total: 25, low: 1, out: 0, amount: 5489801 }), []);
-  const ordersStats = useMemo(()=> ({ total: 316, avg: 51987, sum: 16427956, pending: 99 }), []);
-  const recent = useMemo(()=> (
-    [
-      { id: 333, name: 'Комплектующие', client: 'jasur sadicov', status:'Ожидает', sum: 55998, date: '27 сент. 2025 г.' },
-      { id: 330, name: 'Комплектующие', client: 'jasur sadicov', status:'Отменен', sum: 151995, date: '15 сент. 2025 г.' },
-      { id: 329, name: 'Комплектующие', client: 'jasur sadicov', status:'Отменен', sum: 49999, date: '13 сент. 2025 г.' },
-      { id: 328, name: 'Комплектующие', client: 'jasur sadicov', status:'Доставлен', sum: 443986, date: '28 авг. 2025 г.' },
-      { id: 327, name: 'Комплектующие', client: 'Жасур Садыков', status:'Отменен', sum: 144993, date: '28 авг. 2025 г.' },
-    ]
-  ), []);
+  const [loading, setLoading] = useState(false);
+  const [warehouseStats, setWarehouseStats] = useState(()=> ({ total: 0, low: 0, out: 0, amount: 0 }));
+  const [ordersStats, setOrdersStats] = useState(()=> ({ total: 0, avg: 0, sum: 0, pending: 0 }));
+  const [recent, setRecent] = useState<Array<{ id: string | number; name: string; client: string; status: string; sum: number; date: string }>>([]);
+
+  // helper: normalize orders like in Orders.tsx
+  const normalizeOrders = (data: any[]) => data.map((o:any)=> {
+    const first = (o.buyer_firstname ?? '').trim();
+    const last = (o.buyer_lastname ?? '').trim();
+    const full = (o.full_name ?? '').trim();
+    const byNames = (first || last) ? `${first} ${last}`.trim() : '';
+    const customer = byNames || full || (o.order_comment || '').trim() || 'Guest';
+    const totalPrice = Number(o.total_price || o.total || 0) || 0;
+    const created = o.created_at || o.created || o.order_date || o.date || o.createdAt || null;
+    return {
+      id: o.order_id || o.id,
+      customer,
+      total: totalPrice,
+      status: String(o.status || 'pending').toLowerCase(),
+      order_number: o.order_number || o.number || o.code || '',
+      created_at: created,
+      name: (o.product_name || o.title || '—') as string,
+    };
+  });
+
+  useEffect(()=>{
+    let ignore = false;
+    const load = async ()=>{
+      try {
+        setLoading(true);
+        // fetch in parallel
+        const [ordersRes, productsRes, categoriesRes] = await Promise.all([
+          shopAPI.getAllOrders().catch(()=> ({ data: [] } as any)),
+          shopAPI.getProducts({ limit: 1000 }).catch(()=> ({ data: [] } as any)),
+          shopAPI.getCategories().catch(()=> ({ data: [] } as any)),
+        ]);
+
+        // Orders
+        const ordersRaw = Array.isArray(ordersRes.data) ? ordersRes.data : (ordersRes.data?.results || ordersRes.data?.data || []);
+        const orders = normalizeOrders(ordersRaw || []);
+        const total = orders.length;
+        const sum = orders.reduce((acc, o:any)=> acc + (Number(o.total)||0), 0);
+        const pending = orders.filter((o:any)=> o.status === 'pending').length;
+        const avg = total ? Math.round(sum / total) : 0;
+        if (!ignore) {
+          setOrdersStats({ total, avg, sum, pending });
+          const sortedRecent = [...orders].sort((a:any,b:any)=>{
+            const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return tb - ta;
+          }).slice(0, 5).map(o=> ({
+            id: o.id,
+            name: o.order_number || o.name || '—',
+            client: o.customer,
+            status: o.status === 'pending' ? 'Ожидает' : (o.status === 'cancelled' ? 'Отменен' : (o.status === 'delivered' ? 'Доставлен' : 'Подтвержден')),
+            sum: o.total || 0,
+            date: o.created_at ? new Date(o.created_at).toLocaleString('ru-RU') : '—'
+          }));
+          setRecent(sortedRecent);
+        }
+
+        // Products / Warehouse
+        const productsRaw = Array.isArray(productsRes.data) ? productsRes.data : (productsRes.data?.results || productsRes.data?.data || []);
+        const totalProducts = (productsRaw || []).length;
+        const out = (productsRaw || []).filter((p:any)=> Number(p.stock||0) <= 0).length;
+        const low = (productsRaw || []).filter((p:any)=> Number(p.stock||0) > 0 && Number(p.stock||0) <= 5).length;
+        const amount = (productsRaw || []).reduce((acc:number, p:any)=> acc + (Number(p.price||0) * Number(p.stock||0)), 0);
+        if (!ignore) setWarehouseStats({ total: totalProducts, low, out, amount });
+
+        // Categories are not shown numerically here, but fetched to warm cache
+        void categoriesRes;
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    };
+    load();
+    return ()=>{ ignore = true; };
+  }, []);
 
   const badge = (status: string) => {
     const map: Record<string, string> = {
@@ -71,7 +138,7 @@ export default function Dashboard() {
               <div style={{opacity:.7, fontSize:12}}>Всего товаров</div>
             </div>
             <div>
-              <div style={{color:'#059669', fontSize:18, fontWeight:800}}>{warehouseStats.amount.toLocaleString()} ₽</div>
+              <div style={{color:'#059669', fontSize:18, fontWeight:800}}>{warehouseStats.amount.toLocaleString()} so`m</div>
               <div style={{opacity:.7, fontSize:12}}>Общая стоимость</div>
             </div>
             <div>
@@ -92,11 +159,11 @@ export default function Dashboard() {
               <div style={{opacity:.7, fontSize:12}}>Всего заказов</div>
             </div>
             <div>
-              <div style={{color:'#059669', fontSize:18, fontWeight:800}}>{ordersStats.avg.toLocaleString()} ₽</div>
+              <div style={{color:'#059669', fontSize:18, fontWeight:800}}>{ordersStats.avg.toLocaleString()} so`m</div>
               <div style={{opacity:.7, fontSize:12}}>Средний чек</div>
             </div>
             <div>
-              <div style={{color:'#16a34a', fontSize:18, fontWeight:800}}>{ordersStats.sum.toLocaleString()} ₽</div>
+              <div style={{color:'#16a34a', fontSize:18, fontWeight:800}}>{ordersStats.sum.toLocaleString()} so`m</div>
               <div style={{opacity:.7, fontSize:12}}>Общая сумма</div>
             </div>
             <div>
@@ -126,7 +193,7 @@ export default function Dashboard() {
                 <td>#{r.id}<div style={{opacity:.65, fontSize:12}}>{r.name}</div></td>
                 <td>{r.client}</td>
                 <td><span className={badge(r.status)}>{r.status}</span></td>
-                <td>{r.sum.toLocaleString()} ₽</td>
+                <td>{r.sum.toLocaleString()} so`m</td>
                 <td>{r.date}</td>
               </tr>
             ))}
