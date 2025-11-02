@@ -7,7 +7,7 @@ import useSEO from "../hooks/useSEO";
 
 export function Favorites() {
   useSEO({
-    title: "Saralangan — OZOR",
+    title: "Saralangan — OZAR",
     robots: "noindex,nofollow",
     canonical: typeof window !== 'undefined' ? window.location.origin + '/favorites' : undefined,
   });

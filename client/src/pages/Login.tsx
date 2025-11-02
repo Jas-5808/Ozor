@@ -6,7 +6,7 @@ import PhoneInput from "../components/forms/PhoneInput";
 import useSEO from "../hooks/useSEO";
 export function Login() {
   useSEO({
-    title: "Kirish — OZOR",
+    title: "Kirish — OZAR",
     robots: "noindex,nofollow",
     canonical: typeof window !== 'undefined' ? window.location.origin + '/login' : undefined,
   });

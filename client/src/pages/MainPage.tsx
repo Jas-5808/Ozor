@@ -5,18 +5,18 @@ import SimpleSlider from "../components/SimpleSlider";
 
 export function MainPage() {
   useSEO({
-    title: "OZOR — onlayn do'kon",
+    title: "OZAR — onlayn do'kon",
     description: "Smartfonlar, elektronika va maishiy texnika. O'zbekiston bo'ylab tez yetkazib berish.",
     canonical: typeof window !== 'undefined' ? window.location.origin + '/' : undefined,
     openGraph: {
-      'og:title': "OZOR — onlayn do'kon",
+      'og:title': "OZAR — onlayn do'kon",
       'og:description': "Smartfonlar, elektronika va maishiy texnika. O'zbekiston bo'ylab tez yetkazib berish.",
       'og:type': 'website',
       'og:url': typeof window !== 'undefined' ? window.location.origin + '/' : '',
     },
     twitter: {
       'twitter:card': 'summary_large_image',
-      'twitter:title': "OZOR — onlayn do'kon",
+      'twitter:title': "OZAR — onlayn do'kon",
       'twitter:description': "Smartfonlar, elektronika va maishiy texnika. O'zbekiston bo'ylab tez yetkazib berish."
     }
   });

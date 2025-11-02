@@ -13,7 +13,7 @@ export default function AdminLayout() {
     <div className={s.root}>
       {/* sidebar removed in top-nav layout */}
       <header className={s.header}>
-        <div className={s.brand}>Ozor Admin</div>
+        <div className={s.brand}>Ozar Admin</div>
         <nav className={s.topnav}>
           {!isSale && (
             <>

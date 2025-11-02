@@ -10,7 +10,7 @@ import useSEO from "../hooks/useSEO";
 
 export function Registration() {
   useSEO({
-    title: "Ro'yxatdan o'tish — OZOR",
+    title: "Ro'yxatdan o'tish — OZAR",
     robots: "noindex,nofollow",
     canonical: typeof window !== 'undefined' ? window.location.origin + '/registration' : undefined,
   });

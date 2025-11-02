@@ -51,7 +51,7 @@ export function Profile() {
 
   // SEO: закрыть личный кабинет от индексации
   useSEO({
-    title: "Profil — OZOR",
+    title: "Profil — OZAR",
     robots: "noindex,nofollow",
     canonical: typeof window !== 'undefined' ? window.location.origin + '/profile' : undefined,
   });

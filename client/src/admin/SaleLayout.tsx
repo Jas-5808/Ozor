@@ -9,7 +9,7 @@ export default function SaleLayout() {
   return (
     <div className={s.root}>
       <header className={s.header}>
-        <div className={s.brand}>Ozor Sale</div>
+        <div className={s.brand}>Ozar Sale</div>
         <nav className={s.topnav}>
           <NavLink to="/sale/orders" className={({isActive})=> isActive ? `${s.topnavLink} ${s.topnavActive}` : s.topnavLink}>Orders</NavLink>
         </nav>

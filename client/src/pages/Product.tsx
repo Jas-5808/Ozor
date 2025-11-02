@@ -165,7 +165,7 @@ export function Product() {
   }, [selectedVariant, product]);
 
   useSEO(useMemo(()=>{
-    const title = product ? `${product.product_name} — OZOR` : 'Tovar — OZOR';
+    const title = product ? `${product.product_name} — OZAR` : 'Tovar — OZAR';
     const desc = product?.product_description ? product.product_description.slice(0, 200) : 'Tovar tavsifi.';
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const url = origin + (typeof window !== 'undefined' ? window.location.pathname + window.location.search : '');

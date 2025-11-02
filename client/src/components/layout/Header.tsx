@@ -54,7 +54,7 @@ export function Header() {
                     className="text-2xl font-extrabold tracking-tight"
                     aria-label="На главную"
                   >
-                    OZOR
+                    OZAR
                   </Link>
                 </div>
 

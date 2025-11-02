@@ -6,7 +6,7 @@ import useSEO from "../hooks/useSEO";
 
 export function Cart() {
   useSEO({
-    title: "Savat — OZOR",
+    title: "Savat —OZAR",
     robots: "noindex,nofollow",
     canonical: typeof window !== 'undefined' ? window.location.origin + '/cart' : undefined,
   });

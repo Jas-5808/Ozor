@@ -1,7 +1,7 @@
 {
-  "name": "ozor-ecommerce",
+  "name": "ozar-ecommerce",
   "version": "1.0.0",
-  "description": "Интернет магазин Ozor",
+  "description": "Интернет магазин Ozar",
   "main": "index.js",
   "scripts": {
     "dev": "cd client && npm run dev",
@@ -15,7 +15,7 @@
     "uzbekistan",
     "shop"
   ],
-  "author": "Ozor Team",
+  "author": "Ozar Team",
   "license": "MIT",
   "workspaces": [
     "client"
