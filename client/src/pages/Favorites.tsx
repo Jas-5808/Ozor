@@ -17,7 +17,11 @@ export function Favorites() {
   const likedIds = state.likedProducts;
   const likedProducts = React.useMemo(() => {
     if (!products || products.length === 0) return [];
-    return products.filter((p: any) => likedIds.has(p.product_id));
+    return products.filter((p: any) => {
+      // Проверяем как по product_id, так и по уникальному идентификатору (product_id + variant_id)
+      const uniqueId = p.variant_id ? `${p.product_id}_${p.variant_id}` : p.product_id;
+      return likedIds.has(uniqueId) || likedIds.has(p.product_id);
+    });
   }, [products, likedIds]);
 
   if (loading) {
@@ -53,13 +57,19 @@ export function Favorites() {
             </div>
           ) : (
             <div className={cn.products_grid}>
-              {likedProducts.map((product: any) => (
-                <ProductCard
-                  key={product.product_id}
-                  product={product}
-                  isLiked={true}
-                />
-              ))}
+              {likedProducts.map((product: any) => {
+                // Создаем уникальный ключ на основе product_id и variant_id
+                const uniqueKey = product.variant_id 
+                  ? `${product.product_id}_${product.variant_id}` 
+                  : product.product_id;
+                return (
+                  <ProductCard
+                    key={uniqueKey}
+                    product={product}
+                    isLiked={true}
+                  />
+                );
+              })}
             </div>
           )}
         </div>

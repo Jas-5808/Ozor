@@ -39,14 +39,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
+  padding: 6px 12px;
+  box-sizing: border-box;
   border-bottom: 1px solid #e5e7eb;
   background: #f8fafc;
 }
 
 .delivery-modal-header h3 {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: #1f2937;
 }
@@ -312,6 +313,28 @@
   font-weight: bold;
 }
 
+/* Пустое состояние адресов */
+.empty-addresses {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-addresses-icon {
+  width: 120px;
+  height: 120px;
+  opacity: 0.4;
+  object-fit: contain;
+}
+
+.empty-addresses-placeholder {
+  font-size: 80px;
+  opacity: 0.3;
+  line-height: 1;
+}
+
 /* Футер */
 .delivery-modal-footer {
   padding: 20px 24px;
@@ -456,7 +479,8 @@
   .delivery-modal-footer,
   .map-modal-header,
   .map-modal-footer {
-    padding: 16px;
+    padding: 6px 12px;
+    box-sizing: border-box;
   }
   
   .tab {

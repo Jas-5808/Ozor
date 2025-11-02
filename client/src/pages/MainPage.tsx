@@ -31,7 +31,7 @@ export function MainPage() {
 
           {/* Products Section */}
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            {/* <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-gray-800">
                 Популярные товары
               </h2>
@@ -41,7 +41,7 @@ export function MainPage() {
                   Новинки
                 </span>
               </div>
-            </div>
+            </div> */}
             <ProductsList />
           </div>
         </div>

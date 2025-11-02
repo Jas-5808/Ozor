@@ -1,27 +1,68 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './DeliveryModal.css';
 import ModernMap from './ModernMap';
 import { useApp } from '../context/AppContext';
+
+const STORAGE_KEY = 'deliveryAddresses';
+
 interface DeliveryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (deliveryData: { type: string; address?: string; location?: any }) => void;
 }
+
+interface Address {
+  id: number;
+  text: string;
+  city: string;
+  country: string;
+  latitude?: number;
+  longitude?: number;
+}
+
 const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfirm }) => {
   const { state } = useApp();
-  const [selectedMethod, setSelectedMethod] = useState<'pickup' | 'courier'>('pickup');
-  const [address, setAddress] = useState('');
+  const [selectedMethod, setSelectedMethod] = useState<'pickup' | 'courier'>('courier');
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState<number | null>(null);
   const [showMap, setShowMap] = useState(false);
-  const [addresses, setAddresses] = useState<Array<{
-    id: number;
-    text: string;
-    city: string;
-    country: string;
-    latitude?: number;
-    longitude?: number;
-  }>>([]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+
+  // Загрузка адресов из localStorage при открытии модалки
+  useEffect(() => {
+    if (isOpen) {
+      try {
+        const savedAddresses = localStorage.getItem(STORAGE_KEY);
+        if (savedAddresses) {
+          const parsed = JSON.parse(savedAddresses) as Address[];
+          setAddresses(parsed);
+          // Восстанавливаем выбранный адрес, если он был сохранен
+          const savedSelectedId = localStorage.getItem('selectedAddressId');
+          if (savedSelectedId && parsed.some(addr => addr.id === Number(savedSelectedId))) {
+            setSelectedAddressId(Number(savedSelectedId));
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка при загрузке адресов из localStorage:', error);
+      }
+    }
+  }, [isOpen]);
+
+  // Сохранение адресов в localStorage при изменении
+  useEffect(() => {
+    if (isOpen && addresses.length >= 0) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(addresses));
+        if (selectedAddressId !== null) {
+          localStorage.setItem('selectedAddressId', String(selectedAddressId));
+        } else {
+          localStorage.removeItem('selectedAddressId');
+        }
+      } catch (error) {
+        console.error('Ошибка при сохранении адресов в localStorage:', error);
+      }
+    }
+  }, [addresses, selectedAddressId, isOpen]);
   const handleConfirm = () => {
     const selected = addresses.find(addr => addr.id === selectedAddressId!);
     onConfirm({
@@ -43,10 +84,11 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
     setShowOptionsMenu(null);
   };
   const handleDeleteAddress = (addressId: number) => {
-    if (addresses.length > 1) {
-      setAddresses(addresses.filter(addr => addr.id !== addressId));
+    const newAddresses = addresses.filter(addr => addr.id !== addressId);
+    if (newAddresses.length > 0 || addresses.length === 1) {
+      setAddresses(newAddresses);
       if (selectedAddressId === addressId) {
-        const next = addresses.find(addr => addr.id !== addressId);
+        const next = newAddresses.length > 0 ? newAddresses[0] : null;
         setSelectedAddressId(next ? next.id : null);
       }
     }
@@ -66,10 +108,33 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
     fullAddress?: string;
     city: string;
     country: string;
+    region?: string;
   }) => {
+    // Формируем компактный адрес: улица, район, город (квартиру извлекаем из адреса если есть)
+    const addressParts: string[] = [];
+    
+    // Улица (может содержать номер дома)
+    if (location.address && location.address.trim()) {
+      addressParts.push(location.address.trim());
+    }
+    
+    // Район
+    if (location.region && location.region.trim()) {
+      addressParts.push(location.region.trim());
+    }
+    
+    // Город
+    if (location.city && location.city.trim()) {
+      addressParts.push(location.city.trim());
+    }
+    
+    const compactAddress = addressParts.length > 0 
+      ? addressParts.join(', ') 
+      : location.fullAddress || location.address;
+    
     const newAddress = {
       id: addresses.length ? Math.max(...addresses.map(a => a.id)) + 1 : 1,
-      text: `${location.fullAddress || location.address}\n${location.city}, ${location.country}`,
+      text: compactAddress,
       city: location.city,
       country: location.country,
       latitude: location.latitude,
@@ -115,7 +180,20 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
               <div className="addresses-list">
                 {addresses.length === 0 && (
                   <div className="empty-addresses">
-                    У вас нет сохранённых адресов. Добавьте новый адрес.
+                    <img 
+                      src="/icons/empty-addresses.svg" 
+                      alt="Пусто" 
+                      className="empty-addresses-icon"
+                      onError={(e) => {
+                        // Если изображение не найдено, показываем emoji
+                        const img = e.currentTarget;
+                        img.style.display = 'none';
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'empty-addresses-placeholder';
+                        placeholder.innerHTML = '📭';
+                        img.parentElement?.appendChild(placeholder);
+                      }}
+                    />
                   </div>
                 )}
                 {addresses.map((address) => (

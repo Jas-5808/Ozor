@@ -39,13 +39,19 @@ export const ProductsList: React.FC = () => {
   }
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5">
-      {products.map((product, index) => (
-        <ProductCard
-          key={product?.product_id || `product-${index}`}
-          product={product}
-          onToggleLike={handleToggleLike}
-        />
-      ))}
+      {products.map((product, index) => {
+        // Создаем уникальный ключ на основе product_id и variant_id
+        const uniqueKey = product?.variant_id 
+          ? `${product.product_id}_${product.variant_id}` 
+          : product?.product_id || `product-${index}`;
+        return (
+          <ProductCard
+            key={uniqueKey}
+            product={product}
+            onToggleLike={handleToggleLike}
+          />
+        );
+      })}
     </div>
   );
 };

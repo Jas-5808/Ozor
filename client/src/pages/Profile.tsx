@@ -204,7 +204,7 @@ export function Profile() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-5 md:px-6 py-6 text-gray-800">
+    <div className={`mx-auto w-full max-w-[1240px] px-4 sm:px-5 md:px-6 text-gray-800 ${cn.profileWrapper}`}>
       {/* Header bar */}
       <div className="flex items-center justify-between gap-3 mb-4">
         <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 bg-clip-text text-transparent">
@@ -216,7 +216,7 @@ export function Profile() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200 mb-5">
+      <div className={`flex gap-2 border-b border-gray-200 ${cn.tabsContainer}`}>
         {[
           { id: "dashboard", label: "Asosiy" },
           { id: "market", label: "Market" },
@@ -301,13 +301,21 @@ export function Profile() {
             )}
             {productsError && <p>Xatolik: {String(productsError)}</p>}
             {!productsLoading && !productsError && (
-              <div className={cn.grid} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+              <div className={cn.grid} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12, alignItems: 'stretch' }}>
                 {products.map((p: any) => (
                   
                   <div
                     key={p.product_id}
                     className={`${cn.cardWhite} ${cn.cardProduct}`}
-                    style={{ borderRadius: 8, padding: 12, border: '1px solid #e5e7eb', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}
+                    style={{ 
+                      borderRadius: 8, 
+                      padding: 12, 
+                      border: '1px solid #e5e7eb', 
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      height: '100%'
+                    }}
                   >
                     <div
                       className={cn.productHeadCol}
@@ -348,7 +356,13 @@ export function Profile() {
                           setLoadingProductId(null);
                         }
                       }}
-                      style={{ cursor: loadingProductId === p.product_id ? 'wait' : 'pointer', opacity: loadingProductId === p.product_id ? 0.6 : 1 }}
+                      style={{ 
+                        cursor: loadingProductId === p.product_id ? 'wait' : 'pointer', 
+                        opacity: loadingProductId === p.product_id ? 0.6 : 1,
+                        flex: '1 1 auto',
+                        display: 'flex',
+                        flexDirection: 'column'
+                      }}
                     >
                       <img
                         className={cn.productImgXL}
@@ -360,7 +374,7 @@ export function Profile() {
                             "/img/NaturalTitanium.jpg";
                         }}
                       />
-                      <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+                      <div style={{ marginTop: 8, display: 'grid', gap: 6, flex: '1 1 auto' }}>
                         <div className={`${cn.productTitle} ${cn.textDark}`} style={{ fontSize: '0.95rem', fontWeight: 700, lineHeight: 1.3 }}>
                           {p.product_name}
                         </div>
@@ -382,7 +396,7 @@ export function Profile() {
                         </div>
                       </div>
                     </div>
-                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e5e7eb' }}>
+                    <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid #e5e7eb' }}>
                       <button
                         className={`${cn.button} ${cn.compact}`}
                         onClick={(e) => { e.stopPropagation(); handleGenerate(p); }}

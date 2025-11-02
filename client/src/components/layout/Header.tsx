@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import SideCatalog from "../SideCatalog";
 import LanguageSwitcher from "../LanguageSwitcher";
 import SearchBar from "../SearchBar";
@@ -11,6 +11,7 @@ export function Header() {
   const cartCount = getCartItemCount();
   const likedCount = state.likedProducts?.size || 0;
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [isSideCatalogOpen, setIsSideCatalogOpen] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
   useEffect(() => {
@@ -24,27 +25,37 @@ export function Header() {
   return (
     <>
       <header
-      className={`sticky top-0 z-50 transition-all duration-300 ${
+      className={`hidden md:block sticky top-0 z-50 transition-all duration-300 ${
           isCompact ? "pt-3" : "pt-5"
         } pb-4 md:pb-5 bg-gradient-to-r from-blue-600/95 via-indigo-500/95 to-violet-500/95 text-white border-b border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.22)] backdrop-blur-xl mb-3 md:mb-4`}
       >
         <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-5 md:px-6">
             <div className="flex flex-col space-y-4 md:space-y-5">
-              <div className="flex items-center justify-between gap-4 md:gap-6">
+              <div className="relative flex items-center justify-between gap-4 md:gap-6">
                 <div
                   onClick={showLocationModal}
-                  className="flex items-center gap-2 cursor-pointer select-none"
+                  className="flex items-center gap-2 cursor-pointer select-none z-10"
                   title="Нажмите, чтобы изменить местоположение"
                 >
                   <img src="/icons/location.svg" alt="" className="size-5" />
                   <p
-                    className="text-sm md:text-base max-w-[220px] md:max-w-[320px] truncate whitespace-nowrap overflow-hidden"
+                    className="text-sm md:text-base max-w-[100px] md:max-w-[320px] truncate whitespace-nowrap overflow-hidden"
                     title={state.location.data?.address || "Местоположение не определено"}
                   >
                     {state.location.data?.address || "Местоположение не определено"}
                   </p>
                 </div>
-                <LanguageSwitcher />
+                {/* OZAR текст по центру в мобильной версии */}
+                <Link
+                  to="/"
+                  className="absolute left-1/2 transform -translate-x-1/2 md:hidden text-xl font-extrabold tracking-tight text-white z-10"
+                  aria-label="На главную"
+                >
+                  OZAR
+                </Link>
+                <div className="z-10">
+                  <LanguageSwitcher />
+                </div>
               </div>
 
               <div className="hidden md:flex items-center  md:gap-10 flex-1 justify-end md:justify-between">
@@ -74,6 +85,67 @@ export function Header() {
           </div>
         {/* Панель категорий скрыта по требованию */}
       </header>
+      
+      {/* Мобильная версия хедера с поиском */}
+      <div className="md:hidden sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+        <div className="px-4 py-3 space-y-3">
+          {/* Верхняя строка: локация и город доставки */}
+          <div className="flex items-center justify-between">
+            <div
+              onClick={showLocationModal}
+              className="flex items-center gap-2 cursor-pointer"
+            >
+              <img src="/icons/location.svg" alt="" className="size-5" />
+              <p className="text-xs font-medium text-gray-900">
+                {state.location.data?.address?.split(',')[0] || "Ташкент"}
+              </p>
+              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+            <p className="text-xs text-gray-500">город доставки</p>
+          </div>
+
+          {/* Поисковая строка */}
+          <div className="flex items-center gap-2">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const query = formData.get('search') as string;
+              if (query?.trim()) {
+                navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+              }
+            }} className="flex-1" role="search">
+              <div className="relative flex items-center h-11 bg-gray-100 rounded-lg px-3">
+                <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  name="search"
+                  placeholder="Искать товары и категории"
+                  className="flex-1 bg-transparent outline-none text-sm text-gray-900 placeholder:text-gray-400"
+                />
+              </div>
+            </form>
+            <Link
+              to="/favorites"
+              className="p-2 relative"
+              aria-label="Избранное"
+            >
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+              {likedCount > 0 && (
+                <span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-red-500 text-[10px] leading-4 text-white text-center font-bold">
+                  {likedCount}
+                </span>
+              )}
+            </Link>
+          </div>
+        </div>
+      </div>
+
       <div className="fixed bottom-3 inset-x-0 z-50 md:hidden">
         <div className="mx-auto w-[min(640px,calc(100%-1.5rem))]">
           <div className="rounded-[28px] bg-[#434344]/55 backdrop-blur-3xl border border-white/15 ring-1 ring-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)] px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">

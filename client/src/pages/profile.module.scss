@@ -1,5 +1,10 @@
 .profileWrapper {
   padding: 20px 0;
+  
+  @media (max-width: 640px) {
+    padding-top: 12px; /* Уменьшен верхний отступ в мобильной версии */
+    padding-bottom: 20px;
+  }
 }
 
 .tabs {
@@ -7,6 +12,14 @@
   gap: 10px;
   margin-bottom: 16px;
   overflow-x: auto;
+}
+
+.tabsContainer {
+  margin-bottom: 20px;
+  
+  @media (max-width: 640px) {
+    margin-bottom: 8px; /* Уменьшен отступ между табами и контентом в мобильной версии */
+  }
 }
 
 .tab {
@@ -320,16 +333,17 @@
     flex-wrap: wrap;
   }
   .productImgXL {
-    height: 100px;
+    height: 180px; /* Увеличена высота изображения */
   }
   .dialogWide {
     width: 96%;
   }
   .grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); /* Уменьшена минимальная ширина карточек */
+    gap: 8px; /* Уменьшен отступ между карточками */
   }
   .cardProduct {
-    padding: 8px;
+    padding: 6px; /* Уменьшен padding карточки */
   }
   .panel {
     padding: 12px;
@@ -338,10 +352,14 @@
 
 @media (max-width: 400px) {
   .productImgXL {
-    height: 90px;
+    height: 170px; /* Увеличена высота изображения */
   }
   .cardProduct {
-    padding: 6px;
+    padding: 5px; /* Еще больше уменьшен padding */
+  }
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); /* Еще меньше ширина для очень маленьких экранов */
+    gap: 6px;
   }
 }
 

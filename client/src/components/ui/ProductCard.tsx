@@ -15,17 +15,29 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   isLiked = false,
 }) => {
   const { toggleLike, isLiked: isProductLiked } = useApp();
+  
+  // Создаем уникальный идентификатор: product_id + variant_id (если есть)
+  // Это гарантирует, что разные варианты одного товара считаются разными
+  const getUniqueId = () => {
+    if (product.variant_id && product.variant_id.trim() !== '') {
+      return `${product.product_id}_${product.variant_id}`;
+    }
+    return product.product_id;
+  };
+  
+  const uniqueId = getUniqueId();
+  
   const handleToggleLike = (e: React.MouseEvent) => {
     e.preventDefault(); // не даём ссылке сработать
     e.stopPropagation(); // и прерываем всплытие
-    toggleLike(product.product_id);
-    onToggleLike?.(product.product_id);
+    toggleLike(uniqueId);
+    onToggleLike?.(uniqueId);
   };
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
   };
-  const liked = isLiked || isProductLiked(product.product_id);
+  const liked = isLiked || isProductLiked(uniqueId);
 
   // Получаем изображение: сначала variant_media.main, потом из атрибута, потом основное
   const getProductImage = () => {
@@ -55,7 +67,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         />
         <button
           type="button"
-          className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
+          className="absolute top-1 right-1 w-8 h-8 bg-white rounded-full flex items-center justify-center transition-all shadow-md border border-gray-200 hover:bg-white"
+          style={{ backgroundColor: 'white' }}
           onClick={handleToggleLike}
           aria-pressed={liked}
           aria-label={liked ? "Убрать из избранного" : "Добавить в избранное"}
@@ -63,7 +76,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <img
             src={liked ? "/icons/like3.svg" : "/icons/like2.svg"}
             alt=""
-            className="w-4 h-4"
+            className={`w-4 h-4 transition-transform ${
+              liked ? 'scale-110' : 'scale-100'
+            }`}
             aria-hidden="true"
           />
         </button>
@@ -75,11 +90,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               ? formatPrice(product.price)
               : "Цена не указана"}
           </h3>
-        </div>
-        <div className="inline-block self-start bg-yellow-300 px-2 py-1 rounded-lg">
-          <p className="text-xs font-semibold">
-            {product.stock > 0 ? "В наличии" : product.stock === 0 ? "Нет в наличии" : product.stock < 0 ? `Доступно под заказ ${product.stock}` : "Нет в наличии"}
-          </p>
         </div>
         <div className="font-semibold text-sm">
           {truncateText(product.product_name, 50)}

@@ -886,9 +886,15 @@ export function Product() {
               <h3 className={cn.section_title}>Недавно просмотренные</h3>
               <div className={cn.products_grid}>
                 {recentlyViewed && recentlyViewed.length > 0 ? (
-                  recentlyViewed.map((p) => (
-                    <ProductCard key={p.product_id} product={p} />
-                  ))
+                  recentlyViewed.map((p) => {
+                    // Создаем уникальный ключ на основе product_id и variant_id
+                    const uniqueKey = p.variant_id 
+                      ? `${p.product_id}_${p.variant_id}` 
+                      : p.product_id;
+                    return (
+                      <ProductCard key={uniqueKey} product={p} />
+                    );
+                  })
                 ) : (
                   <div className={cn.placeholder_card}>
                     <div className={cn.placeholder_image}></div>

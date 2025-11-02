@@ -10,8 +10,10 @@ interface ModernMapProps {
     latitude: number;
     longitude: number;
     address: string;
+    fullAddress?: string;
     city: string;
     country: string;
+    region?: string;
   }) => void;
   initialLocation?: {
     latitude: number;
@@ -46,6 +48,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
   const [showSearchHistory, setShowSearchHistory] = useState(false);
   const [searchType, setSearchType] = useState<'address' | 'poi'>('address');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // Ручной ввод адреса
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualCity, setManualCity] = useState('Ташкент');
@@ -225,7 +228,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
         types = 'poi';
       }
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_CONFIG.accessToken}&country=UZ&limit=8&language=ru&types=${types}${proximity}`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_CONFIG.accessToken}&country=UZ&limit=10&language=ru&types=${types}${proximity}`
       );
       const data = await response.json();
       const filteredResults = (data.features || []).filter((result: any) => {
@@ -234,9 +237,11 @@ const ModernMap: React.FC<ModernMapProps> = ({
         return (b.relevance || 0) - (a.relevance || 0);
       });
       setSearchResults(filteredResults);
-      setShowSearchResults(true);
+      setShowSearchResults(filteredResults.length > 0);
     } catch (error) {
       console.error('Ошибка поиска:', error);
+      setSearchResults([]);
+      setShowSearchResults(false);
     }
   };
   const getCurrentLocation = () => {
@@ -403,6 +408,10 @@ const ModernMap: React.FC<ModernMapProps> = ({
         }
       };
       document.removeEventListener('keydown', cleanupHandler);
+      // Очищаем таймер поиска при размонтировании
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
       if (mapInstance) {
         mapInstance.remove();
         setMap(null);
@@ -413,9 +422,18 @@ const ModernMap: React.FC<ModernMapProps> = ({
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
+    
+    // Очищаем предыдущий таймер
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
     if (query.length >= 2) {
-      searchAddresses(query);
-      setShowSearchHistory(false);
+      // Debounce: ждем 300ms перед запросом
+      searchTimeoutRef.current = setTimeout(() => {
+        searchAddresses(query);
+        setShowSearchHistory(false);
+      }, 300);
     } else {
       setSearchResults([]);
       setShowSearchResults(false);
@@ -467,10 +485,21 @@ const ModernMap: React.FC<ModernMapProps> = ({
                   if (searchQuery.length === 0) {
                     setShowSearchHistory(true);
                   }
+                  if (searchQuery.length >= 2 && searchResults.length > 0) {
+                    setShowSearchResults(true);
+                  }
                 }}
-                onBlur={() => {
+                onBlur={(e) => {
                   setIsSearchFocused(false);
-                  setTimeout(() => setShowSearchHistory(false), 200);
+                  // Не скрываем результаты сразу, даем время для клика
+                  setTimeout(() => {
+                    setShowSearchHistory(false);
+                    // Скрываем результаты только если фокус действительно потерян
+                    const relatedTarget = e.relatedTarget as HTMLElement;
+                    if (document.activeElement !== e.target && !relatedTarget?.closest('.search-results')) {
+                      setShowSearchResults(false);
+                    }
+                  }, 200);
                 }}
                 className="search-input"
               />
@@ -564,13 +593,17 @@ const ModernMap: React.FC<ModernMapProps> = ({
               </div>
             )}
             {}
-            {showSearchResults && searchResults.length > 0 && (
+            {searchQuery.length >= 2 && showSearchResults && searchResults.length > 0 && (
               <div className="search-results">
                 {searchResults.map((result, index) => (
                   <div
-                    key={index}
+                    key={`${result.id || index}-${result.place_name}`}
                     className="search-result-item"
                     onClick={() => handleSearchResultSelect(result)}
+                    onMouseDown={(e) => {
+                      // Предотвращаем blur событие при клике
+                      e.preventDefault();
+                    }}
                   >
                     <div className="result-icon">
                       {searchType === 'poi' ? '📍' : '🏠'}
@@ -586,17 +619,16 @@ const ModernMap: React.FC<ModernMapProps> = ({
                 ))}
               </div>
             )}
+            {searchQuery.length >= 2 && showSearchResults && searchResults.length === 0 && !isLoading && (
+              <div className="search-results">
+                <div className="search-no-results">
+                  <p>Ничего не найдено</p>
+                  <p className="search-no-results-hint">Попробуйте изменить запрос</p>
+                </div>
+              </div>
+            )}
           </div>
           <div className="header-controls">
-            {}
-            <button 
-              className="control-btn" 
-              onClick={() => setShowManualInput(v => !v)} 
-              title={showManualInput ? 'Скрыть ручной ввод' : 'Ручной ввод адреса'}
-              aria-label={showManualInput ? 'Скрыть ручной ввод' : 'Ручной ввод адреса'}
-            >
-              📝
-            </button>
             {favoritePlaces.length > 0 && (
               <div className="favorites-dropdown">
                 <button className="favorites-toggle" title="Избранные места">
@@ -710,23 +742,6 @@ const ModernMap: React.FC<ModernMapProps> = ({
         </div>
         <div className="map-modal-footer">
           <div className="footer-left">
-            <button className="cancel-btn" onClick={onClose}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2"/>
-              </svg>
-              Отмена
-            </button>
-            {selectedLocation && (
-              <button 
-                className="favorite-btn"
-                onClick={() => toggleFavorite(selectedLocation)}
-                title="Добавить в избранное"
-              >
-                {favoritePlaces.some(fav => 
-                  fav.latitude === selectedLocation.latitude && fav.longitude === selectedLocation.longitude
-                ) ? '⭐' : '☆'}
-              </button>
-            )}
           </div>
           <div className="footer-center">
             <div 
@@ -742,6 +757,17 @@ const ModernMap: React.FC<ModernMapProps> = ({
             </div>
           </div>
           <div className="footer-right">
+            {selectedLocation && (
+              <button 
+                className="favorite-btn"
+                onClick={() => toggleFavorite(selectedLocation)}
+                title="Добавить в избранное"
+              >
+                {favoritePlaces.some(fav => 
+                  fav.latitude === selectedLocation.latitude && fav.longitude === selectedLocation.longitude
+                ) ? '⭐' : '☆'}
+              </button>
+            )}
             <button 
               className="confirm-btn" 
               onClick={handleConfirm}
