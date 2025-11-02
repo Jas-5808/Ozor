@@ -138,7 +138,7 @@ export default function Dashboard() {
               <div style={{opacity:.7, fontSize:12}}>Всего товаров</div>
             </div>
             <div>
-              <div style={{color:'#059669', fontSize:18, fontWeight:800}}>{warehouseStats.amount.toLocaleString()} so`m</div>
+              <div style={{color:'#059669', fontSize:18, fontWeight:800}}>{warehouseStats.amount.toLocaleString()} </div>
               <div style={{opacity:.7, fontSize:12}}>Общая стоимость</div>
             </div>
             <div>
@@ -159,11 +159,11 @@ export default function Dashboard() {
               <div style={{opacity:.7, fontSize:12}}>Всего заказов</div>
             </div>
             <div>
-              <div style={{color:'#059669', fontSize:18, fontWeight:800}}>{ordersStats.avg.toLocaleString()} so`m</div>
+              <div style={{color:'#059669', fontSize:18, fontWeight:800}}>{ordersStats.avg.toLocaleString()} </div>
               <div style={{opacity:.7, fontSize:12}}>Средний чек</div>
             </div>
             <div>
-              <div style={{color:'#16a34a', fontSize:18, fontWeight:800}}>{ordersStats.sum.toLocaleString()} so`m</div>
+              <div style={{color:'#16a34a', fontSize:18, fontWeight:800}}>{ordersStats.sum.toLocaleString()} </div>
               <div style={{opacity:.7, fontSize:12}}>Общая сумма</div>
             </div>
             <div>
@@ -193,7 +193,7 @@ export default function Dashboard() {
                 <td>#{r.id}<div style={{opacity:.65, fontSize:12}}>{r.name}</div></td>
                 <td>{r.client}</td>
                 <td><span className={badge(r.status)}>{r.status}</span></td>
-                <td>{r.sum.toLocaleString()} so`m</td>
+                <td>{r.sum.toLocaleString()}</td>
                 <td>{r.date}</td>
               </tr>
             ))}

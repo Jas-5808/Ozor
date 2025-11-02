@@ -15,102 +15,88 @@ import ProductPageSkeleton from "../components/ProductPageSkeleton";
 
 type LocationState = { product?: ProductType };
 
-// Функция для загрузки всех вариантов товара (учитывает новую структуру API)
+// Функция для загрузки всех вариантов товара (использует новый API /api/v1/shop/product/{product_id})
 async function fetchAllProductVariants(productId: string): Promise<ProductDetail | null> {
   try {
-    console.log("Загружаем все варианты товара с ID:", productId);
+    console.log("Загружаем продукт с ID:", productId);
     
-    // Загружаем все варианты товара
-    const response = await shopAPI.getAllProductVariants(productId);
-    console.log("Ответ API (все варианты):", response.data);
+    // Используем новый API /api/v1/shop/product/{product_id}
+    const response = await shopAPI.getProductById(productId);
+    console.log("Ответ API (продукт):", response.data);
     
-    if (!response.data || response.data.length === 0) {
+    const productData = response.data;
+    
+    if (!productData) {
       return null;
     }
 
-    // КРИТИЧЕСКИ ВАЖНО: Фильтруем только варианты конкретного продукта
-    // На случай если API вернул данные разных продуктов
-    const filteredVariants = response.data.filter((variant: any) => 
-      variant.product_id === productId
-    );
-
-    if (filteredVariants.length === 0) {
-      console.warn("Не найдено вариантов для product_id:", productId);
+    // Проверяем, что загруженный продукт соответствует запрошенному ID
+    if (productData.id !== productId && productData.product_id !== productId) {
+      console.error("КРИТИЧЕСКАЯ ОШИБКА: product_id не совпадает с запрошенным!", {
+        requested: productId,
+        received: productData.id || productData.product_id
+      });
       return null;
     }
 
-    // Берем первый вариант как базовый для получения общей информации
-    const firstVariant = filteredVariants[0];
+    // Преобразуем атрибуты из формата API в нужный формат
+    const allAttributes = (productData.attributes || []).map((attr: any) => ({
+      id: attr.id,
+      name: attr.name,
+      unit: attr.unit || ''
+    }));
 
-    // Проверяем, что все варианты принадлежат одному продукту
-    const uniqueProductIds = new Set(filteredVariants.map((v: any) => v.product_id));
-    if (uniqueProductIds.size > 1) {
-      console.warn("Обнаружены варианты разных продуктов, фильтруем по product_id:", productId);
-    }
-
-    // Собираем все уникальные атрибуты по attribute_name (новый формат)
-    const allAttributes = new Map<string, { id: string; name: string; unit: string }>();
-    const allVariants: any[] = [];
-
-    filteredVariants.forEach((variant: any) => {
-      // Дополнительная проверка на всякий случай
-      if (variant.product_id !== productId) {
-        console.warn("Пропущен вариант с несоответствующим product_id:", variant.product_id);
-        return;
-      }
-
-      const attrs = (variant.variant_attributes || []) as any[];
-      attrs.forEach((attr) => {
-        const key = attr.attribute_name || attr.attribute_id || attr.id || 'unknown';
-        if (!allAttributes.has(key)) {
-          allAttributes.set(key, {
-            id: key,
-            name: key,
-            unit: ''
-          });
+    // Преобразуем варианты из формата API в нужный формат
+    // В новом API: variants[].attribute_values может иметь attribute_name, нужно найти соответствующий attribute по имени
+    const allVariants = (productData.variants || []).map((variant: any) => {
+      // Преобразуем attribute_values: если есть attribute_name, находим соответствующий attribute по имени
+      const attributeValues = (variant.attribute_values || []).map((av: any) => {
+        // Если есть attribute_name, ищем соответствующий attribute
+        let attributeId = av.attribute_id || '';
+        if (!attributeId && av.attribute_name) {
+          const matchingAttr = (productData.attributes || []).find((attr: any) => 
+            attr.name === av.attribute_name || attr.id === av.attribute_name
+          );
+          attributeId = matchingAttr?.id || av.attribute_name || '';
         }
-      });
-
-      allVariants.push({
-        id: variant.variant_id,
-        product_id: variant.product_id,
-        sku: variant.variant_sku,
-        price: variant.price,
-        base_price: variant.price ?? null,
-        stock: variant.stock,
-        attribute_values: (variant.variant_attributes || []).map((av: any) => ({
+        
+        return {
           id: av.id,
-          variant_id: av.variant_id,
-          attribute_id: (av.attribute_name || av.attribute_id),
-          attribute_name: av.attribute_name,
-          value: av.value,
-        })),
-        variant_media: variant.variant_media || [],
+          variant_id: variant.id,
+          attribute_id: attributeId,
+          attribute_name: av.attribute_name || '',
+          value: av.value || ''
+        };
       });
+      
+      return {
+        id: variant.id,
+        product_id: variant.product_id || productData.id || productId,
+        sku: variant.sku,
+        price: variant.price,
+        base_price: variant.base_price ?? variant.price ?? null,
+        stock: variant.stock ?? 0,
+        attribute_values: attributeValues,
+        variant_media: variant.media || [],
+      };
     });
 
-    // Проверяем целостность данных
-    if (firstVariant.product_id !== productId) {
-      console.error("КРИТИЧЕСКАЯ ОШИБКА: product_id первого варианта не совпадает с запрошенным!", {
-        requested: productId,
-        received: firstVariant.product_id
-      });
-      return null;
-    }
+    // Используем первый вариант как базовый для получения общей информации
+    const firstVariant = productData.variants?.[0];
 
     const productDetail: ProductDetail = {
-      product_id: firstVariant.product_id,
-      product_name: firstVariant.product_name,
-      product_description: firstVariant.product_description,
-      category: firstVariant.category,
-      refferal_price: firstVariant.refferal_price,
-      main_image: firstVariant.main_image,
-      variant_id: firstVariant.variant_id,
-      variant_sku: firstVariant.variant_sku,
-      price: firstVariant.price,
-      stock: firstVariant.stock,
-      variant_attributes: firstVariant.variant_attributes,
-      attributes: Array.from(allAttributes.values()),
+      product_id: productData.id || productData.product_id || productId,
+      product_name: productData.name || productData.product_name,
+      product_description: productData.description || productData.product_description,
+      category: productData.category,
+      refferal_price: productData.refferal_price ?? 0,
+      main_image: productData.main_image || '',
+      variant_id: firstVariant?.id || '',
+      variant_sku: firstVariant?.sku || '',
+      price: firstVariant?.price ?? 0,
+      stock: firstVariant?.stock ?? 0,
+      variant_attributes: firstVariant?.attribute_values || [],
+      attributes: allAttributes,
       variants: allVariants,
     };
 
@@ -122,7 +108,7 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
 
     return productDetail;
   } catch (error) {
-    console.error("Ошибка при загрузке вариантов товара:", error);
+    console.error("Ошибка при загрузке продукта:", error);
     throw error;
   }
 }
@@ -733,16 +719,16 @@ export function Product() {
                       product.price ? 
                         formatPrice(product.price) : 
                         'Цена не указана'
-                    } so`m
+                    } 
                   </div>
                   {selectedVariant && selectedVariant.price && selectedVariant.base_price && selectedVariant.price !== selectedVariant.base_price && (
                     <div className={cn.original_price}>
-                      {formatPrice(selectedVariant.base_price)} so`m
+                      {formatPrice(selectedVariant.base_price)}
                     </div>
                   )}
                 </div>
                 <div className={cn.delivery_hint}>
-                  Yetkazib berish narxi: 30 000 so`m
+                  Yetkazib berish narxi: 30 000
                 </div>
                 <div className={cn.stock_info}>
                   {selectedVariant ? (

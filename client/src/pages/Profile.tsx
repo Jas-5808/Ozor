@@ -8,13 +8,16 @@ import { formatPrice, getProductImageUrl, getVariantMainImage } from "../utils/h
 import { useFlows } from "../hooks/useFlows";
 import SkeletonGrid from "../components/SkeletonGrid";
 import useSEO from "../hooks/useSEO";
+import { useNavigate } from "react-router-dom";
 
 export function Profile() {
+  const navigate = useNavigate();
   const { profile, isAuthenticated, logout, fetchUserProfile } =
     useAuth() as any;
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "market" | "oqim" | "stats" | "payments"
   >("dashboard");
+  const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
   const {
     products,
     loading: productsLoading,
@@ -308,7 +311,44 @@ export function Profile() {
                   >
                     <div
                       className={cn.productHeadCol}
-                      onClick={() => (window.location.href = `/product/${p.product_id}`)}
+                      onClick={async () => {
+                        if (loadingProductId === p.product_id) return;
+                        try {
+                          setLoadingProductId(p.product_id);
+                          // Загружаем данные из /api/v1/shop/product/{product_id}
+                          const response = await shopAPI.getProductById(p.product_id);
+                          const productData = response.data;
+                          
+                          // Преобразуем данные из API в формат для страницы Product
+                          // API формат: { id, name, description, refferal_price, main_image, category, attributes, variants }
+                          // variants: [{ id, product_id, sku, price, base_price, stock, attribute_values, media }]
+                          const firstVariant = productData.variants?.[0];
+                          const productForState = {
+                            product_id: productData.id || p.product_id,
+                            product_name: productData.name || p.product_name,
+                            product_description: productData.description || p.product_description,
+                            category: productData.category || p.category,
+                            refferal_price: productData.refferal_price ?? p.refferal_price ?? 0,
+                            main_image: productData.main_image || p.main_image,
+                            variant_id: firstVariant?.id || p.variant_id,
+                            variant_sku: firstVariant?.sku || p.variant_sku,
+                            price: firstVariant?.price ?? p.price ?? 0,
+                            stock: firstVariant?.stock ?? p.stock ?? 0,
+                            variant_attributes: firstVariant?.attribute_values || [],
+                            variant_media: firstVariant?.media || [],
+                          };
+                          
+                          // Переходим на страницу продукта с данными в state
+                          navigate(`/product/${p.product_id}`, { state: { product: productForState } });
+                        } catch (error) {
+                          console.error("Ошибка при загрузке продукта:", error);
+                          // При ошибке просто переходим на страницу продукта
+                          navigate(`/product/${p.product_id}`);
+                        } finally {
+                          setLoadingProductId(null);
+                        }
+                      }}
+                      style={{ cursor: loadingProductId === p.product_id ? 'wait' : 'pointer', opacity: loadingProductId === p.product_id ? 0.6 : 1 }}
                     >
                       <img
                         className={cn.productImgXL}

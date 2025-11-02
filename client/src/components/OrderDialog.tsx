@@ -93,7 +93,7 @@ export default function OrderDialog({ open, onClose, product, variant, deliveryP
                 <div className={profile.meta + ' ' + s.meta}>{variant?.attribute_values?.map(av => av.value).join(', ') || product.product_description?.slice(0, 80)}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div className={profile.textDark + ' ' + s.price}>{formatPrice(price)} so`m</div>
+                <div className={profile.textDark + ' ' + s.price}>{formatPrice(price)}</div>
                 {deliveryPrice ? <div className={profile.small + ' ' + s.muted}>+ {formatPrice(deliveryPrice)} dostavka</div> : null}
               </div>
             </div>
@@ -109,7 +109,7 @@ export default function OrderDialog({ open, onClose, product, variant, deliveryP
 
             <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span>Jami</span>
-              <strong>{formatPrice(total)} so`m</strong>
+              <strong>{formatPrice(total)}</strong>
             </div>
 
             <div className={profile.actions + ' ' + s.actions}>
