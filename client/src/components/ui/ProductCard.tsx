@@ -51,70 +51,83 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   return (
-    <Link
-      to={`/product/${product.product_id}`}
-      state={{ product }}
-      className="flex-1 min-w-[160px] max-w-[220px] w-full cursor-pointer text-black transition-transform hover:scale-105"
-    >
-      <div className="relative w-full aspect-[220/285] rounded-xl overflow-hidden mb-3">
-        <img
-          src={getProductImage()}
-          alt={product.product_name}
-          className="absolute inset-0 w-full h-full object-cover"
-          onError={(e) => {
-            e.currentTarget.src = "/img/NaturalTitanium.jpg";
-          }}
-        />
-        <button
-          type="button"
-          className="absolute top-1 right-1 w-8 h-8 bg-white rounded-full flex items-center justify-center transition-all shadow-md border border-gray-200 hover:bg-white"
-          style={{ backgroundColor: 'white' }}
-          onClick={handleToggleLike}
-          aria-pressed={liked}
-          aria-label={liked ? "Убрать из избранного" : "Добавить в избранное"}
-        >
+    <div className="flex-1 min-w-[160px] max-w-[220px] w-full flex flex-col h-full">
+      <Link
+        to={`/product/${product.product_id}`}
+        state={{ product }}
+        className="flex flex-col text-black transition-transform md:hover:scale-105 mb-2"
+      >
+        <div className="relative w-full aspect-[220/285] rounded-xl overflow-hidden mb-3">
           <img
-            src={liked ? "/icons/like3.svg" : "/icons/like2.svg"}
-            alt=""
-            className={`w-4 h-4 transition-transform ${
-              liked ? 'scale-110' : 'scale-100'
-            }`}
-            aria-hidden="true"
+            src={getProductImage()}
+            alt={product.product_name}
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.src = "/img/NaturalTitanium.jpg";
+            }}
           />
-        </button>
-      </div>
-      <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-center">
-          <h3 className="text-blue-600 font-semibold text-sm">
-            {product.price && product.price > 0
-              ? formatPrice(product.price)
-              : "Цена не указана"}
-          </h3>
+          <button
+            type="button"
+            className="absolute top-1 right-1 w-8 h-8 bg-white rounded-full flex items-center justify-center transition-all shadow-md border border-gray-200 hover:bg-white"
+            style={{ backgroundColor: 'white' }}
+            onClick={handleToggleLike}
+            aria-pressed={liked}
+            aria-label={liked ? "Убрать из избранного" : "Добавить в избранное"}
+          >
+            <img
+              src={liked ? "/icons/like3.svg" : "/icons/like2.svg"}
+              alt=""
+              className={`w-4 h-4 transition-transform ${
+                liked ? 'scale-110' : 'scale-100'
+              }`}
+              aria-hidden="true"
+            />
+          </button>
         </div>
-        <div className="font-semibold text-sm">
-          {truncateText(product.product_name, 50)}
-        </div>
-        {product.product_description && (
-          <div className="text-xs text-gray-600 leading-relaxed mb-1">
-            {truncateText(product.product_description, 80)}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between items-center">
+            <h3 className="text-blue-600 font-semibold text-sm">
+              {product.price && product.price > 0
+                ? formatPrice(product.price)
+                : "Цена не указана"}
+            </h3>
           </div>
-        )}
-        <div className="flex items-center gap-2 mb-1">
-          <div className="flex gap-1">
-            <img src="/icons/star.png" alt="Рейтинг" className="w-4 h-4" />
-            <p className="text-xs font-semibold">4.7</p>
+          <div className="font-semibold text-sm leading-tight">
+            {truncateText(product.product_name, 40)}
           </div>
-          <span className="text-xs text-gray-500">1 230 оценки</span>
+          {product.product_description && (
+            <div className="text-[10px] text-gray-600 leading-tight line-clamp-2">
+              {truncateText(product.product_description, 60)}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1">
+              <img src="/icons/star.png" alt="Рейтинг" className="w-3.5 h-3.5" />
+              <p className="text-[11px] font-semibold">4.7</p>
+            </div>
+            <span className="text-[10px] text-gray-500">1 230 оценки</span>
+          </div>
         </div>
+      </Link>
+      <div className="mt-auto pt-2">
         <button
           type="button"
-          onClick={handleAddToCart}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleAddToCart(e);
+          }}
           disabled={!product.price || product.price <= 0 || product.stock <= 0}
           className={`w-full py-2 rounded-xl flex items-center justify-center gap-1 text-white font-medium text-sm transition-colors ${
             !product.price || product.price <= 0 || product.stock <= 0
               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-700"
+              : "bg-indigo-600 md:hover:bg-indigo-700"
           }`}
+          style={{
+            backgroundColor: !product.price || product.price <= 0 || product.stock <= 0
+              ? '#d1d5db'
+              : '#4f46e5'
+          }}
         >
           <img src="/icons/korzinka.svg" alt="" className="w-4 h-4" aria-hidden="true" />
           {!product.price || product.price <= 0
@@ -124,7 +137,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             : "Savatka"}
         </button>
       </div>
-    </Link>
+    </div>
   );
 };
 export default ProductCard;
