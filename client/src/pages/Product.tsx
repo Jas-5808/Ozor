@@ -27,14 +27,37 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
       return null;
     }
 
+    // КРИТИЧЕСКИ ВАЖНО: Фильтруем только варианты конкретного продукта
+    // На случай если API вернул данные разных продуктов
+    const filteredVariants = response.data.filter((variant: any) => 
+      variant.product_id === productId
+    );
+
+    if (filteredVariants.length === 0) {
+      console.warn("Не найдено вариантов для product_id:", productId);
+      return null;
+    }
+
     // Берем первый вариант как базовый для получения общей информации
-    const firstVariant = response.data[0];
+    const firstVariant = filteredVariants[0];
+
+    // Проверяем, что все варианты принадлежат одному продукту
+    const uniqueProductIds = new Set(filteredVariants.map((v: any) => v.product_id));
+    if (uniqueProductIds.size > 1) {
+      console.warn("Обнаружены варианты разных продуктов, фильтруем по product_id:", productId);
+    }
 
     // Собираем все уникальные атрибуты по attribute_name (новый формат)
     const allAttributes = new Map<string, { id: string; name: string; unit: string }>();
     const allVariants: any[] = [];
 
-    response.data.forEach((variant: any) => {
+    filteredVariants.forEach((variant: any) => {
+      // Дополнительная проверка на всякий случай
+      if (variant.product_id !== productId) {
+        console.warn("Пропущен вариант с несоответствующим product_id:", variant.product_id);
+        return;
+      }
+
       const attrs = (variant.variant_attributes || []) as any[];
       attrs.forEach((attr) => {
         const key = attr.attribute_name || attr.attribute_id || attr.id || 'unknown';
@@ -65,6 +88,15 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
       });
     });
 
+    // Проверяем целостность данных
+    if (firstVariant.product_id !== productId) {
+      console.error("КРИТИЧЕСКАЯ ОШИБКА: product_id первого варианта не совпадает с запрошенным!", {
+        requested: productId,
+        received: firstVariant.product_id
+      });
+      return null;
+    }
+
     const productDetail: ProductDetail = {
       product_id: firstVariant.product_id,
       product_name: firstVariant.product_name,
@@ -80,6 +112,12 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
       attributes: Array.from(allAttributes.values()),
       variants: allVariants,
     };
+
+    console.log("Собранный ProductDetail:", {
+      product_id: productDetail.product_id,
+      product_name: productDetail.product_name,
+      variants_count: productDetail.variants.length
+    });
 
     return productDetail;
   } catch (error) {
@@ -123,9 +161,20 @@ export function Product() {
 
   // SEO
   const primaryImage = useMemo(() => {
-    const fromMedia = getVariantMainImage((selectedVariant as any)?.variant_media ? (selectedVariant as any).variant_media : (product as any)?.variant_media) || null;
-    const main = product ? getProductImageUrl(product.main_image) : null;
-    return (fromMedia || main) || undefined;
+    if (!product) return undefined;
+    
+    // Используем ту же логику что и для галереи
+    const variantMedia = selectedVariant?.variant_media || [];
+    const hasVariantMedia = variantMedia && variantMedia.length > 0;
+    
+    if (hasVariantMedia) {
+      // Если есть variant_media, используем главное из них
+      const mainMedia = variantMedia.find((m: any) => m.is_main) || variantMedia[0];
+      return mainMedia?.file ? getProductImageUrl(mainMedia.file) : undefined;
+    } else {
+      // Если нет variant_media, используем main_image
+      return product.main_image ? getProductImageUrl(product.main_image) : undefined;
+    }
   }, [selectedVariant, product]);
 
   useSEO(useMemo(()=>{
@@ -192,23 +241,41 @@ export function Product() {
     let ignore = false;
     console.log("useEffect вызван с:", { id, productFromState });
     if (id) {
-      console.log("Начинаем загрузку всех вариантов продукта...");
+      console.log("Начинаем загрузку всех вариантов продукта с ID:", id);
       setLoading(true);
       setError(null);
+      // Очищаем предыдущий продукт перед загрузкой нового
+      setFetchedProduct(null);
+      setSelectedVariant(null);
       fetchAllProductVariants(id)
         .then((p) => { 
           console.log("Продукт загружен:", p);
-          if (!ignore) {
+          if (!ignore && p) {
+            // Критическая проверка: убеждаемся что загруженный продукт соответствует запрошенному ID
+            if (p.product_id !== id) {
+              console.error("КРИТИЧЕСКАЯ ОШИБКА: Загружен продукт с другим ID!", {
+                requested: id,
+                received: p.product_id
+              });
+              setError(`Ошибка: загружен продукт с другим ID (запрошено: ${id}, получено: ${p.product_id})`);
+              setLoading(false);
+              return;
+            }
+            
             setFetchedProduct(p);
             // Автоматически выбираем первый доступный вариант
             if (p?.variants && p.variants.length > 0) {
               // Сначала ищем вариант с ценой и в наличии
-              const availableVariant = p.variants.find(v => v.stock > 0 && v.price !== null) || 
-                                     p.variants.find(v => v.price !== null) || 
+              const availableVariant = p.variants.find(v => v.stock > 0 && v.price !== null && v.price !== undefined) || 
+                                     p.variants.find(v => v.price !== null && v.price !== undefined) || 
                                      p.variants[0];
               console.log("Выбран вариант:", availableVariant);
               setSelectedVariant(availableVariant);
+              // Сбрасываем индекс лайтбокса
+              setLightboxIndex(0);
             }
+          } else if (!ignore && !p) {
+            setError("Продукт не найден");
           }
         })
         .catch((e) => { 
@@ -224,16 +291,52 @@ export function Product() {
 
   // Сбор изображений для галереи/лайтбокса
   const galleryImages: string[] = useMemo(() => {
-    const fromMedia = getVariantMainImage((selectedVariant as any)?.variant_media ? (selectedVariant as any).variant_media : (product as any)?.variant_media) || null;
-    const mediaImages = ((selectedVariant as any)?.variant_media || (product as any)?.variant_media || [])
-      .map((m: any) => m?.file)
-      .filter(Boolean)
-      .map((f: string) => getProductImageUrl(f));
-    const attrImages = selectedVariant?.attribute_values?.filter((av) => (av as any).image)?.map((av) => getProductImageUrl((av as any).image)) || [];
-    const main = product ? getProductImageUrl(product.main_image) : null;
-    const images = Array.from(new Set([fromMedia, ...mediaImages, ...attrImages, main].filter(Boolean)));
-    return images as string[];
+    if (!product) return [];
+    
+    // Проверяем наличие variant_media у выбранного варианта
+    const variantMedia = selectedVariant?.variant_media || [];
+    const hasVariantMedia = variantMedia && variantMedia.length > 0;
+    
+    if (hasVariantMedia) {
+      // Если есть variant_media, используем только их, main_image не показываем
+      const mediaImages = variantMedia
+        .map((m: any) => m?.file)
+        .filter(Boolean)
+        .map((f: string) => getProductImageUrl(f));
+      
+      const images = Array.from(new Set(mediaImages.filter(Boolean)));
+      
+      console.log("Собранные изображения для галереи (из variant_media):", {
+        product_id: product.product_id,
+        variant_id: selectedVariant?.id,
+        images_count: images.length
+      });
+      
+      return images as string[];
+    } else {
+      // Если нет variant_media, показываем main_image
+      const main = product.main_image ? getProductImageUrl(product.main_image) : null;
+      
+      const images = main ? [main] : [];
+      
+      console.log("Собранные изображения для галереи (из main_image):", {
+        product_id: product.product_id,
+        variant_id: selectedVariant?.id,
+        images_count: images.length
+      });
+      
+      return images as string[];
+    }
   }, [selectedVariant, product]);
+
+  // Сбрасываем индекс лайтбокса при изменении варианта или списка изображений
+  useEffect(() => {
+    if (selectedVariant && galleryImages.length > 0) {
+      if (lightboxIndex >= galleryImages.length) {
+        setLightboxIndex(0);
+      }
+    }
+  }, [galleryImages.length, selectedVariant?.id]);
 
   // Недавно просмотренные: сохраняем текущий товар
   useEffect(() => {
@@ -325,7 +428,12 @@ export function Product() {
 
   // Функция для получения значения атрибута по ID
   const getAttributeValue = (variant: ProductDetail['variants'][0], attributeId: string) => {
-    const attributeValue = variant.attribute_values.find(av => (av.attribute_id === attributeId) || (av as any).attribute_name === attributeId);
+    const attributeValue = variant.attribute_values.find(av => {
+      // Сравниваем как по attribute_id, так и по attribute_name
+      const attrId = av.attribute_id || (av as any).attribute_name;
+      const attrName = (av as any).attribute_name || av.attribute_id;
+      return attrId === attributeId || attrName === attributeId;
+    });
     return attributeValue?.value || '';
   };
 
@@ -349,19 +457,47 @@ export function Product() {
 
     if (matchingVariant) {
       setSelectedVariant(matchingVariant);
+      // Сбрасываем индекс лайтбокса на 0 при изменении варианта
+      setLightboxIndex(0);
     }
   };
 
   // Функция для обработки выбора атрибута
   const handleAttributeSelect = (attributeId: string, value: string) => {
-    if (!selectedVariant) return;
+    if (!product || !selectedVariant) return;
 
-    // Создаем новую комбинацию атрибутов
-    const newAttributes = { ...getCurrentAttributeValues() };
+    // Создаем новую комбинацию атрибутов на основе текущих значений
+    const currentAttributes = getCurrentAttributeValues();
+    const newAttributes = { ...currentAttributes };
     newAttributes[attributeId] = value;
 
     // Ищем подходящий вариант
-    selectVariantByAttributes(newAttributes);
+    const matchingVariant = product.variants.find(variant => {
+      return Object.entries(newAttributes).every(([attrId, attrValue]) => {
+        const variantValue = getAttributeValue(variant, attrId);
+        return variantValue === attrValue;
+      });
+    });
+
+    if (matchingVariant) {
+      setSelectedVariant(matchingVariant);
+      // Сбрасываем индекс лайтбокса на 0 при изменении варианта
+      setLightboxIndex(0);
+    } else {
+      // Если точного совпадения нет, пытаемся найти вариант с таким же значением этого атрибута
+      const variantWithSameAttr = product.variants.find(variant => {
+        const variantValue = getAttributeValue(variant, attributeId);
+        return variantValue === value && variant.stock > 0 && variant.price !== null;
+      }) || product.variants.find(variant => {
+        const variantValue = getAttributeValue(variant, attributeId);
+        return variantValue === value;
+      });
+      
+      if (variantWithSameAttr) {
+        setSelectedVariant(variantWithSameAttr);
+        setLightboxIndex(0);
+      }
+    }
   };
 
   // Функция для получения текущих значений атрибутов
@@ -435,26 +571,31 @@ export function Product() {
       <div className="container">
         {product && (
           <div className={cn.product_content}>
-            <section className={cn.product_gallery}>
-              <div className={cn.gallery_thumbs}>
-                {galleryImages.map((img, i) => (
-                  <button
-                    key={i}
-                    className={`${cn.thumb} ${i === lightboxIndex ? 'active' : ''}`}
-                    type="button"
-                    aria-label={`Превью ${i + 1}`}
-                    onClick={() => setLightboxIndex(i)}
-                  >
-                    <img src={img} alt="" />
-                  </button>
-                ))}
-              </div>
+            <section className={`${cn.product_gallery} ${galleryImages.length <= 1 ? cn.gallery_no_thumbs : ''}`}>
+              {/* Показываем миниатюры только если есть больше одного изображения */}
+              {galleryImages.length > 1 && (
+                <div className={cn.gallery_thumbs}>
+                  {galleryImages.map((img, i) => (
+                    <button
+                      key={i}
+                      className={`${cn.thumb} ${i === lightboxIndex ? 'active' : ''}`}
+                      type="button"
+                      aria-label={`Превью ${i + 1}`}
+                      onClick={() => {
+                        setLightboxIndex(i);
+                      }}
+                    >
+                      <img src={img} alt="" />
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className={cn.gallery_main}>
                 <img 
-                  src={galleryImages[lightboxIndex] || getProductImageUrl(product.main_image)} 
+                  src={galleryImages[Math.min(lightboxIndex, galleryImages.length - 1)] || getProductImageUrl(product.main_image)} 
                   alt={product.product_name} 
                   className={cn.main_image}
-                  onClick={() => openLightbox(lightboxIndex)}
+                  onClick={() => openLightbox(Math.min(lightboxIndex, galleryImages.length - 1))}
                 />
               </div>
             </section>
@@ -466,72 +607,128 @@ export function Product() {
                 <span className={cn.muted}>18 503 оценки</span>
               </div>
               
-              {/* Отображение вариантов продукта */}
-              {product.variants && product.variants.length > 0 && (
-                <div className={cn.variants_section}>
-                  {product.attributes.map((attribute) => (
-                    <div key={attribute.id} className={cn.attribute_group}>
-                      <h4 className={cn.attribute_title}>
-                        {attribute.name} {attribute.unit && `(${attribute.unit})`}
-                      </h4>
-                      <div className={cn.attribute_values}>
-                        {(() => {
-                          // Получаем все уникальные значения для этого атрибута
-                          const uniqueValues = new Map();
-                          product.variants.forEach(variant => {
-                            const value = getAttributeValue(variant, attribute.id);
-                            if (value && !uniqueValues.has(value)) {
-                              // Находим первый доступный вариант с этим значением
-                              const availableVariant = product.variants.find(v => 
-                                getAttributeValue(v, attribute.id) === value && 
-                                v.stock > 0 && v.price !== null
-                              ) || product.variants.find(v => 
-                                getAttributeValue(v, attribute.id) === value
-                              );
-                              uniqueValues.set(value, availableVariant);
-                            }
-                          });
+              {/* Отображение вариантов продукта - показываем только если есть варианты и атрибуты */}
+              {(() => {
+                const hasVariants = product.variants && product.variants.length > 0;
+                const hasAttributes = product.attributes && product.attributes.length > 0;
+                const hasValidAttributes = hasAttributes && product.attributes.some(attr => {
+                  return product.variants.some(variant => {
+                    const value = getAttributeValue(variant, attr.id);
+                    return value && value.trim() !== '';
+                  });
+                });
 
-                          return Array.from(uniqueValues.entries()).map(([value, variant]) => (
-                            <button
-                              key={`${attribute.id}-${value}`}
-                              className={`${cn.attribute_value} ${
-                                selectedVariant && getAttributeValue(selectedVariant, attribute.id) === value 
-                                  ? cn.selected 
-                                  : ''
-                              }`}
-                              onClick={() => handleAttributeSelect(attribute.id, value)}
-                              disabled={!variant || variant.stock === 0 || variant.price === null}
-                            >
-                              {value}
-                            </button>
-                          ));
-                        })()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                if (!hasVariants || !hasValidAttributes) {
+                  return null;
+                }
 
-              {/* Блок характеристик */}
-              <div className={cn.specifications_section}>
-                <h3 className={cn.block_title}>Характеристики</h3>
-                <div className={cn.specifications_list}>
-                  {selectedVariant && selectedVariant.attribute_values.map((attrValue) => {
-                    const attribute = product.attributes.find(attr => attr.id === attrValue.attribute_id);
+                return (
+                  <div className={cn.variants_section}>
+                    {product.attributes.map((attribute) => {
+                      // Проверяем, есть ли у этого атрибута хотя бы одно значение в вариантах
+                      const hasValues = product.variants.some(variant => {
+                        const value = getAttributeValue(variant, attribute.id);
+                        return value && value.trim() !== '';
+                      });
+
+                      if (!hasValues) return null;
+
+                      return (
+                        <div key={attribute.id} className={cn.attribute_group}>
+                          <h4 className={cn.attribute_title}>
+                            {attribute.name} {attribute.unit && `(${attribute.unit})`}
+                          </h4>
+                          <div className={cn.attribute_values}>
+                            {(() => {
+                              // Получаем все уникальные значения для этого атрибута
+                              const uniqueValues = new Map();
+                              product.variants.forEach(variant => {
+                                const value = getAttributeValue(variant, attribute.id);
+                                if (value && value.trim() !== '' && !uniqueValues.has(value)) {
+                                  // Находим первый доступный вариант с этим значением
+                                  const availableVariant = product.variants.find(v => 
+                                    getAttributeValue(v, attribute.id) === value && 
+                                    v.stock > 0 && v.price !== null
+                                  ) || product.variants.find(v => 
+                                    getAttributeValue(v, attribute.id) === value
+                                  );
+                                  uniqueValues.set(value, availableVariant);
+                                }
+                              });
+
+                              return Array.from(uniqueValues.entries()).map(([value, variant]) => {
+                                const isSelected = selectedVariant && getAttributeValue(selectedVariant, attribute.id) === value;
+                                const isDisabled = !variant || variant.stock === 0 || variant.price === null;
+                                
+                                return (
+                                  <button
+                                    key={`${attribute.id}-${value}`}
+                                    className={`${cn.attribute_value} ${isSelected ? cn.selected : ''} ${isDisabled ? cn.disabled : ''}`}
+                                    onClick={() => !isDisabled && handleAttributeSelect(attribute.id, value)}
+                                    disabled={isDisabled}
+                                    type="button"
+                                  >
+                                    {value}
+                                  </button>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {/* Блок характеристик - показываем только если есть характеристики */}
+              {(() => {
+                // Проверяем наличие характеристик у выбранного варианта
+                const hasSpecs = selectedVariant && selectedVariant.attribute_values && selectedVariant.attribute_values.length > 0;
+                
+                if (!hasSpecs || !selectedVariant) {
+                  return null;
+                }
+
+                // Отображаем список характеристик
+                const validSpecs = selectedVariant.attribute_values
+                  .map((attrValue) => {
+                    // Ищем атрибут по attribute_id или attribute_name
+                    const attrId = attrValue.attribute_id || (attrValue as any).attribute_name;
+                    const attribute = product.attributes.find(attr => 
+                      attr.id === attrId || attr.name === attrId || attr.name === (attrValue as any).attribute_name
+                    );
                     if (!attribute) return null;
                     
-                    return (
-                      <div key={attrValue.id} className={cn.specification_item}>
-                        <span className={cn.spec_name}>{attribute.name}:</span>
-                        <span className={cn.spec_value}>
-                          {attrValue.value} {attribute.unit}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+                    return {
+                      id: attrValue.id,
+                      name: attribute.name,
+                      value: attrValue.value,
+                      unit: attribute.unit
+                    };
+                  })
+                  .filter((spec): spec is { id: string; name: string; value: string; unit: string } => spec !== null);
+
+                if (validSpecs.length === 0) {
+                  return null;
+                }
+
+                return (
+                  <div className={cn.specifications_section}>
+                    <h3 className={cn.block_title}>Характеристики</h3>
+                    <div className={cn.specifications_list}>
+                      {validSpecs.map((spec) => (
+                        <div key={spec.id} className={cn.specification_item}>
+                          <span className={cn.spec_name}>{spec.name}:</span>
+                          <span className={cn.spec_value}>
+                            {spec.value} {spec.unit && spec.unit.trim()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </section>
             <aside className={cn.aside}>
               <div className={cn.buy_card}>

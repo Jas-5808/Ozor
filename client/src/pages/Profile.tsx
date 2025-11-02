@@ -215,7 +215,7 @@ export function Profile() {
       {/* Tabs */}
       <div className="flex gap-2 border-b border-gray-200 mb-5">
         {[
-          { id: "dashboard", label: "Dashboard" },
+          { id: "dashboard", label: "Asosiy" },
           { id: "market", label: "Market" },
           { id: "oqim", label: "Oqim" },
           { id: "stats", label: "Statistika" },
@@ -265,7 +265,7 @@ export function Profile() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="rounded-xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 ring-1 ring-indigo-200/40 p-4">
-                <div className="text-xs uppercase tracking-wide text-indigo-600 font-semibold">Hisobingizda</div>
+                <div className="text-xs uppercase tracking-wide text-indigo-600 font-semibold">Balans</div>
                 {balanceLoading ? (
                   <div className="mt-2 h-7 w-28 bg-slate-200 rounded animate-pulse" />
                 ) : (
@@ -273,7 +273,7 @@ export function Profile() {
                     {formatPrice((userBalance ?? profile?.balance ?? 0), "UZS")}
                   </div>
                 )}
-                <div className="text-xs text-gray-500">Taxminiy balans</div>
+                <div className="text-xs text-gray-500">Kutilayotgan hisobingiz</div>
               </div>
               <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 ring-1 ring-blue-200/40 p-4">
                 <div className="text-xs uppercase tracking-wide text-blue-600 font-semibold">Oqimlar</div>

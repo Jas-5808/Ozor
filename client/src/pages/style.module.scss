@@ -526,20 +526,46 @@
   display: grid;
   grid-template-columns: 88px 1fr; /* миниатюры + главное фото */
   gap: 16px;
+  
+  /* Когда нет миниатюр, используем одну колонку */
+  &.gallery_no_thumbs {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
 }
 
 .gallery_thumbs {
   display: flex; flex-direction: column;
-  gap: 12px; max-height: 560px; overflow: hidden;
+  gap: 20px; /* увеличенные отступы между миниатюрами */
+  max-height: none; /* убираем ограничение высоты */
+  overflow: visible; /* убираем скролл полностью - все миниатюры показываются */
+  padding-right: 0; /* убираем отступ справа где был скролл */
 }
 .thumb {
   width: 72px; height: 56px; border-radius: 12px;
-  border: 1px solid var(--border); background: var(--surface);
-  box-shadow: var(--shadow-soft); display: grid; place-items: center;
-  padding: 0; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
-  img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
-  &:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,23,42,.08); }
-  &.active { border-color: var(--blue); }
+  border: 2px solid var(--border); background: var(--surface);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); display: grid; place-items: center;
+  padding: 0; cursor: pointer; transition: all 0.2s ease;
+  position: relative;
+  
+  img { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+    border-radius: 10px; 
+  }
+  
+  &:hover { 
+    transform: translateY(-2px); 
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    border-color: var(--blue);
+  }
+  
+  &.active { 
+    border-color: var(--blue);
+    border-width: 3px;
+    box-shadow: 0 4px 16px rgba(30, 104, 255, 0.25);
+  }
 }
 
 
@@ -561,6 +587,18 @@
     height: auto;
     object-fit: contain; 
     background: #f3f4f6;
+  }
+}
+
+/* Уменьшаем главную картинку в мобильной версии */
+@media (max-width: 720px) {
+  .gallery_main {
+    max-width: 100%;
+    
+    img {
+      max-width: 280px; /* делаем картинку немного меньше */
+      height: auto;
+    }
   }
 }
 
@@ -841,15 +879,64 @@
 @media (max-width: 1100px) {
   .product_content { grid-template-columns: 1fr; }
   .aside { position: static; }
-  .product_gallery { grid-template-columns: 72px 1fr; }
+  .product_gallery { 
+    grid-template-columns: 72px 1fr;
+    
+    /* Когда нет миниатюр, одна колонка */
+    &.gallery_no_thumbs {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+  }
 }
 @media (max-width: 720px) {
   .product { padding: 16px 0 28px; }
-  .product_gallery { grid-template-columns: 1fr; gap: 12px; }
-  .gallery_thumbs { order: 2; flex-direction: row; overflow-x: auto; max-height: none; padding-bottom: 6px;
-    .thumb { flex: 0 0 64px; width: 64px; height: 48px; }
+  .product_gallery { 
+    grid-template-columns: 70px 1fr; /* миниатюры слева + главная картинка */
+    gap: 12px;
+    align-items: start;
+    
+    /* Когда нет миниатюр, одна колонка */
+    &.gallery_no_thumbs {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
   }
-  .gallery_main { min-height: 360px; border-radius: 12px; }
+  .gallery_thumbs { 
+    order: 1; /* слева */
+    flex-direction: column; /* вертикально */
+    overflow: visible; /* убираем скролл */
+    max-height: none; /* убираем ограничение высоты */
+    padding-right: 0;
+    gap: 20px; /* увеличенные отступы между картинками для лучшего визуального разделения */
+    justify-content: flex-start;
+    .thumb { 
+      flex: 0 0 auto;
+      width: 64px; 
+      height: 50px;
+      min-width: 64px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s ease;
+      margin-bottom: 0; /* убираем лишние отступы */
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      
+      &.active {
+        border-width: 3px;
+        box-shadow: 0 4px 12px rgba(30, 104, 255, 0.3);
+      }
+    }
+  }
+  .gallery_main { 
+    order: 2; /* справа от миниатюр */
+    min-height: 300px; 
+    border-radius: 12px;
+    max-width: 100%; /* убираем ограничение для мобильной версии */
+  }
   .product_title { font-size: 20px; }
 }
 
@@ -1027,6 +1114,50 @@
 .spec_value {
   color: #6b7280;
   font-weight: 500;
+}
+
+/* Альтернативный дизайн для пустых характеристик */
+.specifications_empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  min-height: 200px;
+}
+
+.empty_icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.empty_text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 8px 0;
+}
+
+.empty_subtext {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+  max-width: 400px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 0.6;
+    transform: translateY(0);
+  }
 }
 
 /* Описание */
