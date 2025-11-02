@@ -11,6 +11,7 @@ import ProductCard from "../components/ui/ProductCard";
 import PhoneInput from "../components/forms/PhoneInput";
 import OrderDialog from "../components/OrderDialog";
 import useSEO from "../hooks/useSEO";
+import ProductPageSkeleton from "../components/ProductPageSkeleton";
 
 type LocationState = { product?: ProductType };
 
@@ -513,17 +514,9 @@ export function Product() {
     });
     return values;
   };
-  // Полноэкранная загрузка
+  // Скелетон загрузки
   if (loading) {
-    return (
-      <div className={cn.fullscreen_loading}>
-        <div className={cn.loading_container}>
-          <div className={cn.loading_spinner}></div>
-          <h2 className={cn.loading_title}>Загрузка товара</h2>
-          <p className={cn.loading_subtitle}>Пожалуйста, подождите...</p>
-        </div>
-      </div>
-    );
+    return <ProductPageSkeleton />;
   }
 
   // Ошибка загрузки
