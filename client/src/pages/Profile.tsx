@@ -290,7 +290,7 @@ export function Profile() {
       )}
 
         {activeTab === "market" && (
-          <div className={`${cn.glass} ${cn.panel}`} style={{ padding: 20, borderRadius: 0 }}>
+          <div className={`${cn.glass} ${cn.panel}`} style={{ padding: '12px 8px', borderRadius: 12 }}>
             {productsLoading && (
               <div style={{ padding: 8 }}>
                 <SkeletonGrid count={8} columns={4} />
@@ -298,13 +298,13 @@ export function Profile() {
             )}
             {productsError && <p>Xatolik: {String(productsError)}</p>}
             {!productsLoading && !productsError && (
-              <div className={cn.grid} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+              <div className={cn.grid} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                 {products.map((p: any) => (
                   
                   <div
                     key={p.product_id}
                     className={`${cn.cardWhite} ${cn.cardProduct}`}
-                    style={{ borderRadius: 0, padding: 16, border: '1px solid #e5e7eb', boxShadow: '0 8px 30px rgba(0,0,0,0.04)' }}
+                    style={{ borderRadius: 8, padding: 12, border: '1px solid #e5e7eb', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}
                   >
                     <div
                       className={cn.productHeadCol}
@@ -320,32 +320,34 @@ export function Profile() {
                             "/img/NaturalTitanium.jpg";
                         }}
                       />
-                      <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
-                        <div className={`${cn.productTitle} ${cn.textDark}`} style={{ fontSize: '1.125rem', fontWeight: 800, lineHeight: 1.2 }}>
+                      <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+                        <div className={`${cn.productTitle} ${cn.textDark}`} style={{ fontSize: '0.95rem', fontWeight: 700, lineHeight: 1.3 }}>
                           {p.product_name}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                          <div style={{ fontSize: '1rem', fontWeight: 700 }}>{formatPrice(p.price || 0)}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap' }}>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{formatPrice(p.price || 0)}</div>
                           <span
                             style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 6,
-                              padding: '4px 10px', borderRadius: 999,
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '3px 8px', borderRadius: 6,
                               background: '#ecfdf5', border: '1px solid #6ee7b7', color: '#047857',
-                              fontWeight: 700, fontSize: 12
+                              fontWeight: 600, fontSize: 11
                             }}
                           >
                             + {formatPrice(p.refferal_price || 0)}
                           </span>
                         </div>
-                        <div className={cn.small} style={{ color: '#64748b' }}>Daromad — siz uchun komissiya</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                          <div className={cn.small} style={{ color: '#64748b', fontSize: 11 }}>Daromad — siz uchun komissiya</div>
+                        </div>
                       </div>
                     </div>
-                    <div className={cn.actions} style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e5e7eb' }}>
                       <button
                         className={`${cn.button} ${cn.compact}`}
                         onClick={(e) => { e.stopPropagation(); handleGenerate(p); }}
                         disabled={createLoading}
-                        style={{ height: 40, padding: '0 14px', fontWeight: 700 }}
+                        style={{ width: '100%', height: 36, padding: '0 12px', fontWeight: 600, fontSize: 13 }}
                       >
                         {createLoading ? "Yaratilmoqda..." : "Nusxa yaratish"}
                       </button>
