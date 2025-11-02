@@ -282,7 +282,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   };
   const getCartTotal = () => {
     return state.cart.reduce((total, item) => {
-      return total + (item.product.refferal_price * item.quantity);
+      return total + (item.product.base_price * item.quantity);
     }, 0);
   };
   const getCartItemCount = () => {

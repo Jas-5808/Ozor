@@ -14,6 +14,25 @@ export function UpdateProfile() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [region, setRegion] = useState<string>("");
+
+  // ORDER_CITY (regions/city) with Uzbek labels
+  const REGIONS_UZ: Array<{ value: string; label: string }> = [
+    { value: "tashkent", label: "Toshkent" },
+    { value: "tashkent_region", label: "Toshkent viloyati" },
+    { value: "samarkand", label: "Samarqand" },
+    { value: "bukhara", label: "Buxoro" },
+    { value: "andijan", label: "Andijon" },
+    { value: "fergana", label: "Farg'ona" },
+    { value: "namangan", label: "Namangan" },
+    { value: "navoiy", label: "Navoiy" },
+    { value: "kashkadarya", label: "Qashqadaryo" },
+    { value: "surkhandarya", label: "Surxondaryo" },
+    { value: "sirdarya", label: "Sirdaryo" },
+    { value: "jizzakh", label: "Jizzax" },
+    { value: "khorezm", label: "Xorazm" },
+    { value: "karakalpakstan", label: "Qoraqalpog'iston" },
+  ];
 
   const navigate = useNavigate();
 
@@ -23,6 +42,11 @@ export function UpdateProfile() {
     if (!token) {
       navigate("/login");
     }
+    // Инициализация региона из ранее сохранённой локации
+    try {
+      const saved = (formData.location || "").trim();
+      if (saved) setRegion(saved);
+    } catch {}
   }, [navigate]);
 
   const handleInputChange = (
@@ -46,7 +70,7 @@ export function UpdateProfile() {
       const updateData = {
         first_name: formData.first_name.trim() || "",
         last_name: formData.last_name.trim() || "",
-        location: formData.location.trim() || "",
+        location: (region || formData.location).trim() || "",
         email: formData.email.trim() || "",
         bio: formData.bio.trim() || "",
       };
@@ -106,74 +130,83 @@ export function UpdateProfile() {
   return (
     <div className="container">
       <div className={cn.regist_content}>
-        <h2 className={cn.title}>Дополнительная информация</h2>
-        <p className={cn.subtitle}>
-          Заполните дополнительную информацию о себе (все поля необязательны)
-        </p>
+        <div style={{
+          background: 'linear-gradient(135deg, #eef2ff, #faf5ff)',
+          border: '1px solid #e9d5ff',
+          borderRadius: 16,
+          padding: 20,
+          width: '100%'
+        }}>
+          <h2 className={cn.title}>Profil ma'lumotlari</h2>
+          <p className={cn.subtitle}>Qo'shimcha ma'lumotlarni kiriting (ixtiyoriy)</p>
 
-        {error && <div className={cn.error_message}>{error}</div>}
+          {error && <div className={cn.error_message}>{error}</div>}
 
-        <form onSubmit={handleSubmit} className={cn.form}>
-          <div className={cn.name_row}>
+          <form onSubmit={handleSubmit} className={cn.form}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                type="text"
+                name="first_name"
+                placeholder="Ism"
+                value={formData.first_name}
+                onChange={handleInputChange}
+                className={cn.input}
+              />
+              <input
+                type="text"
+                name="last_name"
+                placeholder="Familiya"
+                value={formData.last_name}
+                onChange={handleInputChange}
+                className={cn.input}
+              />
+            </div>
+
             <input
-              type="text"
-              name="first_name"
-              placeholder="Имя"
-              value={formData.first_name}
+              type="email"
+              name="email"
+              placeholder="Email (ixtiyoriy)"
+              value={formData.email}
               onChange={handleInputChange}
               className={cn.input}
             />
-            <input
-              type="text"
-              name="last_name"
-              placeholder="Фамилия"
-              value={formData.last_name}
-              onChange={handleInputChange}
+
+            {/* Region only selector */}
+            <select
               className={cn.input}
-            />
-          </div>
-
-          <input
-            type="email"
-            name="email"
-            placeholder="Email (необязательно)"
-            value={formData.email}
-            onChange={handleInputChange}
-            className={cn.input}
-          />
-
-          <input
-            type="text"
-            name="location"
-            placeholder="Местоположение"
-            value={formData.location}
-            onChange={handleInputChange}
-            className={cn.input}
-          />
-
-          <textarea
-            name="bio"
-            placeholder="О себе (необязательно)"
-            value={formData.bio}
-            onChange={handleInputChange}
-            className={cn.textarea}
-            rows={3}
-          />
-
-          <div className={cn.button_row}>
-            <button type="submit" className={cn.btn_primary} disabled={loading}>
-              {loading ? "Сохранение..." : "Сохранить"}
-            </button>
-            <button
-              type="button"
-              onClick={handleSkip}
-              className={cn.btn_secondary}
-              disabled={loading}
+              value={region}
+              onChange={(e)=> setRegion(e.target.value)}
             >
-              Пропустить
-            </button>
-          </div>
-        </form>
+              <option value="">— Hududni tanlang —</option>
+              {REGIONS_UZ.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+
+            <textarea
+              name="bio"
+              placeholder="Qo'shimcha ma'lumot (ixtiyoriy)"
+              value={formData.bio}
+              onChange={handleInputChange}
+              className={cn.textarea}
+              rows={3}
+            />
+
+            <div className={cn.button_row}>
+              <button type="submit" className={cn.btn_primary} disabled={loading}>
+                {loading ? "Saqlanmoqda..." : "Saqlash"}
+              </button>
+              <button
+                type="button"
+                onClick={handleSkip}
+                className={cn.btn_secondary}
+                disabled={loading}
+              >
+                O'tkazib yuborish
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

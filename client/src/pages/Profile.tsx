@@ -7,13 +7,17 @@ import cn from "./profile.module.scss";
 import { formatPrice, getProductImageUrl, getVariantMainImage } from "../utils/helpers";
 import { useFlows } from "../hooks/useFlows";
 import SkeletonGrid from "../components/SkeletonGrid";
+import useSEO from "../hooks/useSEO";
+import { useNavigate } from "react-router-dom";
 
 export function Profile() {
+  const navigate = useNavigate();
   const { profile, isAuthenticated, logout, fetchUserProfile } =
     useAuth() as any;
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "market" | "oqim" | "stats" | "payments"
   >("dashboard");
+  const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
   const {
     products,
     loading: productsLoading,
@@ -44,6 +48,13 @@ export function Profile() {
   }>({ open: false, title: "", agree: false, createdLink: null });
   const [userBalance, setUserBalance] = useState<number | null>(null);
   const [balanceLoading, setBalanceLoading] = useState<boolean>(false);
+
+  // SEO: закрыть личный кабинет от индексации
+  useSEO({
+    title: "Profil — OZOR",
+    robots: "noindex,nofollow",
+    canonical: typeof window !== 'undefined' ? window.location.origin + '/profile' : undefined,
+  });
 
   useEffect(() => {
     if (isAuthenticated && !profile) {
@@ -133,7 +144,8 @@ export function Profile() {
   useEffect(() => {
     const loadReferrals = async () => {
       try {
-        setApiFlowsLoading(true); setApiFlowsError(null);
+        setApiFlowsLoading(true);
+        setApiFlowsError(null);
         const res = await shopAPI.getReferrals();
         const data = Array.isArray(res.data) ? res.data : (res.data?.users || res.data?.data || []);
         setApiFlows(data);
@@ -143,8 +155,12 @@ export function Profile() {
         setApiFlowsLoading(false);
       }
     };
-    if (activeTab === 'oqim' || activeTab === 'stats') loadReferrals();
-  }, [activeTab]);
+    if (!isAuthenticated) return;
+    // Загружаем ссылки один раз при входе в профиль
+    if (apiFlows.length === 0) {
+      loadReferrals();
+    }
+  }, [isAuthenticated]);
 
   const productById = useMemo(() => {
     const map = new Map<string, any>();
@@ -202,7 +218,7 @@ export function Profile() {
       {/* Tabs */}
       <div className="flex gap-2 border-b border-gray-200 mb-5">
         {[
-          { id: "dashboard", label: "Dashboard" },
+          { id: "dashboard", label: "Asosiy" },
           { id: "market", label: "Market" },
           { id: "oqim", label: "Oqim" },
           { id: "stats", label: "Statistika" },
@@ -252,15 +268,23 @@ export function Profile() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="rounded-xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 ring-1 ring-indigo-200/40 p-4">
-                <div className="text-xs uppercase tracking-wide text-indigo-600 font-semibold">Hisobingizda</div>
-                <div className="text-2xl font-extrabold text-gray-900 mt-1">
-                  {formatPrice((userBalance ?? profile?.balance ?? 0), "UZS")}
-                </div>
-                <div className="text-xs text-gray-500">Taxminiy balans</div>
+                <div className="text-xs uppercase tracking-wide text-indigo-600 font-semibold">Balans</div>
+                {balanceLoading ? (
+                  <div className="mt-2 h-7 w-28 bg-slate-200 rounded animate-pulse" />
+                ) : (
+                  <div className="text-2xl font-extrabold text-gray-900 mt-1">
+                    {formatPrice((userBalance ?? profile?.balance ?? 0), "UZS")}
+                  </div>
+                )}
+                <div className="text-xs text-gray-500">Kutilayotgan hisobingiz</div>
               </div>
               <div className="rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 ring-1 ring-blue-200/40 p-4">
                 <div className="text-xs uppercase tracking-wide text-blue-600 font-semibold">Oqimlar</div>
-                <div className="text-2xl font-extrabold text-gray-900 mt-1">{flows.length}</div>
+                {apiFlowsLoading ? (
+                  <div className="mt-2 h-7 w-12 bg-slate-200 rounded animate-pulse" />
+                ) : (
+                  <div className="text-2xl font-extrabold text-gray-900 mt-1">{(apiFlows?.length || 0) + (flows?.length || 0)}</div>
+                )}
                 <div className="text-xs text-gray-500">Yaratilgan referal linklar</div>
               </div>
             </div>
@@ -269,7 +293,7 @@ export function Profile() {
       )}
 
         {activeTab === "market" && (
-          <div className={`${cn.glass} ${cn.panel}`} style={{ padding: 20, borderRadius: 0 }}>
+          <div className={`${cn.glass} ${cn.panel}`} style={{ padding: '12px 8px', borderRadius: 12 }}>
             {productsLoading && (
               <div style={{ padding: 8 }}>
                 <SkeletonGrid count={8} columns={4} />
@@ -277,17 +301,54 @@ export function Profile() {
             )}
             {productsError && <p>Xatolik: {String(productsError)}</p>}
             {!productsLoading && !productsError && (
-              <div className={cn.grid} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+              <div className={cn.grid} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                 {products.map((p: any) => (
                   
                   <div
                     key={p.product_id}
                     className={`${cn.cardWhite} ${cn.cardProduct}`}
-                    style={{ borderRadius: 0, padding: 16, border: '1px solid #e5e7eb', boxShadow: '0 8px 30px rgba(0,0,0,0.04)' }}
+                    style={{ borderRadius: 8, padding: 12, border: '1px solid #e5e7eb', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}
                   >
                     <div
                       className={cn.productHeadCol}
-                      onClick={() => (window.location.href = `/product/${p.product_id}`)}
+                      onClick={async () => {
+                        if (loadingProductId === p.product_id) return;
+                        try {
+                          setLoadingProductId(p.product_id);
+                          // Загружаем данные из /api/v1/shop/product/{product_id}
+                          const response = await shopAPI.getProductById(p.product_id);
+                          const productData = response.data;
+                          
+                          // Преобразуем данные из API в формат для страницы Product
+                          // API формат: { id, name, description, refferal_price, main_image, category, attributes, variants }
+                          // variants: [{ id, product_id, sku, price, base_price, stock, attribute_values, media }]
+                          const firstVariant = productData.variants?.[0];
+                          const productForState = {
+                            product_id: productData.id || p.product_id,
+                            product_name: productData.name || p.product_name,
+                            product_description: productData.description || p.product_description,
+                            category: productData.category || p.category,
+                            refferal_price: productData.refferal_price ?? p.refferal_price ?? 0,
+                            main_image: productData.main_image || p.main_image,
+                            variant_id: firstVariant?.id || p.variant_id,
+                            variant_sku: firstVariant?.sku || p.variant_sku,
+                            price: firstVariant?.price ?? p.price ?? 0,
+                            stock: firstVariant?.stock ?? p.stock ?? 0,
+                            variant_attributes: firstVariant?.attribute_values || [],
+                            variant_media: firstVariant?.media || [],
+                          };
+                          
+                          // Переходим на страницу продукта с данными в state
+                          navigate(`/product/${p.product_id}`, { state: { product: productForState } });
+                        } catch (error) {
+                          console.error("Ошибка при загрузке продукта:", error);
+                          // При ошибке просто переходим на страницу продукта
+                          navigate(`/product/${p.product_id}`);
+                        } finally {
+                          setLoadingProductId(null);
+                        }
+                      }}
+                      style={{ cursor: loadingProductId === p.product_id ? 'wait' : 'pointer', opacity: loadingProductId === p.product_id ? 0.6 : 1 }}
                     >
                       <img
                         className={cn.productImgXL}
@@ -299,32 +360,34 @@ export function Profile() {
                             "/img/NaturalTitanium.jpg";
                         }}
                       />
-                      <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
-                        <div className={`${cn.productTitle} ${cn.textDark}`} style={{ fontSize: '1.125rem', fontWeight: 800, lineHeight: 1.2 }}>
+                      <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+                        <div className={`${cn.productTitle} ${cn.textDark}`} style={{ fontSize: '0.95rem', fontWeight: 700, lineHeight: 1.3 }}>
                           {p.product_name}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                          <div style={{ fontSize: '1rem', fontWeight: 700 }}>{formatPrice(p.price || 0)}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap' }}>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{formatPrice(p.price || 0)}</div>
                           <span
                             style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 6,
-                              padding: '4px 10px', borderRadius: 999,
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '3px 8px', borderRadius: 6,
                               background: '#ecfdf5', border: '1px solid #6ee7b7', color: '#047857',
-                              fontWeight: 700, fontSize: 12
+                              fontWeight: 600, fontSize: 11
                             }}
                           >
                             + {formatPrice(p.refferal_price || 0)}
                           </span>
                         </div>
-                        <div className={cn.small} style={{ color: '#64748b' }}>Daromad — siz uchun komissiya</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                          <div className={cn.small} style={{ color: '#64748b', fontSize: 11 }}>Daromad — siz uchun komissiya</div>
+                        </div>
                       </div>
                     </div>
-                    <div className={cn.actions} style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e5e7eb' }}>
                       <button
                         className={`${cn.button} ${cn.compact}`}
                         onClick={(e) => { e.stopPropagation(); handleGenerate(p); }}
                         disabled={createLoading}
-                        style={{ height: 40, padding: '0 14px', fontWeight: 700 }}
+                        style={{ width: '100%', height: 36, padding: '0 12px', fontWeight: 600, fontSize: 13 }}
                       >
                         {createLoading ? "Yaratilmoqda..." : "Nusxa yaratish"}
                       </button>

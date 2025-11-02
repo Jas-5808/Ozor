@@ -21,7 +21,7 @@ export default function HeaderActions({ isAuthenticated }: Props) {
         </li>
       ) : (
         <li>
-          <Link to="/login" className="flex items-center justify-center gap-2 h-12 px-4 md:px-5 rounded-2xl bg-white/10 text-white/90 hover:bg-white/15 transition" aria-label="Войти">
+          <Link to="/login" state={{ from: '/profile' }} className="flex items-center justify-center gap-2 h-12 px-4 md:px-5 rounded-2xl bg-white/10 text-white/90 hover:bg-white/15 transition" aria-label="Войти">
             <img src="/icons/user.svg" alt="" className="size-5" />
             <span>Kirish</span>
           </Link>
