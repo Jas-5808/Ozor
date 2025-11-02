@@ -14,6 +14,7 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { signin, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,9 +33,9 @@ export function Login() {
       console.log('Отправляем данные:', { phone: normalizedPhone, password });
       await signin(normalizedPhone, password);
       navigate(from, { replace: true });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Ошибка входа:', err);
-      setError(err.message);
+      setError(err.message || 'Ошибка при входе в систему');
     } finally {
       setLoading(false);
     }
@@ -43,52 +44,121 @@ export function Login() {
     console.log("Вход через Telegram");
   };
   return (
-    <div className="container">
-      <div className={cn.regist_content}>
-        <h2 className={cn.title}>Вход в аккаунт</h2>
-        <p className={cn.subtitle}>Введите номер телефона и пароль для входа</p>
-        {error && (
-          <div className={cn.error_message}>
-            {error}
+    <div className={cn.registration_wrapper}>
+      <div className={cn.registration_container}>
+        {/* Левая часть с картинкой */}
+        <div className={cn.registration_image_side}>
+          <div className={cn.image_content}>
+            <div className={cn.image_overlay}></div>
+            <div className={cn.image_text}>
+              <h1 className={cn.image_title}>Добро пожаловать обратно в OZAR</h1>
+              <p className={cn.image_subtitle}>
+                Войдите в свой аккаунт, чтобы продолжить делать покупки и отслеживать заказы
+              </p>
+              <div className={cn.image_features}>
+                <div className={cn.feature_item}>
+                  <svg className={cn.feature_icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Быстрая доставка</span>
+                </div>
+                <div className={cn.feature_item}>
+                  <svg className={cn.feature_icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Безопасные платежи</span>
+                </div>
+                <div className={cn.feature_item}>
+                  <svg className={cn.feature_icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Эксклюзивные скидки</span>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-        <form onSubmit={handleSubmit} className={cn.form}>
-          <PhoneInput
-            placeholder="+998 (99) 123 45 67"
-            value={phone}
-            onChange={setPhone}
-            className={cn.input}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Пароль"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={cn.input}
-            required
-          />
-          <button 
-            type="submit" 
-            className={cn.btn_primary}
-            disabled={loading}
-          >
-            {loading ? 'Вход...' : 'Войти'}
-          </button>
-        </form>
-        <div className={cn.divider}><span>или</span></div>
-        <div className={cn.socials}>
-          <button 
-            className={`${cn.social_btn} ${cn.telegram}`}
-            onClick={handleTelegramLogin}
-            disabled={loading}
-          >
-            <img src="/icons/telegram.png" alt="Telegram" />
-            Войти через Telegram
-          </button>
         </div>
-        <div className={cn.auth_links}>
-          <p>Нет аккаунта? <Link to="/registration">Зарегистрироваться</Link></p>
+
+        {/* Правая часть с формой */}
+        <div className={cn.registration_form_side}>
+          <div className={cn.regist_content}>
+            <div className={cn.form_header}>
+              <h2 className={cn.title}>Вход в аккаунт</h2>
+              <p className={cn.subtitle}>
+                Введите номер телефона и пароль для входа
+              </p>
+            </div>
+
+            {error && <div className={cn.error_message}>{error}</div>}
+
+            <form onSubmit={handleSubmit} className={cn.form}>
+              <div className={cn.input_wrapper}>
+                <PhoneInput
+                  placeholder="+998 (99) 123 45 67"
+                  value={phone}
+                  onChange={setPhone}
+                  className={cn.input}
+                  required
+                />
+              </div>
+              <div className={cn.input_wrapper}>
+                <div className={cn.password_input_container}>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Пароль"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={cn.input}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className={cn.password_toggle}
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                  >
+                    {showPassword ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                      </svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+              <button 
+                type="submit" 
+                className={cn.btn_primary}
+                disabled={loading}
+              >
+                {loading ? 'Вход...' : 'Войти'}
+              </button>
+            </form>
+
+            <div className={cn.divider}><span>или</span></div>
+
+            <div className={cn.socials}>
+              <button 
+                className={`${cn.social_btn} ${cn.telegram}`}
+                onClick={handleTelegramLogin}
+                disabled={loading}
+              >
+                <img src="/icons/telegram.png" alt="Telegram" />
+                Войти через Telegram
+              </button>
+            </div>
+
+            <div className={cn.auth_links}>
+              <p>
+                Нет аккаунта? <Link to="/registration" className={cn.auth_link}>Зарегистрироваться</Link>
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import SideCatalog from "../SideCatalog";
 import LanguageSwitcher from "../LanguageSwitcher";
 import SearchBar from "../SearchBar";
@@ -12,8 +12,15 @@ export function Header() {
   const likedCount = state.likedProducts?.size || 0;
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isSideCatalogOpen, setIsSideCatalogOpen] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
+  
+  // Определяем активные маршруты
+  const isHomeActive = location.pathname === '/';
+  const isCartActive = location.pathname === '/cart';
+  const isFavoritesActive = location.pathname === '/favorites';
+  const isProfileActive = location.pathname === '/profile' || location.pathname === '/login';
   useEffect(() => {
     const onScroll = () => {
       setIsCompact(window.scrollY > 10);
@@ -153,10 +160,16 @@ export function Header() {
               <li>
                 <Link
                   to="/"
-                  className="inline-flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-white/10 active:bg-white/15 transition"
+                  className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl transition ${
+                    isHomeActive 
+                      ? 'bg-white/20 shadow-lg' 
+                      : 'hover:bg-white/10 active:bg-white/15'
+                  }`}
                   aria-label="Главная"
                 >
-                  <img src="/icons/home.png" alt="" className="h-7 w-7" />
+                  <span className={`font-bold text-sm ${
+                    isHomeActive ? 'text-white' : 'text-white'
+                  }`}>OZAR</span>
                 </Link>
               </li>
               <li>
@@ -172,10 +185,16 @@ export function Header() {
               <li>
                 <Link
                   to="/cart"
-                  className="inline-flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-white/10 active:bg-white/15 transition relative"
+                  className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl transition relative ${
+                    isCartActive 
+                      ? 'bg-white/20 shadow-lg' 
+                      : 'hover:bg-white/10 active:bg-white/15'
+                  }`}
                   aria-label="Корзина"
                 >
-                  <img src="/icons/korzinka2.svg" alt="" className="h-7 w-7" />
+                  <img src="/icons/korzinka2.svg" alt="" className={`h-7 w-7 ${
+                    isCartActive ? 'opacity-100' : 'opacity-90'
+                  }`} />
                   {cartCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-red-500 text-[10px] leading-4 text-white text-center font-bold">
                       {cartCount}
@@ -186,10 +205,16 @@ export function Header() {
               <li className="relative">
                 <Link
                   to="/favorites"
-                  className="inline-flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-white/10 active:bg-white/15 transition relative"
+                  className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl transition relative ${
+                    isFavoritesActive 
+                      ? 'bg-white/20 shadow-lg' 
+                      : 'hover:bg-white/10 active:bg-white/15'
+                  }`}
                   aria-label="Избранное"
                 >
-                  <img src="/icons/like4.svg" alt="" className="h-7 w-7" />
+                  <img src="/icons/like4.svg" alt="" className={`h-7 w-7 ${
+                    isFavoritesActive ? 'opacity-100' : 'opacity-90'
+                  }`} />
                   {likedCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-red-500 text-[10px] leading-4 text-white text-center font-bold">
                       {likedCount}
@@ -201,10 +226,16 @@ export function Header() {
                 <Link
                   to={isAuthenticated ? "/profile" : "/login"}
                   state={isAuthenticated ? undefined : { from: '/profile' }}
-                  className="inline-flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-white/10 active:bg-white/15 transition"
+                  className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl transition ${
+                    isProfileActive 
+                      ? 'bg-white/20 shadow-lg' 
+                      : 'hover:bg-white/10 active:bg-white/15'
+                  }`}
                   aria-label={isAuthenticated ? "Профиль" : "Войти"}
                 >
-                  <img src="/icons/user2.svg" alt="" className="h-7 w-7" />
+                  <img src="/icons/user2.svg" alt="" className={`h-7 w-7 ${
+                    isProfileActive ? 'opacity-100' : 'opacity-90'
+                  }`} />
                 </Link>
               </li>
             </ul>

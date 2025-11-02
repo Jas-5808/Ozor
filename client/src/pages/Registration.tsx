@@ -164,43 +164,85 @@ export function Registration() {
   };
 
   return (
-    <div className="container">
-      <div className={cn.regist_content}>
-        <h2 className={cn.title}>Регистрация</h2>
-        <p className={cn.subtitle}>
-          Введите номер телефона и пароль для создания аккаунта
-        </p>
-
-        {error && <div className={cn.error_message}>{error}</div>}
-
-        <form onSubmit={handleSubmit} className={cn.form}>
-          <PhoneInput
-            placeholder="+998 (99) 123 45 67"
-            value={phone}
-            onChange={setPhone}
-            onValidChange={handlePhoneChange}
-            className={cn.input}
-            required
-          />
-        </form>
-
-        <div className={cn.socials}>
-          <button
-            className={`${cn.social_btn} ${cn.telegram}`}
-            onClick={handleTelegramRegistration}
-            disabled={loading || telegramLoading}
-          >
-            <img src="/icons/telegram.png" alt="Telegram" />
-            {telegramLoading
-              ? "Отправка кода..."
-              : "Зарегистрироваться через Telegram"}
-          </button>
+    <div className={cn.registration_wrapper}>
+      <div className={cn.registration_container}>
+        {/* Левая часть с картинкой */}
+        <div className={cn.registration_image_side}>
+          <div className={cn.image_content}>
+            <div className={cn.image_overlay}></div>
+            <div className={cn.image_text}>
+              <h1 className={cn.image_title}>Добро пожаловать в OZAR</h1>
+              <p className={cn.image_subtitle}>
+                Присоединяйтесь к тысячам довольных покупателей и получайте лучшие предложения каждый день
+              </p>
+              <div className={cn.image_features}>
+                <div className={cn.feature_item}>
+                  <svg className={cn.feature_icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Быстрая доставка</span>
+                </div>
+                <div className={cn.feature_item}>
+                  <svg className={cn.feature_icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Безопасные платежи</span>
+                </div>
+                <div className={cn.feature_item}>
+                  <svg className={cn.feature_icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Эксклюзивные скидки</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className={cn.auth_links}>
-          <p>
-            Уже есть аккаунт? <Link to="/login">Войти</Link>
-          </p>
+        {/* Правая часть с формой */}
+        <div className={cn.registration_form_side}>
+          <div className={cn.regist_content}>
+            <div className={cn.form_header}>
+              <h2 className={cn.title}>Создать аккаунт</h2>
+              <p className={cn.subtitle}>
+                Зарегистрируйтесь, чтобы начать делать покупки
+              </p>
+            </div>
+
+            {error && <div className={cn.error_message}>{error}</div>}
+
+            <form onSubmit={handleSubmit} className={cn.form}>
+              <div className={cn.input_wrapper}>
+                <PhoneInput
+                  placeholder="+998 (99) 123 45 67"
+                  value={phone}
+                  onChange={setPhone}
+                  onValidChange={handlePhoneChange}
+                  className={cn.input}
+                  required
+                />
+              </div>
+            </form>
+
+            <div className={cn.socials}>
+              <button
+                className={`${cn.social_btn} ${cn.telegram}`}
+                onClick={handleTelegramRegistration}
+                disabled={loading || telegramLoading}
+              >
+                <img src="/icons/telegram.png" alt="Telegram" />
+                {telegramLoading
+                  ? "Отправка кода..."
+                  : "Зарегистрироваться через Telegram"}
+              </button>
+            </div>
+
+            <div className={cn.auth_links}>
+              <p>
+                Уже есть аккаунт? <Link to="/login" className={cn.auth_link}>Войти</Link>
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 

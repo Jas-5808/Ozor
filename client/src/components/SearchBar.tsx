@@ -23,7 +23,7 @@ export default function SearchBar({ className = "" }: Props) {
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Uzbmarketda izlash"
+          placeholder="Искать товары и категории"
           className="w-full bg-transparent placeholder-white/70 text-white outline-none"
         />
         <button type="submit" className="h-12  hover:bg-white/10 rounded-xl" aria-label="Искать">
