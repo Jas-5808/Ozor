@@ -24,4 +24,48 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          // Разделяем vendor библиотеки
+          if (id.includes('node_modules')) {
+            // React и React DOM
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'react-vendor';
+            }
+            // React Router
+            if (id.includes('react-router')) {
+              return 'router';
+            }
+            // Axios
+            if (id.includes('axios')) {
+              return 'axios';
+            }
+            // Mapbox
+            if (id.includes('mapbox')) {
+              return 'mapbox';
+            }
+            // Swiper
+            if (id.includes('swiper')) {
+              return 'swiper';
+            }
+            // Остальные vendor библиотеки
+            return 'vendor';
+          }
+          
+          // Разделяем код приложения по функциональности
+          if (id.includes('/src/admin/')) {
+            return 'admin';
+          }
+          
+          if (id.includes('/src/pages/')) {
+            // Можно разбить по страницам, но пока оставим вместе
+            return 'pages';
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600, // Увеличиваем лимит предупреждений до 600 KB
+  },
 });
