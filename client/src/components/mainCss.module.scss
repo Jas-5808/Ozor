@@ -1,5 +1,5 @@
 .header {
-  background: linear-gradient(105deg, #00c2ff, #0066ff);
+  background: linear-gradient(92.41deg, #003d32, #04734b);
   width: 100%;
 
   .header_content {
@@ -209,7 +209,7 @@
   }
 
   .category {
-    background: #0055bf;
+    background: linear-gradient(92.41deg, #003d32, #04734b);
 
     .list {
       display: flex;
@@ -383,37 +383,36 @@
 /* затемнение фона */
 .sideCatalog_overlay {
   position: fixed;
-  inset: 110px 0 0 0;
-  height: 88.6%;
+  top: 75px; /* начинается под хедером */
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, 0.189);
-  z-index: 1000;
-
-  &::after {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 110px; /* та самая высота сверху */
-    background: transparent; /* невидимое, но кликабельное */
-    z-index: 1001;
+  z-index: 39; /* ниже панели каталога */
+  
+  @media (max-width: 768px) {
+    display: none; /* скрыт на мобильных */
   }
 }
 
 /* панель */
 .sideCatalog_panel {
   position: fixed;
+  top: 115px; /* начинается под хедером */
   bottom: 0;
   left: 0;
-  height: 88.6%;
-  width: min(90vw, 360px);
+  width: min(90vw, 320px);
   background: #fff;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  z-index: 1001;
+  z-index: 40; /* ниже хедера (z-50) */
   display: flex;
   flex-direction: column;
   border-right: 1px solid #eee;
   will-change: transform;
+  
+  @media (max-width: 768px) {
+    display: none; /* скрыт на мобильных */
+  }
 }
 
 /* открытие */
@@ -447,40 +446,92 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: 10px 14px;
   font-weight: 600;
-  font-size: 16px;
-  border-bottom: 1px solid #eee;
+  font-size: 15px;
+  background: linear-gradient(92.41deg, #003d32, #04734b);
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  
+  @media (max-width: 768px) {
+    padding: 16px 20px;
+    font-size: 18px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
 }
 
 .sideCatalog_close {
   border: none;
   background: transparent;
-  font-size: 22px;
+  font-size: 24px;
   line-height: 1;
   cursor: pointer;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 28px;
+    padding: 6px 10px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+  }
 }
 
 .sideCatalog_list {
-  padding: 8px 8px 20px;
+  padding: 6px 6px 16px;
   overflow: auto;
   flex: 1;
+  
+  @media (max-width: 768px) {
+    padding: 12px 16px 80px; /* отступ снизу для нижней навигации */
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 .sideCatalog_item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 10px;
-  border-radius: 10px;
+  padding: 10px 8px;
+  border-radius: 8px;
   text-decoration: none;
   color: #222;
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 500;
   transition: background 0.15s ease;
   cursor: pointer;
 
   &:hover {
-    background: #f5f6f8;
+    background: linear-gradient(92.41deg, rgba(0, 61, 50, 0.08), rgba(4, 115, 75, 0.08));
+    color: #003d32;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 14px 12px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 12px;
+    margin-bottom: 4px;
+    border: 1px solid #f0f0f0;
+    background: #fafafa;
+    
+    &:active {
+      background: linear-gradient(92.41deg, rgba(0, 61, 50, 0.12), rgba(4, 115, 75, 0.12));
+      transform: scale(0.98);
+    }
   }
 }
 
@@ -489,52 +540,329 @@
 }
 
 .sideCatalog_arrow {
-  font-size: 12px;
+  font-size: 10px;
   color: #666;
   transition: transform 0.2s ease;
 
   &.sideCatalog_arrow_expanded {
     transform: rotate(180deg);
+    color: #003d32;
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 14px;
+    color: #003d32;
+    font-weight: bold;
+    
+    &.sideCatalog_arrow_expanded {
+      color: #04734b;
+    }
   }
 }
 
 .sideCatalog_category {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  
+  @media (max-width: 768px) {
+    margin-bottom: 8px;
+  }
 }
 
 .sideCatalog_subcategories {
-  margin-left: 16px;
-  margin-top: 4px;
-  border-left: 2px solid #f0f0f0;
-  padding-left: 12px;
+  margin-left: 12px;
+  margin-top: 2px;
+  border-left: 2px solid rgba(0, 61, 50, 0.15);
+  padding-left: 10px;
+  
+  @media (max-width: 768px) {
+    margin-left: 0;
+    margin-top: 8px;
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid rgba(0, 61, 50, 0.1);
+    padding-top: 8px;
+    margin-top: 8px;
+  }
 }
 
 .sideCatalog_subcategory {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
   text-decoration: none;
   color: #555;
-  font-size: 14px;
+  font-size: 13px;
   transition: all 0.15s ease;
 
   &:hover {
-    background: #f8f9fa;
-    color: #333;
+    background: linear-gradient(92.41deg, rgba(0, 61, 50, 0.06), rgba(4, 115, 75, 0.06));
+    color: #003d32;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 10px 12px;
+    font-size: 15px;
+    border-radius: 10px;
+    margin-bottom: 3px;
+    background: #f8f8f8;
+    
+    &:active {
+      background: linear-gradient(92.41deg, rgba(0, 61, 50, 0.1), rgba(4, 115, 75, 0.1));
+      transform: scale(0.98);
+    }
   }
 }
 
 .sideCatalog_count {
-  font-size: 12px;
+  font-size: 11px;
   color: #999;
   font-weight: 400;
+  
+  @media (max-width: 768px) {
+    font-size: 13px;
+    color: #666;
+    font-weight: 500;
+    background: rgba(0, 61, 50, 0.08);
+    padding: 2px 8px;
+    border-radius: 12px;
+  }
 }
 
 .sideCatalog_loading {
-  padding: 20px;
+  padding: 16px;
   text-align: center;
   color: #666;
+  font-size: 13px;
+  
+  @media (max-width: 768px) {
+    padding: 40px 20px;
+    font-size: 15px;
+    color: #888;
+  }
+}
+
+/* ====== МОБИЛЬНАЯ СТРАНИЦА КАТАЛОГА ====== */
+.mobileCatalogPage {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  
+  @media (min-width: 769px) {
+    display: none;
+  }
+}
+
+.mobileCatalogSearch {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: linear-gradient(92.41deg, #003d32, #04734b);
+  padding: 12px 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobileCatalogBack {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  transition: background 0.2s ease;
+  
+  &:active {
+    background: rgba(255, 255, 255, 0.25);
+  }
+  
+  svg {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+.mobileCatalogSearchForm {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  padding: 0;
+}
+
+.mobileCatalogSearchInput {
+  flex: 1;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 0;
+  border: none;
+  background: white;
+  font-size: 16px;
+  outline: none;
+  color: #1f2937;
+  
+  &::placeholder {
+    color: #9ca3af;
+  }
+  
+  &:focus {
+    background: white;
+  }
+}
+
+.mobileCatalogSearchButton {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  
+  &:active {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.mobileCatalogContent {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobileCatalogHeader {
+  padding: 20px 16px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  
+  h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+}
+
+.mobileCatalogList {
+  padding: 12px 16px 80px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px) + 80px);
+}
+
+.mobileCatalogCategory {
+  margin-bottom: 8px;
+}
+
+.mobileCatalogItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-radius: 12px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 4px;
+  
+  &:active {
+    background: linear-gradient(92.41deg, rgba(0, 61, 50, 0.12), rgba(4, 115, 75, 0.12));
+    transform: scale(0.98);
+    border-color: rgba(0, 61, 50, 0.2);
+  }
+}
+
+.mobileCatalogItemWithSub {
+  cursor: pointer;
+}
+
+.mobileCatalogArrow {
   font-size: 14px;
+  color: #003d32;
+  font-weight: bold;
+  transition: transform 0.2s ease;
+  
+  &.mobileCatalogArrowExpanded {
+    transform: rotate(180deg);
+    color: #04734b;
+  }
+}
+
+.mobileCatalogSubcategories {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 61, 50, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mobileCatalogSubcategory {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #f8f8f8;
+  text-decoration: none;
+  color: #374151;
+  font-size: 15px;
+  transition: all 0.15s ease;
+  margin-bottom: 3px;
+  
+  &:active {
+    background: linear-gradient(92.41deg, rgba(0, 61, 50, 0.1), rgba(4, 115, 75, 0.1));
+    transform: scale(0.98);
+    color: #003d32;
+  }
+}
+
+.mobileCatalogCount {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+  background: rgba(0, 61, 50, 0.08);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.mobileCatalogLoading {
+  padding: 40px 20px;
+  text-align: center;
+  color: #888;
+  font-size: 15px;
+}
+
+.mobileCatalogEmpty {
+  padding: 60px 20px;
+  text-align: center;
+  
+  p {
+    margin: 0;
+    font-size: 16px;
+    color: #666;
+  }
 }

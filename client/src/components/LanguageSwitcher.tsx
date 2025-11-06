@@ -18,11 +18,11 @@ export default function LanguageSwitcher() {
   return (
     <div className="relative">
       <div
-        className="flex items-center gap-2 h-10 px-4 md:px-5 rounded-xl bg-white/10 border border-white/10 backdrop-blur-md cursor-pointer hover:bg-white/15 active:scale-[0.99] transition"
+        className="flex items-center gap-1.5 h-8 px-2.5 md:px-3 rounded-lg bg-white/10 border border-white/10 backdrop-blur-md cursor-pointer hover:bg-white/15 active:scale-[0.99] transition"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <img src={selected.img} alt={selected.value} className="h-4 w-6 object-contain" />
-        <span className="text-sm font-medium">{selected.label}</span>
+        <img src={selected.img} alt={selected.value} className="h-3.5 w-5 object-contain" />
+        <span className="text-xs font-medium">{selected.label}</span>
       </div>
       {isOpen && (
         <ul className="absolute mt-2 w-48 rounded-xl overflow-hidden right-0 bg-[#434344]/90 backdrop-blur-xl border border-white/10 shadow-lg">

@@ -52,6 +52,13 @@ export default function SideCatalog({ open, onClose }: SideCatalogProps) {
       >
         <div className={cn.sideCatalog_header}>
           <span>Каталог</span>
+          <button 
+            className={cn.sideCatalog_close}
+            onClick={onClose}
+            aria-label="Закрыть каталог"
+          >
+            ×
+          </button>
         </div>
         <div className={cn.sideCatalog_list}>
           {loading ? (
@@ -101,4 +108,4 @@ export default function SideCatalog({ open, onClose }: SideCatalogProps) {
       </div>
     </>
   );
-}
+}

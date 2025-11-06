@@ -1,5 +1,5 @@
 import "./App.css";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import { AppProvider, useApp } from "./context/AppContext";
@@ -7,9 +7,24 @@ import { AuthProvider } from "./hooks/useAuth";
 import { useAuth } from "./hooks/useAuth";
 import useGeolocation from "./hooks/useGeolocation";
 import DeliveryModal from "./components/DeliveryModal";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 function AppContent() {
+  const location = useLocation();
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Проверяем, мобильное ли устройство и находимся ли на странице каталога
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
+  const isCatalogPage = location.pathname === '/catalog';
+  const shouldHideHeader = isCatalogPage && isMobile; // Скрываем только верхнюю часть на каталоге
   const {
     state,
     setLocation,
@@ -84,11 +99,13 @@ function AppContent() {
   return (
     <>
       <div className="wrapper">
-        <Header />
+        {!shouldHideHeader && <Header />}
+        {/* Навбар всегда показывается на мобильных, даже на странице каталога */}
+        {isMobile && shouldHideHeader && <Header showOnlyNavbar={true} />}
         <div className="main">
           <Outlet />
         </div>
-        <Footer />
+        {!shouldHideHeader && <Footer />}
       </div>
 
       <DeliveryModal

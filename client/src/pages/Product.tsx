@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useLocation, useParams } from "react-router-dom";
 // @ts-ignore – модуль стилей объявлен через d.ts
 import cn from "./style.module.scss";
@@ -125,11 +125,12 @@ export function Product() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxZoom, setLightboxZoom] = useState(1);
-  const [activeTab, setActiveTab] = useState<'description' | 'comments'>('description');
+  const [activeTab, setActiveTab] = useState<'description' | 'characteristics' | 'comments'>('description');
   const [comments, setComments] = useState<Array<{ id: string; author: string; text: string; createdAt: string }>>([]);
   const [phone, setPhone] = useState<string>("");
   const [name, setName] = useState<string>("");
   const [orderOpen, setOrderOpen] = useState<boolean>(false);
+  const productRef = useRef<HTMLDivElement>(null);
   
   const productFromState = routeState?.product;
   const product = useMemo<ProductDetail | null>(() => {
@@ -145,6 +146,45 @@ export function Product() {
     return null;
   }, [productFromState, fetchedProduct]);
   const { addToCart, state: appState } = useApp();
+
+  // Прокрутка вверх при открытии товара (особенно важно для мобильных)
+  useEffect(() => {
+    // Прокручиваем сразу при изменении id - мгновенно
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    
+    // Также прокручиваем после небольшой задержки для надежности
+    const timer1 = setTimeout(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }, 50);
+    
+    return () => clearTimeout(timer1);
+  }, [id]);
+  
+  // Дополнительная прокрутка после загрузки продукта
+  useEffect(() => {
+    if (product && !loading) {
+      // Задержка для рендеринга контента, затем прокрутка к началу страницы
+      const timer = setTimeout(() => {
+        // Прокручиваем строго к началу страницы
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        
+        // Дополнительная проверка через небольшую задержку
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        }, 100);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [product, loading]);
 
   // SEO
   const primaryImage = useMemo(() => {
@@ -545,8 +585,8 @@ export function Product() {
     );
   }
 
-  return (
-    <div className={cn.product}>
+    return (
+      <div ref={productRef} className={cn.product}>
       <div className="container">
         {product && (
           <div className={cn.product_content}>
@@ -660,54 +700,6 @@ export function Product() {
                 );
               })()}
 
-              {/* Блок характеристик - показываем только если есть характеристики */}
-              {(() => {
-                // Проверяем наличие характеристик у выбранного варианта
-                const hasSpecs = selectedVariant && selectedVariant.attribute_values && selectedVariant.attribute_values.length > 0;
-                
-                if (!hasSpecs || !selectedVariant) {
-                  return null;
-                }
-
-                // Отображаем список характеристик
-                const validSpecs = selectedVariant.attribute_values
-                  .map((attrValue) => {
-                    // Ищем атрибут по attribute_id или attribute_name
-                    const attrId = attrValue.attribute_id || (attrValue as any).attribute_name;
-                    const attribute = product.attributes.find(attr => 
-                      attr.id === attrId || attr.name === attrId || attr.name === (attrValue as any).attribute_name
-                    );
-                    if (!attribute) return null;
-                    
-                    return {
-                      id: attrValue.id,
-                      name: attribute.name,
-                      value: attrValue.value,
-                      unit: attribute.unit
-                    };
-                  })
-                  .filter((spec): spec is { id: string; name: string; value: string; unit: string } => spec !== null);
-
-                if (validSpecs.length === 0) {
-                  return null;
-                }
-
-                return (
-                  <div className={cn.specifications_section}>
-                    <h3 className={cn.block_title}>Характеристики</h3>
-                    <div className={cn.specifications_list}>
-                      {validSpecs.map((spec) => (
-                        <div key={spec.id} className={cn.specification_item}>
-                          <span className={cn.spec_name}>{spec.name}:</span>
-                          <span className={cn.spec_value}>
-                            {spec.value} {spec.unit && spec.unit.trim()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
             </section>
             <aside className={cn.aside}>
               <div className={cn.buy_card}>
@@ -828,7 +820,7 @@ export function Product() {
         {/* Дополнительные блоки */}
         {product && (
           <div className={cn.additional_sections}>
-            {/* Табы: Описание / Комментарии */}
+            {/* Табы: Описание / Характеристики / Комментарии */}
             <div>
               <div className={cn.tabs}>
                 <button
@@ -837,6 +829,13 @@ export function Product() {
                   type="button"
                 >
                   Описание
+                </button>
+                <button
+                  className={`${cn.tab} ${activeTab === 'characteristics' ? cn.tab_active : ''}`}
+                  onClick={() => setActiveTab('characteristics')}
+                  type="button"
+                >
+                  Характеристики
                 </button>
                 <button
                   className={`${cn.tab} ${activeTab === 'comments' ? cn.tab_active : ''}`}
@@ -858,6 +857,53 @@ export function Product() {
                     ) : (
                       <p>Описание недоступно.</p>
                     )}
+                  </div>
+                ) : activeTab === 'characteristics' ? (
+                  <div className={cn.specifications_section}>
+                    {(() => {
+                      // Проверяем наличие характеристик у выбранного варианта
+                      const hasSpecs = selectedVariant && selectedVariant.attribute_values && selectedVariant.attribute_values.length > 0;
+                      
+                      if (!hasSpecs || !selectedVariant) {
+                        return <p>Характеристики недоступны.</p>;
+                      }
+
+                      // Отображаем список характеристик
+                      const validSpecs = selectedVariant.attribute_values
+                        .map((attrValue) => {
+                          // Ищем атрибут по attribute_id или attribute_name
+                          const attrId = attrValue.attribute_id || (attrValue as any).attribute_name;
+                          const attribute = product.attributes.find(attr => 
+                            attr.id === attrId || attr.name === attrId || attr.name === (attrValue as any).attribute_name
+                          );
+                          if (!attribute) return null;
+                          
+                          return {
+                            id: attrValue.id,
+                            name: attribute.name,
+                            value: attrValue.value,
+                            unit: attribute.unit
+                          };
+                        })
+                        .filter((spec): spec is { id: string; name: string; value: string; unit: string } => spec !== null);
+
+                      if (validSpecs.length === 0) {
+                        return <p>Характеристики недоступны.</p>;
+                      }
+
+                      return (
+                        <div className={cn.specifications_list}>
+                          {validSpecs.map((spec) => (
+                            <div key={spec.id} className={cn.specification_item}>
+                              <span className={cn.spec_name}>{spec.name}:</span>
+                              <span className={cn.spec_value}>
+                                {spec.value} {spec.unit && spec.unit.trim()}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div className={cn.comments_section}>

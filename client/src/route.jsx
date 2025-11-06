@@ -11,6 +11,7 @@ import { UpdateProfile } from "./pages/UpdateProfile";
 import { TestAuth } from "./pages/TestAuth";
 import Favorites from "./pages/Favorites";
 import Cart from "./pages/Cart";
+import { CatalogPage } from "./pages/CatalogPage";
 import React, { Suspense, lazy } from 'react';
 import { AdminLayout } from './admin';
 import SaleLayout from './admin/SaleLayout';
@@ -112,6 +113,7 @@ export const router = createBrowserRouter([
         </RequireAuth>
       ) },
       { path: "cart", element: <Cart /> },
+      { path: "catalog", element: <CatalogPage /> },
       { path: "update-profile", element: (
         <RequireAuth>
           <UpdateProfile />
