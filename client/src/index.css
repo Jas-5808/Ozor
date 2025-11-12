@@ -4,7 +4,13 @@
   text-decoration: none;
   list-style: none;
   box-sizing: border-box;
-  font-family: "Montserrat", sans-serif;
+  font-family: "Montserrat", system-ui, -apple-system, sans-serif;
+}
+
+/* Оптимизация загрузки шрифтов */
+@font-face {
+  font-family: 'Montserrat';
+  font-display: swap; /* Показываем fallback шрифт сразу, затем заменяем на Montserrat */
 }
 html, body {
   overflow-x: hidden;

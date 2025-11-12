@@ -1,13 +1,33 @@
-import React from "react";
+import React, { memo, useMemo, useCallback } from "react";
 import { useProducts } from "../hooks/useProducts";
 import ProductCard from "./ui/ProductCard";
 import SkeletonGrid from "./SkeletonGrid";
 // CSS module removed - using Tailwind utilities
-export const ProductsList: React.FC = () => {
+
+const ProductsListComponent: React.FC = () => {
   const { products, loading, error, refetch } = useProducts();
-  const handleToggleLike = (productId: string) => {
-    console.log("Переключен лайк для:", productId);
-  };
+  
+  const handleToggleLike = useCallback((productId: string) => {
+    // Логика переключения лайка обрабатывается в AppContext
+    // Этот callback оставлен для совместимости
+  }, []);
+  
+  const productCards = useMemo(() => {
+    if (!products || products.length === 0) return null;
+    
+    return products.map((product, index) => {
+      const uniqueKey = product?.variant_id 
+        ? `${product.product_id}_${product.variant_id}` 
+        : product?.product_id || `product-${index}`;
+      return (
+        <ProductCard
+          key={uniqueKey}
+          product={product}
+          onToggleLike={handleToggleLike}
+        />
+      );
+    });
+  }, [products, handleToggleLike]);
   if (loading) {
     return <SkeletonGrid count={8} columns={4} />;
   }
@@ -39,20 +59,12 @@ export const ProductsList: React.FC = () => {
   }
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 items-stretch">
-      {products.map((product, index) => {
-        // Создаем уникальный ключ на основе product_id и variant_id
-        const uniqueKey = product?.variant_id 
-          ? `${product.product_id}_${product.variant_id}` 
-          : product?.product_id || `product-${index}`;
-        return (
-          <ProductCard
-            key={uniqueKey}
-            product={product}
-            onToggleLike={handleToggleLike}
-          />
-        );
-      })}
+      {productCards}
     </div>
   );
 };
+
+export const ProductsList = memo(ProductsListComponent);
+ProductsList.displayName = 'ProductsList';
+
 export default ProductsList;

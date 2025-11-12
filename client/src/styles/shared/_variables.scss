@@ -1,0 +1,27 @@
+// CSS переменные и общие настройки
+:root {
+  --bg: #fff;
+  --text: #111827;
+  --muted: #6b7280;
+  --border: #e9edf2;
+  --surface: #f9fafb;
+  --blue: #1e68ff;
+  --blue-dark: #1652cc;
+  --blue-ink: #1e3a8a;
+  --shadow-card: 0 12px 22px rgba(0,0,0,.08), 0 2px 3px rgba(0,0,0,.04);
+  --shadow-soft: 0 1px 2px rgba(16,24,40,.04), 0 1px 1px rgba(16,24,40,.04);
+  
+  // Размеры шрифтов
+  --fz-xs: clamp(10px, 1.5vw, 12px);
+  --fz-sm: clamp(12px, 1.8vw, 13px);
+  --fz-md: clamp(14px, 2vw, 16px);
+  --fz-lg: clamp(16px, 2.4vw, 19px);
+  
+  // Цвета для градиентов
+  --gradient-primary: linear-gradient(92.41deg, #003d32, #04734b);
+  --gradient-primary-hover: linear-gradient(92.41deg, #004d3a, #056a4f);
+  --gradient-telegram: linear-gradient(135deg, #0088cc 0%, #229ed9 100%);
+  --gradient-telegram-hover: linear-gradient(135deg, #0077b5 0%, #1e8bc7 100%);
+  --gradient-background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+

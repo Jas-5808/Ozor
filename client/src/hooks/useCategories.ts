@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { shopAPI } from "../api";
 import { Category } from "../types";
+import { logger } from "../utils/logger";
+import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
 export const useCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -11,9 +13,11 @@ export const useCategories = () => {
       setError(null);
       const response = await shopAPI.getCategories();
       setCategories(response.data);
-    } catch (err) {
-      setError(err.message || "Ошибка при загрузке категорий");
-      console.error("Error fetching categories:", err);
+    } catch (error) {
+      const appError = handleApiError(error);
+      const errorMessage = getUserFriendlyMessage(appError) || "Ошибка при загрузке категорий";
+      setError(errorMessage);
+      logger.errorWithContext(appError, { context: 'fetchCategories' });
     } finally {
       setLoading(false);
     }
@@ -45,9 +49,11 @@ export const useCategoryById = (categoryId: string | undefined) => {
       setError(null);
       const response = await shopAPI.getCategoryById(categoryId);
       setCategory(response.data);
-    } catch (err) {
-      setError(err.message || "Ошибка при загрузке категории");
-      console.error("Error fetching category:", err);
+    } catch (error) {
+      const appError = handleApiError(error);
+      const errorMessage = getUserFriendlyMessage(appError) || "Ошибка при загрузке категории";
+      setError(errorMessage);
+      logger.errorWithContext(appError, { context: 'fetchCategory' });
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { shopAPI } from "../api";
 import { Product } from "../types";
+import { logger } from "../utils/logger";
+import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
 export const useProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -15,9 +17,11 @@ export const useProducts = () => {
         (product) => product.price && product.price > 0
       );
       setProducts(filteredProducts);
-    } catch (err) {
-      setError(err.message || "Ошибка при загрузке продуктов");
-      console.error("Error fetching products:", err);
+    } catch (error) {
+      const appError = handleApiError(error);
+      const errorMessage = getUserFriendlyMessage(appError) || "Ошибка при загрузке продуктов";
+      setError(errorMessage);
+      logger.errorWithContext(appError, { context: 'fetchProducts' });
     } finally {
       setLoading(false);
     }
@@ -51,9 +55,11 @@ export const useProductById = (productId: string | undefined) => {
       setError(null);
       const response = await shopAPI.getProductById(productId);
       setProduct(response.data);
-    } catch (err) {
-      setError(err.message || "Ошибка при загрузке продукта");
-      console.error("Error fetching product:", err);
+    } catch (error) {
+      const appError = handleApiError(error);
+      const errorMessage = getUserFriendlyMessage(appError) || "Ошибка при загрузке продукта";
+      setError(errorMessage);
+      logger.errorWithContext(appError, { context: 'fetchProduct' });
     } finally {
       setLoading(false);
     }
@@ -88,9 +94,11 @@ export const useProductsByCategory = (categoryId: string | undefined) => {
         (product) => product.price && product.price > 0
       );
       setProducts(filteredProducts);
-    } catch (err) {
-      setError(err.message || "Ошибка при загрузке продуктов категории");
-      console.error("Error fetching products by category:", err);
+    } catch (error) {
+      const appError = handleApiError(error);
+      const errorMessage = getUserFriendlyMessage(appError) || "Ошибка при загрузке продуктов категории";
+      setError(errorMessage);
+      logger.errorWithContext(appError, { context: 'fetchProductsByCategory' });
     } finally {
       setLoading(false);
     }

@@ -20,6 +20,7 @@ export function MainPage() {
       'twitter:description': "Smartfonlar, elektronika va maishiy texnika. O'zbekiston bo'ylab tez yetkazib berish."
     }
   });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="container mx-auto px-4 py-6">

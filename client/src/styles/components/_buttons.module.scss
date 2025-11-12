@@ -1,0 +1,138 @@
+@import '../shared/variables';
+@import '../shared/mixins';
+
+.btn_primary {
+  background: var(--gradient-primary);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--gradient-primary-hover);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.btn_secondary {
+  background: transparent;
+  color: #666;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: #f8f9fa;
+    border-color: #ccc;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.primary_btn {
+  height: 44px;
+  border: 0;
+  border-radius: 10px;
+  font-weight: 700;
+  background: var(--gradient-primary);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.15s ease, background 0.15s ease;
+  box-shadow: 0 8px 16px rgba(0, 61, 50, 0.25);
+
+  &:hover:not(:disabled) {
+    background: var(--gradient-primary-hover);
+    box-shadow: 0 10px 22px rgba(0, 61, 50, 0.28);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.social_btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 24px;
+  border-radius: 12px;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  @include button-hover;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  img {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  
+  @media (max-width: 640px) {
+    padding: 14px 20px;
+    font-size: 15px;
+    
+    img {
+      width: 20px;
+      height: 20px;
+    }
+  }
+}
+
+.telegram {
+  background: var(--gradient-telegram);
+  color: #fff;
+  border: none;
+
+  &:hover:not(:disabled) {
+    background: var(--gradient-telegram-hover);
+  }
+}
+
+.google {
+  background: #fff;
+  
+  &:hover:not(:disabled) {
+    background: #f7f7f7;
+  }
+}
+
+.apple {
+  background: #000;
+  color: #fff;
+  border: none;
+
+  &:hover:not(:disabled) {
+    background: #111;
+  }
+}
+

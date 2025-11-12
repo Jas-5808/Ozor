@@ -18,11 +18,11 @@ type LocationState = { product?: ProductType };
 // Функция для загрузки всех вариантов товара (использует новый API /api/v1/shop/product/{product_id})
 async function fetchAllProductVariants(productId: string): Promise<ProductDetail | null> {
   try {
-    console.log("Загружаем продукт с ID:", productId);
+    logger.debug("Loading product", { productId });
     
     // Используем новый API /api/v1/shop/product/{product_id}
     const response = await shopAPI.getProductById(productId);
-    console.log("Ответ API (продукт):", response.data);
+    logger.debug("Product API response", { productId, hasData: !!response.data });
     
     const productData = response.data;
     
@@ -32,10 +32,14 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
 
     // Проверяем, что загруженный продукт соответствует запрошенному ID
     if (productData.id !== productId && productData.product_id !== productId) {
-      console.error("КРИТИЧЕСКАЯ ОШИБКА: product_id не совпадает с запрошенным!", {
-        requested: productId,
-        received: productData.id || productData.product_id
-      });
+      logger.errorWithContext(
+        new Error("Product ID mismatch"),
+        {
+          context: 'fetchAllProductVariants',
+          requested: productId,
+          received: productData.id || productData.product_id,
+        }
+      );
       return null;
     }
 
@@ -100,15 +104,15 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
       variants: allVariants,
     };
 
-    console.log("Собранный ProductDetail:", {
+    logger.debug("ProductDetail assembled", {
       product_id: productDetail.product_id,
       product_name: productDetail.product_name,
-      variants_count: productDetail.variants.length
+      variants_count: productDetail.variants.length,
     });
 
     return productDetail;
   } catch (error) {
-    console.error("Ошибка при загрузке продукта:", error);
+    logger.errorWithContext(error, { context: 'fetchAllProductVariants' });
     throw error;
   }
 }
@@ -266,9 +270,9 @@ export function Product() {
   };
   useEffect(() => {
     let ignore = false;
-    console.log("useEffect вызван с:", { id, productFromState });
+    logger.debug("Product page useEffect", { id, hasProductFromState: !!productFromState });
     if (id) {
-      console.log("Начинаем загрузку всех вариантов продукта с ID:", id);
+      logger.debug("Loading product variants", { productId: id });
       setLoading(true);
       setError(null);
       // Очищаем предыдущий продукт перед загрузкой нового
@@ -276,13 +280,15 @@ export function Product() {
       setSelectedVariant(null);
       fetchAllProductVariants(id)
         .then((p) => { 
-          console.log("Продукт загружен:", p);
+          logger.debug("Product loaded", { productId: p?.product_id });
           if (!ignore && p) {
             // Критическая проверка: убеждаемся что загруженный продукт соответствует запрошенному ID
             if (p.product_id !== id) {
-              console.error("КРИТИЧЕСКАЯ ОШИБКА: Загружен продукт с другим ID!", {
+              const error = new Error("Product ID mismatch");
+              logger.errorWithContext(error, {
+                context: 'Product useEffect',
                 requested: id,
-                received: p.product_id
+                received: p.product_id,
               });
               setError(`Ошибка: загружен продукт с другим ID (запрошено: ${id}, получено: ${p.product_id})`);
               setLoading(false);
@@ -296,7 +302,7 @@ export function Product() {
               const availableVariant = p.variants.find(v => v.stock > 0 && v.price !== null && v.price !== undefined) || 
                                      p.variants.find(v => v.price !== null && v.price !== undefined) || 
                                      p.variants[0];
-              console.log("Выбран вариант:", availableVariant);
+              logger.debug("Variant selected", { variantId: availableVariant?.id });
               setSelectedVariant(availableVariant);
               // Сбрасываем индекс лайтбокса
               setLightboxIndex(0);
@@ -305,9 +311,13 @@ export function Product() {
             setError("Продукт не найден");
           }
         })
-        .catch((e) => { 
-          console.error("Ошибка в useEffect:", e);
-          if (!ignore) setError(e instanceof Error ? e.message : "Ошибка загрузки"); 
+        .catch((e) => {
+          const appError = handleApiError(e);
+          logger.errorWithContext(appError, { context: 'Product useEffect' });
+          if (!ignore) {
+            const errorMessage = getUserFriendlyMessage(appError) || ERROR_MESSAGES.UNKNOWN;
+            setError(errorMessage);
+          }
         })
         .finally(() => { if (!ignore) setLoading(false); });
     }
@@ -333,7 +343,7 @@ export function Product() {
       
       const images = Array.from(new Set(mediaImages.filter(Boolean)));
       
-      console.log("Собранные изображения для галереи (из variant_media):", {
+      logger.debug("Gallery images from variant_media", {
         product_id: product.product_id,
         variant_id: selectedVariant?.id,
         images_count: images.length
@@ -346,7 +356,7 @@ export function Product() {
       
       const images = main ? [main] : [];
       
-      console.log("Собранные изображения для галереи (из main_image):", {
+      logger.debug("Gallery images from main_image", {
         product_id: product.product_id,
         variant_id: selectedVariant?.id,
         images_count: images.length
@@ -783,7 +793,7 @@ export function Product() {
                       try {
                         await shopAPI.guestOrder(payload);
                       } catch (e) {
-                        console.error('Failed to create guest order', e);
+                        logger.errorWithContext(e, { context: 'createGuestOrder' });
                       }
                     }}
                     onAddToCart={(qty)=>{

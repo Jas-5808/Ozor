@@ -2,21 +2,25 @@ import { createBrowserRouter } from "react-router-dom";
 import { Navigate, useLocation } from "react-router-dom";
 import App from "./App";
 import { ErrorPage } from "./pages/ErrorPage";
-import { MainPage } from "./pages/MainPage";
-import { Registration } from "./pages/Registration";
-import { Login } from "./pages/Login";
-import { Product } from "./pages/Product";
-import { Profile } from "./pages/Profile";
-import { UpdateProfile } from "./pages/UpdateProfile";
-import { TestAuth } from "./pages/TestAuth";
-import Favorites from "./pages/Favorites";
-import Cart from "./pages/Cart";
-import { CatalogPage } from "./pages/CatalogPage";
 import React, { Suspense, lazy } from 'react';
 import { AdminLayout } from './admin';
 import SaleLayout from './admin/SaleLayout';
 import AdminSkeleton from './admin/AdminSkeleton';
+import PageSkeleton from './components/PageSkeleton';
 
+// Lazy load основных страниц для code splitting
+const MainPage = lazy(() => import('./pages/MainPage').then(m => ({ default: m.MainPage })));
+const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const Registration = lazy(() => import('./pages/Registration').then(m => ({ default: m.Registration })));
+const Product = lazy(() => import('./pages/Product').then(m => ({ default: m.Product })));
+const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
+const UpdateProfile = lazy(() => import('./pages/UpdateProfile').then(m => ({ default: m.UpdateProfile })));
+const Favorites = lazy(() => import('./pages/Favorites'));
+const Cart = lazy(() => import('./pages/Cart'));
+const CatalogPage = lazy(() => import('./pages/CatalogPage').then(m => ({ default: m.CatalogPage })));
+const TestAuth = lazy(() => import('./pages/TestAuth').then(m => ({ default: m.TestAuth })));
+
+// Admin pages (уже lazy)
 const AdminDashboard = lazy(()=> import('./admin/pages/Dashboard'));
 const AdminOrders = lazy(()=> import('./admin/pages/Orders'));
 const AdminUsers = lazy(()=> import('./admin/pages/Users'));
@@ -98,28 +102,92 @@ export const router = createBrowserRouter([
     element: <App />,
     errorElement: <ErrorPage />,
     children: [
-      { path: "", element: <MainPage /> },
-      { path: "login", element: <Login /> },
-      { path: "registration", element: <Registration /> },
-      { path: "/product/:id", element: <Product /> },
-      { path: "profile", element: (
-        <RequireAuth>
-          <Profile />
-        </RequireAuth>
-      ) },
-      { path: "favorites", element: (
-        <RequireAuth>
-          <Favorites />
-        </RequireAuth>
-      ) },
-      { path: "cart", element: <Cart /> },
-      { path: "catalog", element: <CatalogPage /> },
-      { path: "update-profile", element: (
-        <RequireAuth>
-          <UpdateProfile />
-        </RequireAuth>
-      ) },
-      { path: "test-auth", element: <TestAuth /> },
+      { 
+        path: "", 
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <MainPage />
+          </Suspense>
+        ) 
+      },
+      { 
+        path: "login", 
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <Login />
+          </Suspense>
+        ) 
+      },
+      { 
+        path: "registration", 
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <Registration />
+          </Suspense>
+        ) 
+      },
+      { 
+        path: "/product/:id", 
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <Product />
+          </Suspense>
+        ) 
+      },
+      { 
+        path: "profile", 
+        element: (
+          <RequireAuth>
+            <Suspense fallback={<PageSkeleton />}>
+              <Profile />
+            </Suspense>
+          </RequireAuth>
+        ) 
+      },
+      { 
+        path: "favorites", 
+        element: (
+          <RequireAuth>
+            <Suspense fallback={<PageSkeleton />}>
+              <Favorites />
+            </Suspense>
+          </RequireAuth>
+        ) 
+      },
+      { 
+        path: "cart", 
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <Cart />
+          </Suspense>
+        ) 
+      },
+      { 
+        path: "catalog", 
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <CatalogPage />
+          </Suspense>
+        ) 
+      },
+      { 
+        path: "update-profile", 
+        element: (
+          <RequireAuth>
+            <Suspense fallback={<PageSkeleton />}>
+              <UpdateProfile />
+            </Suspense>
+          </RequireAuth>
+        ) 
+      },
+      { 
+        path: "test-auth", 
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <TestAuth />
+          </Suspense>
+        ) 
+      },
     ],
   },
   {

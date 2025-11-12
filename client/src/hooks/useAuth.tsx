@@ -86,9 +86,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => { cancelled = true; };
   }, []);
   const signin = async (phone: string, password: string) => {
+    console.log("=== useAuth.signin DEBUG ===");
+    console.log("Получены параметры:", { 
+      phone: phone, 
+      password: password ? "***" : undefined,
+      phoneType: typeof phone,
+      passwordType: typeof password
+    });
+    
     try {
       setLoading(true);
       setError(null);
+      console.log("Вызываем authAPI.signin с параметрами:", { phone, password: password ? "***" : undefined });
       const response = await authAPI.signin(phone, password);
       const { access_token, refresh_token } = response.data;
       localStorage.setItem("access_token", access_token);

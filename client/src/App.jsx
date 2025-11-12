@@ -7,6 +7,7 @@ import { AuthProvider } from "./hooks/useAuth";
 import { useAuth } from "./hooks/useAuth";
 import useGeolocation from "./hooks/useGeolocation";
 import DeliveryModal from "./components/DeliveryModal";
+import SkipLink from "./components/SkipLink";
 import { useEffect, useState } from "react";
 
 function AppContent() {
@@ -98,14 +99,15 @@ function AppContent() {
 
   return (
     <>
+      <SkipLink />
       <div className="wrapper">
         {!shouldHideHeader && <Header />}
         {/* Навбар всегда показывается на мобильных, даже на странице каталога */}
         {isMobile && shouldHideHeader && <Header showOnlyNavbar={true} />}
-        <div className="main">
+        <main id="main-content" className="main" tabIndex={-1}>
           <Outlet />
-        </div>
-        {!shouldHideHeader && <Footer />}
+        </main>
+        {!shouldHideHeader && !isMobile && <Footer />}
       </div>
 
       <DeliveryModal

@@ -1,0 +1,24 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://ozar.uz/sitemap.xml
+
+# Disallow admin and private pages
+Disallow: /admin/
+Disallow: /sale/
+Disallow: /api/
+Disallow: /profile
+Disallow: /cart
+Disallow: /favorites
+Disallow: /update-profile
+Disallow: /test-auth
+
+# Allow public pages
+Allow: /
+Allow: /catalog
+Allow: /product/
+
+# Crawl-delay (optional, helps prevent server overload)
+Crawl-delay: 1
+

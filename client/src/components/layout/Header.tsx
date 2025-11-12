@@ -22,6 +22,9 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
   const isCartActive = location.pathname === '/cart';
   const isFavoritesActive = location.pathname === '/favorites';
   const isProfileActive = location.pathname === '/profile' || location.pathname === '/login';
+  
+  // Скрываем SearchBar на страницах профиля, корзины и избранных
+  const shouldHideSearchBar = isCartActive || isFavoritesActive || isProfileActive;
   useEffect(() => {
     const onScroll = () => {
       setIsCompact(window.scrollY > 10);
@@ -188,7 +191,9 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                   <p className="font-medium">Katalog</p>
                 </div>
 
-                <SearchBar className="mx-4 flex-[1_1_720px] max-w-[840px]" />
+                {!shouldHideSearchBar && (
+                  <SearchBar className="mx-4 flex-[1_1_720px] max-w-[840px]" />
+                )}
 
                 <HeaderActions isAuthenticated={isAuthenticated} />
               </div>
@@ -217,44 +222,46 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
             <p className="text-xs text-gray-500">город доставки</p>
           </div>
 
-          {/* Поисковая строка */}
-          <div className="flex items-center gap-2">
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              const query = formData.get('search') as string;
-              if (query?.trim()) {
-                navigate(`/search?q=${encodeURIComponent(query.trim())}`);
-              }
-            }} className="flex-1" role="search">
-              <div className="relative flex items-center h-11 bg-gray-100 rounded-lg px-3">
-                <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          {/* Поисковая строка - скрываем на страницах профиля, корзины и избранных */}
+          {!shouldHideSearchBar && (
+            <div className="flex items-center gap-2">
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const query = formData.get('search') as string;
+                if (query?.trim()) {
+                  navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+                }
+              }} className="flex-1" role="search">
+                <div className="relative flex items-center h-11 bg-gray-100 rounded-lg px-3">
+                  <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    name="search"
+                    placeholder="Искать товары и категории"
+                    className="flex-1 bg-gray-100 outline-none text-sm text-gray-900 placeholder:text-gray-400 border-0"
+                    style={{ background: 'transparent' }}
+                  />
+                </div>
+              </form>
+              <Link
+                to="/favorites"
+                className="p-2 relative"
+                aria-label="Избранное"
+              >
+                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
-                <input
-                  type="text"
-                  name="search"
-                  placeholder="Искать товары и категории"
-                  className="flex-1 bg-gray-100 outline-none text-sm text-gray-900 placeholder:text-gray-400 border-0"
-                  style={{ background: 'transparent' }}
-                />
-              </div>
-            </form>
-            <Link
-              to="/favorites"
-              className="p-2 relative"
-              aria-label="Избранное"
-            >
-              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-              {likedCount > 0 && (
-                <span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-red-500 text-[10px] leading-4 text-white text-center font-bold">
-                  {likedCount}
-                </span>
-              )}
-            </Link>
-          </div>
+                {likedCount > 0 && (
+                  <span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-red-500 text-[10px] leading-4 text-white text-center font-bold">
+                    {likedCount}
+                  </span>
+                )}
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 

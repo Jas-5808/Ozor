@@ -4,6 +4,9 @@ import cn from "./style.module.scss";
 import { useAuth } from "../hooks/useAuth";
 import PhoneInput from "../components/forms/PhoneInput";
 import useSEO from "../hooks/useSEO";
+import { logger } from "../utils/logger";
+import { ROUTES, ERROR_MESSAGES } from "../constants";
+import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
 export function Login() {
   useSEO({
     title: "Kirish — OZAR",
@@ -18,7 +21,7 @@ export function Login() {
   const { signin, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as any)?.from || "/profile";
+  const from = (location.state as { from?: string } | null)?.from || ROUTES.PROFILE;
   React.useEffect(() => {
     if (isAuthenticated) {
       navigate(from, { replace: true });
@@ -26,22 +29,38 @@ export function Login() {
   }, [isAuthenticated, navigate, from]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("=== Login.handleSubmit DEBUG ===");
+    console.log("Исходные значения из state:", { 
+      phone: phone, 
+      password: password ? "***" : undefined,
+      phoneType: typeof phone,
+      passwordType: typeof password
+    });
+    
     setError("");
     setLoading(true);
     try {
       const normalizedPhone = '+' + phone.replace(/\D/g, '');
-      console.log('Отправляем данные:', { phone: normalizedPhone, password });
+      console.log("Нормализованный телефон:", normalizedPhone);
+      console.log("Пароль:", password ? "***" : "undefined");
+      console.log("Вызываем signin с:", { phone: normalizedPhone, password: password ? "***" : undefined });
+      
+      logger.debug('Login attempt', { phone: normalizedPhone.substring(0, 4) + '***' });
       await signin(normalizedPhone, password);
+      logger.info('Login successful');
       navigate(from, { replace: true });
-    } catch (err: any) {
-      console.error('Ошибка входа:', err);
-      setError(err.message || 'Ошибка при входе в систему');
+    } catch (error) {
+      const appError = handleApiError(error);
+      const errorMessage = getUserFriendlyMessage(appError) || ERROR_MESSAGES.UNAUTHORIZED;
+      setError(errorMessage);
+      logger.errorWithContext(appError, { context: 'Login' });
     } finally {
       setLoading(false);
     }
   };
   const handleTelegramLogin = () => {
-    console.log("Вход через Telegram");
+    logger.info("Telegram login initiated");
+    // TODO: Implement Telegram OAuth
   };
   return (
     <div className={cn.registration_wrapper}>

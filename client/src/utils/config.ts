@@ -2,7 +2,7 @@
 export const config = {
   api: {
     baseUrl: import.meta.env.DEV
-      ? '/api/v1'
+      ? '/api/v1'  // В dev режиме используем прокси Vite
       : (import.meta.env.VITE_API_BASE_URL || 'https://api.ozar.uz/v1'),
     timeout: parseInt(import.meta.env.VITE_API_TIMEOUT || '10000'),
   },

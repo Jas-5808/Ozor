@@ -1,8 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import type mapboxgl from 'mapbox-gl';
 import { MAPBOX_CONFIG } from '../config/mapbox';
 import './ModernMap.css';
+
+// Динамический импорт mapbox-gl для уменьшения initial bundle
+let mapboxglLib: typeof mapboxgl | null = null;
+let mapboxglCssLoaded = false;
+
+const loadMapbox = async () => {
+  if (!mapboxglLib) {
+    const [mapboxModule] = await Promise.all([
+      import('mapbox-gl'),
+      // Загружаем CSS только один раз
+      mapboxglCssLoaded 
+        ? Promise.resolve() 
+        : import('mapbox-gl/dist/mapbox-gl.css').then(() => { mapboxglCssLoaded = true; })
+    ]);
+    mapboxglLib = mapboxModule.default;
+  }
+  return mapboxglLib;
+};
 interface ModernMapProps {
   isOpen: boolean;
   onClose: () => void;
@@ -82,7 +99,17 @@ const ModernMap: React.FC<ModernMapProps> = ({
     }
   };
   const mapRef = useRef<HTMLDivElement>(null);
-  mapboxgl.accessToken = MAPBOX_CONFIG.accessToken;
+  
+  // Загружаем mapbox только когда модалка открыта
+  useEffect(() => {
+    if (isOpen && !mapboxLoaded) {
+      loadMapbox().then((mapbox) => {
+        mapbox.accessToken = MAPBOX_CONFIG.accessToken;
+        setMapboxLoaded(true);
+      });
+    }
+  }, [isOpen, mapboxLoaded]);
+  
   const createCustomMarker = (isFavorite = false) => {
     const markerElement = document.createElement('div');
     markerElement.className = 'custom-marker';
@@ -322,12 +349,20 @@ const ModernMap: React.FC<ModernMapProps> = ({
     }
   }, []);
   useEffect(() => {
-    if (!isOpen || !mapRef.current) return;
-    const defaultLat = initialLocation?.latitude || MAPBOX_CONFIG.defaultCenter[1];
-    const defaultLng = initialLocation?.longitude || MAPBOX_CONFIG.defaultCenter[0];
-    let mapInstance: mapboxgl.Map;
-    try {
-      mapInstance = new mapboxgl.Map({
+    if (!isOpen || !mapRef.current || !mapboxLoaded) return;
+    
+    let mapInstance: mapboxgl.Map | null = null;
+    let markerInstance: mapboxgl.Marker | null = null;
+    
+    const initMap = async () => {
+      const mapbox = await loadMapbox();
+      if (!mapRef.current) return;
+      
+      const defaultLat = initialLocation?.latitude || MAPBOX_CONFIG.defaultCenter[1];
+      const defaultLng = initialLocation?.longitude || MAPBOX_CONFIG.defaultCenter[0];
+      
+      try {
+        mapInstance = new mapbox.Map({
         container: mapRef.current,
         style: currentMapStyle,
         center: [defaultLng, defaultLat], // [longitude, latitude]
@@ -335,7 +370,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
         attributionControl: true
       });
       const markerElement = createCustomMarker();
-      const markerInstance = new mapboxgl.Marker({
+      markerInstance = new mapbox.Marker({
         element: markerElement,
         draggable: MAPBOX_CONFIG.marker.draggable
       })
@@ -393,6 +428,10 @@ const ModernMap: React.FC<ModernMapProps> = ({
       }
       return;
     }
+    };
+    
+    initMap();
+    
     return () => {
       const cleanupHandler = (e: KeyboardEvent) => {
         if (e.key === 'Enter' && searchQuery) {
@@ -418,7 +457,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
         setMarker(null);
       }
     };
-  }, [isOpen, initialLocation]);
+  }, [isOpen, initialLocation, mapboxLoaded, currentMapStyle, searchQuery, searchResults]);
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);

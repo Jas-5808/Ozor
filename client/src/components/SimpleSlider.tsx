@@ -243,9 +243,13 @@ export const SimpleSlider: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Отслеживание загрузки изображений
+  // Оптимизированная загрузка изображений - только первое и следующие 2 для предзагрузки
   useEffect(() => {
-    const imagePromises = slides.map((slide) => {
+    // Загружаем только первое изображение и следующие 2 для предзагрузки
+    const imagesToPreload = [0, 1, 2].filter(i => i < slides.length);
+    
+    const imagePromises = imagesToPreload.map((index) => {
+      const slide = slides[index];
       return new Promise<void>((resolve) => {
         const img = new Image();
         img.onload = () => {
@@ -268,8 +272,8 @@ export const SimpleSlider: React.FC = () => {
       });
     });
 
-    // Инициализируем состояние загрузки
-    setLoadingImages(new Set(slides.map((slide) => slide.id)));
+    // Инициализируем состояние загрузки только для предзагружаемых изображений
+    setLoadingImages(new Set(imagesToPreload.map(i => slides[i].id)));
 
     Promise.all(imagePromises).then(() => {
       setAllImagesLoaded(true);
@@ -345,7 +349,7 @@ export const SimpleSlider: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full h-48 sm:h-80 md:h-96 lg:h-[500px] rounded-2xl shadow-2xl md:overflow-hidden">
+    <div className="relative w-full aspect-[16/9] rounded-2xl shadow-2xl md:overflow-hidden" style={{ minHeight: '192px', maxHeight: '500px' }}>
       {/* Индикатор загрузки */}
       {!allImagesLoaded && (
         <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10">
@@ -397,6 +401,9 @@ export const SimpleSlider: React.FC = () => {
                     src={slide.image}
                     alt="Баннер"
                     className="w-full h-full object-cover"
+                    loading={index === 0 ? "eager" : "lazy"}
+                    fetchPriority={index === 0 ? "high" : "low"}
+                    decoding="async"
                     style={{
                       opacity: loadingImages.has(slide.id) ? 0.3 : 1,
                       transition: "opacity 0.3s ease",
@@ -437,6 +444,9 @@ export const SimpleSlider: React.FC = () => {
                   src={slide.image}
                   alt="Баннер"
                   className="w-full h-full object-cover"
+                  loading={index === 0 ? "eager" : "lazy"}
+                  fetchPriority={index === 0 ? "high" : "low"}
+                  decoding="async"
                   style={{
                     opacity: loadingImages.has(slide.id) ? 0.3 : 1,
                     transition: "opacity 0.3s ease",

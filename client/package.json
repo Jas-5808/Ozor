@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,scss,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,scss,md}\""
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
@@ -22,14 +27,21 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/user-event": "^14.5.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "@vitest/ui": "^1.0.4",
     "eslint": "^9.30.1",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "jsdom": "^23.0.1",
+    "prettier": "^3.2.5",
     "sass-embedded": "^1.89.2",
-    "vite": "^7.0.4"
+    "vite": "^7.0.4",
+    "vitest": "^1.0.4"
   }
 }

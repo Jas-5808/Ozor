@@ -1,19 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { userAPI, shopAPI, paymentAPI } from "../services/api";
+import { userAPI } from "../services/api";
 import { useProducts } from "../hooks/useProducts";
-// @ts-ignore – модуль стилей объявлен через d.ts
 import cn from "./profile.module.scss";
 import { formatPrice, getProductImageUrl, getVariantMainImage } from "../utils/helpers";
 import { useFlows } from "../hooks/useFlows";
 import SkeletonGrid from "../components/SkeletonGrid";
 import useSEO from "../hooks/useSEO";
 import { useNavigate } from "react-router-dom";
+import { useProfileData } from "../hooks/useProfileData";
+import { useReferralActions } from "../hooks/useReferralActions";
+import { logger } from "../utils/logger";
+import { STORAGE_KEYS } from "../constants";
 
 export function Profile() {
   const navigate = useNavigate();
-  const { profile, isAuthenticated, logout, fetchUserProfile } =
-    useAuth() as any;
+  const { profile, isAuthenticated, logout, fetchUserProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "market" | "oqim" | "stats" | "payments"
   >("dashboard");
@@ -24,30 +26,13 @@ export function Profile() {
     error: productsError,
   } = useProducts();
   const { flows, addFlow, removeFlow, clearFlows } = useFlows();
-  const [apiFlows, setApiFlows] = useState<any[]>([]);
-  const [apiFlowsLoading, setApiFlowsLoading] = useState<boolean>(false);
-  const [apiFlowsError, setApiFlowsError] = useState<string | null>(null);
-  const [referralNotice, setReferralNotice] = useState<{ type: 'success'|'error'; message: string } | null>(null);
-  const [deletingReferralId, setDeletingReferralId] = useState<string | null>(null);
-  const [copied, setCopied] = useState<string>("");
-  const [dialog, setDialog] = useState<{
-    open: boolean;
-    productId?: string;
-    link?: string;
-    title?: string;
-  }>({ open: false });
-  const [createLoading, setCreateLoading] = useState<boolean>(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-  // removed image preview modal
-  const [createModal, setCreateModal] = useState<{
-    open: boolean;
-    product?: any;
-    title: string;
-    agree: boolean;
-    createdLink?: string | null;
-  }>({ open: false, title: "", agree: false, createdLink: null });
-  const [userBalance, setUserBalance] = useState<number | null>(null);
-  const [balanceLoading, setBalanceLoading] = useState<boolean>(false);
+  
+  // Используем кастомные хуки для управления данными
+  const profileData = useProfileData();
+  const userId = profile?.user_id || profile?.id || "guest";
+  const referralActions = useReferralActions(userId, () => {
+    profileData.loadReferrals();
+  });
 
   // SEO: закрыть личный кабинет от индексации
   useSEO({
@@ -62,136 +47,31 @@ export function Profile() {
     }
   }, [isAuthenticated, profile, fetchUserProfile]);
 
-  useEffect(() => {
-    const loadBalance = async () => {
-      try {
-        setBalanceLoading(true);
-        const res = await paymentAPI.getUserBalance();
-        const value = typeof res?.data?.balance === "number" ? res.data.balance : 0;
-        setUserBalance(value);
-      } catch {
-        setUserBalance(null);
-      } finally {
-        setBalanceLoading(false);
-      }
-    };
-    if (isAuthenticated) loadBalance();
-  }, [isAuthenticated]);
+  // Используем данные из хуков
+  const {
+    apiFlows,
+    apiFlowsLoading,
+    apiFlowsError,
+    referralStats,
+    totals,
+    userBalance,
+    balanceLoading,
+  } = profileData;
 
-  const userId = profile?.user_id || "guest";
-
-  const makeReferralLink = (productId: string) => {
-    const origin = window.location.origin;
-    return `${origin}/product/${productId}?ref=${userId}`;
-  };
-
-  const handleGenerate = (product: any) => {
-    setCreateError(null);
-    setCreateModal({
-      open: true,
-      product,
-      title: product?.product_name || "",
-      agree: false,
-      createdLink: null,
-    });
-  };
-
-  const submitCreateReferral = async () => {
-    if (!createModal.product) return;
-    try {
-      setCreateLoading(true);
-      setCreateError(null);
-      const res = await shopAPI.createReferral({
-        product_id: createModal.product.product_id,
-        title: createModal.title || "",
-      });
-      const code = res?.data?.code;
-      const origin = window.location.origin;
-      const link = code
-        ? `${origin}/product/${createModal.product.product_id}?ref=${code}`
-        : `${origin}/product/${createModal.product.product_id}`;
-
-      addFlow({
-        productId: createModal.product.product_id,
-        productName: createModal.product.product_name,
-        link,
-        commission: createModal.product.refferal_price || 0,
-      });
-
-      // keep modal open and show copy UI
-      setCreateModal({
-        open: true,
-        product: createModal.product,
-        title: createModal.title,
-        agree: createModal.agree,
-        createdLink: link,
-      });
-    } catch (e: any) {
-      setCreateError(e?.message || "Xatolik yuz berdi");
-    } finally {
-      setCreateLoading(false);
-    }
-  };
-
-  const handleCopy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(text);
-      setTimeout(() => setCopied(""), 1500);
-    } catch {}
-  };
-
-  useEffect(() => {
-    const loadReferrals = async () => {
-      try {
-        setApiFlowsLoading(true);
-        setApiFlowsError(null);
-        const res = await shopAPI.getReferrals();
-        const data = Array.isArray(res.data) ? res.data : (res.data?.users || res.data?.data || []);
-        setApiFlows(data);
-      } catch (e: any) {
-        setApiFlowsError(e?.message || 'Yuklashda xatolik');
-      } finally {
-        setApiFlowsLoading(false);
-      }
-    };
-    if (!isAuthenticated) return;
-    // Загружаем ссылки один раз при входе в профиль
-    if (apiFlows.length === 0) {
-      loadReferrals();
-    }
-  }, [isAuthenticated]);
-
-  const productById = useMemo(() => {
-    const map = new Map<string, any>();
-    (products || []).forEach((p: any) => {
-      if (p?.product_id) map.set(p.product_id, p);
-    });
-    return map;
-  }, [products]);
-
-  const computedStats = useMemo(() => {
-    return (apiFlows || []).map((r: any) => {
-      const orders = Array.isArray(r?.orders) ? r.orders : [];
-      const total = orders.length;
-      const paid = orders.filter((o: any) => String(o?.status || '').toLowerCase() === 'delivered').length;
-      const hold = total - paid;
-      const product = productById.get(r.product_id);
-      const commission: number = Number(product?.refferal_price) || 0;
-      const earned = commission > 0 ? commission * paid : (typeof r?.total_earned === 'number' ? r.total_earned : 0);
-      return { id: r.id, title: r.title, code: r.code, total, hold, paid, earned };
-    });
-  }, [apiFlows, productById]);
-
-  const totals = useMemo(() => {
-    const list = computedStats || [];
-    return {
-      total: list.reduce((s: number, x: any) => s + (x.total || 0), 0),
-      hold: list.reduce((s: number, x: any) => s + (x.hold || 0), 0),
-      paid: list.reduce((s: number, x: any) => s + (x.paid || 0), 0),
-      earned: list.reduce((s: number, x: any) => s + (x.earned || 0), 0),
-    };
-  }, [computedStats]);
+  const {
+    dialog,
+    setDialog,
+    createModal,
+    setCreateModal,
+    createLoading,
+    deletingReferralId,
+    createError,
+    referralNotice,
+    handleGenerate,
+    submitCreateReferral,
+    handleDeleteReferral,
+    handleCopy,
+  } = referralActions;
 
   if (!isAuthenticated) {
     return (
@@ -450,10 +330,10 @@ export function Profile() {
             )}
             {!apiFlowsLoading && !apiFlowsError && (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {apiFlows.length === 0 && flows.length === 0 && (
+                {referralStats.length === 0 && flows.length === 0 && (
                   <p>Hozircha oqimlar yo'q. Marketdan link yarating.</p>
                 )}
-                {apiFlows.map((r: any) => (
+                {referralStats.map((r) => (
                   <div
                     key={r.id}
                     className={`${cn.glass} ${cn.flowRow} p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
@@ -469,14 +349,22 @@ export function Profile() {
                       <div className="flex-1 min-w-[220px]">
                         <div className="flex items-center gap-2">
                           <div className="flex-1 text-xs text-slate-600 break-all bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
-                            {window.location.origin + '/product/' + r.product_id + '?ref=' + r.code}
+                            {(() => {
+                              const flow = apiFlows.find(f => f.id === r.id);
+                              return flow ? window.location.origin + '/product/' + flow.product_id + '?ref=' + r.code : '';
+                            })()}
                           </div>
                           <div className="inline-flex items-center gap-2 shrink-0">
                             <button
                               className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50"
                               title="Nusxalash"
                               aria-label="Nusxalash"
-                              onClick={() => handleCopy(window.location.origin + '/product/' + r.product_id + '?ref=' + r.code)}
+                              onClick={() => {
+                                const flow = apiFlows.find(f => f.id === r.id);
+                                if (flow) {
+                                  handleCopy(window.location.origin + '/product/' + flow.product_id + '?ref=' + r.code);
+                                }
+                              }}
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <rect x="9" y="9" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
@@ -487,24 +375,7 @@ export function Profile() {
                               className={`h-8 w-8 inline-flex items-center justify-center rounded-lg border ${deletingReferralId===r.id? 'opacity-50 cursor-not-allowed' : ''} border-red-200 hover:bg-red-50`}
                               title="O'chirish"
                               aria-label="O'chirish"
-                              onClick={async ()=>{
-                                try {
-                                  setDeletingReferralId(r.id);
-                                  await shopAPI.deleteReferral(r.id);
-                                  setApiFlows(prev => prev.filter(x => x.id !== r.id));
-                                  setReferralNotice({ type: 'success', message: 'Havola muvaffaqiyatli o\'chirildi' });
-                                  setTimeout(()=> setReferralNotice(null), 2500);
-                                } catch (e:any) {
-                                  const msg = e?.response?.data?.detail || e?.message || 'O‘chirishda xatolik';
-                                  const friendly = msg.includes('Нельзя удалить реферальный код')
-                                    ? 'Ushbu havola faol buyurtmalarda ishlatilgan, o‘chirish mumkin emas'
-                                    : msg;
-                                  setReferralNotice({ type: 'error', message: friendly });
-                                  setTimeout(()=> setReferralNotice(null), 3500);
-                                } finally {
-                                  setDeletingReferralId(null);
-                                }
-                              }}
+                              onClick={() => handleDeleteReferral(r.id)}
                               disabled={deletingReferralId === r.id}
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -684,9 +555,7 @@ export function Profile() {
                   className={`${cn.button} ${cn.compact}`}
                   onClick={() => dialog.link && handleCopy(dialog.link)}
                 >
-                  {dialog.link && copied === dialog.link
-                    ? "Nusxa olindi"
-                    : "Nusxalash"}
+                  Nusxalash
                 </button>
                 <button
                   className={`${cn.button} ${cn.secondary} ${cn.compact}`}

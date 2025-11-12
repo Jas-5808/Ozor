@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import './DeliveryModal.css';
-import ModernMap from './ModernMap';
 import { useApp } from '../context/AppContext';
+
+// Lazy load ModernMap для уменьшения initial bundle size
+const ModernMap = lazy(() => import('./ModernMap'));
 
 const STORAGE_KEY = 'deliveryAddresses';
 
@@ -256,15 +258,17 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
           </button>
         </div>
       </div>
-      <ModernMap
-        isOpen={showMap}
-        onClose={() => setShowMap(false)}
-        onLocationSelect={handleMapLocationSelect}
-        initialLocation={state.location.data?.latitude && state.location.data?.longitude ? {
-          latitude: state.location.data.latitude,
-          longitude: state.location.data.longitude,
-        } : undefined}
-      />
+      <Suspense fallback={<div className="delivery-modal-map-loading">Загрузка карты...</div>}>
+        <ModernMap
+          isOpen={showMap}
+          onClose={() => setShowMap(false)}
+          onLocationSelect={handleMapLocationSelect}
+          initialLocation={state.location.data?.latitude && state.location.data?.longitude ? {
+            latitude: state.location.data.latitude,
+            longitude: state.location.data.longitude,
+          } : undefined}
+        />
+      </Suspense>
     </div>
   );
 };

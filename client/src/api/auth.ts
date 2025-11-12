@@ -23,12 +23,35 @@ export interface VerifyCodeRequest {
 }
 
 export const authAPI = {
-  signin: (data: SigninRequest): Promise<AxiosResponse<AuthResponse>> => {
-    console.log("API signin вызван с:", data);
+  signin: (phone: string, password: string): Promise<AxiosResponse<AuthResponse>> => {
+    console.log("=== API auth.ts signin DEBUG ===");
+    console.log("Получены параметры:", { 
+      phone: phone, 
+      password: password ? "***" : undefined,
+      phoneType: typeof phone,
+      passwordType: typeof password
+    });
+
+    // Проверяем, что данные не undefined
+    if (!phone || !password) {
+      console.error("❌ Missing phone or password", { 
+        phone: phone, 
+        password: password ? "***" : undefined,
+        phoneExists: !!phone,
+        passwordExists: !!password
+      });
+      throw new Error("Phone and password are required");
+    }
 
     const formData = new URLSearchParams();
-    formData.append("phone", data.phone);
-    formData.append("password", data.password);
+    formData.append("phone", phone);
+    formData.append("password", password);
+
+    console.log("Данные добавлены в formData:");
+    console.log("   - phone:", formData.get("phone"));
+    console.log("   - password:", formData.get("password") ? "***" : "undefined");
+    console.log("   - formData.toString():", formData.toString().replace(/password=[^&]*/, 'password=***'));
+    console.log("=== API auth.ts signin DEBUG END ===");
 
     return apiClient.post("/auth/signin", formData, {
       headers: {
@@ -37,12 +60,16 @@ export const authAPI = {
     });
   },
 
-  signup: (data: SignupRequest): Promise<AxiosResponse<AuthResponse>> => {
-    console.log("API signup вызван с:", data);
+  signup: (phone: string, password: string): Promise<AxiosResponse<AuthResponse>> => {
+    console.log("API signup вызван с:", { phone, password: password ? "***" : undefined });
+
+    if (!phone || !password) {
+      throw new Error("Phone and password are required");
+    }
 
     const formData = new URLSearchParams();
-    formData.append("phone", data.phone);
-    formData.append("password", data.password);
+    formData.append("phone", phone);
+    formData.append("password", password);
 
     return apiClient.post("/auth/signup", formData, {
       headers: {

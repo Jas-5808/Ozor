@@ -4,10 +4,30 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="OZAR — onlayn do'kon. Smartfonlar, elektronika va maishiy texnika. O'zbekiston bo'ylab tez yetkazib berish." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://ozar.uz/" />
     <title>Ozar</title>
+    
+    <!-- DNS prefetch для внешних ресурсов -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+    <link rel="dns-prefetch" href="https://images.uzum.uz">
+    <link rel="dns-prefetch" href="https://api.ozar.uz">
+    
+    <!-- Preconnect для критических ресурсов -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Оптимизированная загрузка шрифтов - только нужные веса с font-display: swap -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Preload критических ресурсов -->
+    <link rel="preload" as="style" href="/src/index.css" />
+    <link rel="preload" as="script" href="/src/main.jsx" />
+    
+    <!-- Preload первого изображения слайдера для улучшения LCP -->
+    <link rel="preload" as="image" href="https://images.uzum.uz/d33ptvl2llnd6jumh5lg/main_page_banner.jpg" fetchpriority="high" />
 
   </head>
   <body>
