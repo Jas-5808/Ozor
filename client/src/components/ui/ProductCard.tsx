@@ -94,7 +94,7 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
         </div>
         <div className="flex flex-col gap-1.5">
           <div className="flex justify-between items-center">
-            <h3 className="text-blue-600 font-semibold text-sm">
+            <h3 className="font-semibold text-sm" style={{ color: '#059669' }}>
               {product.price && product.price > 0
                 ? formatPrice(product.price)
                 : "Цена не указана"}

@@ -789,7 +789,15 @@
 }
 
 .product { 
-  padding: 24px 0 40px; 
+  padding: 24px 0 40px;
+  
+  @media (min-width: 768px) {
+    padding: 32px 0 48px;
+  }
+  
+  @media (min-width: 1024px) {
+    padding: 40px 0 64px;
+  } 
   color: var(--text);
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   min-height: 100vh;
@@ -813,9 +821,21 @@
 .product_content {
   display: grid;
   grid-template-columns: 480px 1fr 300px; /* ✅ фикс ширина галереи */
-  // gap: 32px;
+  gap: 16px;
   align-items: start;
   animation: slideInUp 0.6s ease-out 0.2s both;
+  
+  @media (min-width: 768px) {
+    gap: 24px;
+  }
+  
+  @media (min-width: 1024px) {
+    gap: 56px;
+  }
+  
+  @media (min-width: 1280px) {
+    gap: 64px;
+  }
 }
 
 @keyframes slideInUp {
@@ -943,7 +963,19 @@
 
 
 /* ====== Центр ====== */
-.product_info { display: grid; align-content: start; gap: 16px; }
+.product_info { 
+  display: grid; 
+  align-content: start; 
+  gap: 12px;
+  
+  @media (min-width: 768px) {
+    gap: 16px;
+  }
+  
+  @media (min-width: 1024px) {
+    gap: 24px;
+  }
+}
 .product_title { font-size: 22px; font-weight: 700; line-height: 1.2; }
 .rating_row { display: inline-flex; align-items: center; gap: 8px; font-size: 14px;
   img { width: 16px; height: 16px; } strong { font-weight: 700; }
@@ -1048,7 +1080,20 @@
 }
 
 /* ====== ПРАВЫЙ САЙДБАР ====== */
-.aside { position: sticky; top: 16px; display: grid; gap: 18px; }
+.aside { 
+  position: sticky; 
+  top: 16px; 
+  display: grid; 
+  gap: 16px;
+  
+  @media (min-width: 768px) {
+    gap: 20px;
+  }
+  
+  @media (min-width: 1024px) {
+    gap: 32px;
+  }
+}
 
 /* ---- Карточка покупки ---- */
 .buy_card {
@@ -1056,9 +1101,17 @@
   border-radius: 16px; 
   border: 1px solid var(--border);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  padding: 20px;
+  padding: 16px;
   backdrop-filter: blur(10px);
   animation: cardSlideIn 0.8s ease-out 0.4s both;
+  
+  @media (min-width: 768px) {
+    padding: 20px;
+  }
+  
+  @media (min-width: 1024px) {
+    padding: 28px;
+  }
 }
 
 @keyframes cardSlideIn {
@@ -1109,7 +1162,18 @@
   strong { font-weight: 800; color: var(--blue-ink); }
 }
 
-.buy_form { display: grid; gap: 10px; }
+.buy_form { 
+  display: grid; 
+  gap: 10px;
+  
+  @media (min-width: 768px) {
+    gap: 12px;
+  }
+  
+  @media (min-width: 1024px) {
+    gap: 16px;
+  }
+}
 .input {
   height: 40px; padding: 0 14px; border-radius: 999px;
   border: 1px solid #d7dbe3; background: #fff; font-size: 14px; outline: none;
@@ -1132,9 +1196,17 @@
   border-radius: 16px; 
   border: 1px solid var(--border);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  padding: 18px 20px;
+  padding: 16px;
   backdrop-filter: blur(10px);
   animation: cardSlideIn 0.8s ease-out 0.6s both;
+  
+  @media (min-width: 768px) {
+    padding: 20px;
+  }
+  
+  @media (min-width: 1024px) {
+    padding: 28px;
+  }
 }
 .seller_top { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: center; margin-bottom: 12px; }
 .seller_logo {
@@ -1209,7 +1281,10 @@
 
 /* ====== Адаптив ====== */
 @media (max-width: 1100px) {
-  .product_content { grid-template-columns: 1fr; }
+  .product_content { 
+    grid-template-columns: 1fr;
+    gap: 20px; /* Уменьшенный gap для планшетов */
+  }
   .aside { position: static; }
   .product_gallery { 
     grid-template-columns: 72px 1fr;
@@ -1223,6 +1298,9 @@
 }
 @media (max-width: 720px) {
   .product { padding: 16px 0 28px; }
+  .product_content {
+    gap: 12px; /* Еще меньше для мобильных */
+  }
   .product_gallery { 
     grid-template-columns: 70px 1fr; /* миниатюры слева + главная картинка */
     gap: 12px;

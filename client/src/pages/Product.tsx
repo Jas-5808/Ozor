@@ -12,6 +12,9 @@ import PhoneInput from "../components/forms/PhoneInput";
 import OrderDialog from "../components/OrderDialog";
 import useSEO from "../hooks/useSEO";
 import ProductPageSkeleton from "../components/ProductPageSkeleton";
+import { logger } from "../utils/logger";
+import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
+import { ERROR_MESSAGES } from "../constants";
 
 type LocationState = { product?: ProductType };
 
@@ -597,7 +600,7 @@ export function Product() {
 
     return (
       <div ref={productRef} className={cn.product}>
-      <div className="container">
+      <div className="mx-auto w-full max-w-[1240px] px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-8">
         {product && (
           <div className={cn.product_content}>
             <section className={`${cn.product_gallery} ${galleryImages.length <= 1 ? cn.gallery_no_thumbs : ''}`}>
