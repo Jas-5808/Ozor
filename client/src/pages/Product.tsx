@@ -833,6 +833,11 @@ export function Product() {
     );
   }
 
+  const currentPrice = selectedVariant?.price ?? product.price ?? null;
+  const sku = selectedVariant?.sku || product.variant_sku || product.product_id;
+  const availableUnits = selectedVariant ? selectedVariant.stock : product.stock;
+  const isAvailable = (availableUnits ?? 0) > 0;
+
     return (
       <div ref={productRef} className={cn.product}>
       <div className="mx-auto w-full max-w-[1240px] px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-8">
@@ -867,87 +872,118 @@ export function Product() {
               </div>
             </section>
             <section className={cn.product_info}>
-                <h1 className={cn.product_title}>{product.product_name}</h1>
-              <div className={cn.rating_row}>
-                <img src="/icons/star.png" alt="" aria-hidden="true" />
-                <strong>4.9</strong>
-                <span className={cn.muted}>18 503 оценки</span>
-              </div>
-              
-              {/* Отображение вариантов продукта - показываем только если есть варианты и атрибуты */}
-              {(() => {
-                const hasVariants = product.variants && product.variants.length > 0;
-                const hasAttributes = product.attributes && product.attributes.length > 0;
-                const hasValidAttributes = hasAttributes && product.attributes.some(attr => {
-                  return product.variants.some(variant => {
-                    const value = getAttributeValue(variant, attr.id);
-                    return value && value.trim() !== '';
-                  });
-                });
-
-                if (!hasVariants || !hasValidAttributes) {
-                  return null;
-                }
-
-                return (
-                  <div className={cn.variants_section}>
-                    {product.attributes.map((attribute) => {
-                      // Проверяем, есть ли у этого атрибута хотя бы одно значение в вариантах
-                      const hasValues = product.variants.some(variant => {
-                        const value = getAttributeValue(variant, attribute.id);
-                        return value && value.trim() !== '';
-                      });
-
-                      if (!hasValues) return null;
-
-                      return (
-                        <div key={attribute.id} className={cn.attribute_group}>
-                          <h4 className={cn.attribute_title}>
-                            {attribute.name} {attribute.unit && `(${attribute.unit})`}
-                          </h4>
-                          <div className={cn.attribute_values}>
-                            {(() => {
-                              // Получаем все уникальные значения для этого атрибута
-                              const uniqueValues = new Map();
-                              product.variants.forEach(variant => {
-                                const value = getAttributeValue(variant, attribute.id);
-                                if (value && value.trim() !== '' && !uniqueValues.has(value)) {
-                                  // Находим первый доступный вариант с этим значением
-                                  const availableVariant = product.variants.find(v => 
-                                    getAttributeValue(v, attribute.id) === value && 
-                                    v.stock > 0 && v.price !== null
-                                  ) || product.variants.find(v => 
-                                    getAttributeValue(v, attribute.id) === value
-                                  );
-                                  uniqueValues.set(value, availableVariant);
-                                }
-                              });
-
-                              return Array.from(uniqueValues.entries()).map(([value, variant]) => {
-                                const isSelected = selectedVariant && getAttributeValue(selectedVariant, attribute.id) === value;
-                                const isDisabled = !variant || variant.stock === 0 || variant.price === null;
-                                
-                                return (
-                                  <button
-                                    key={`${attribute.id}-${value}`}
-                                    className={`${cn.attribute_value} ${isSelected ? cn.selected : ''} ${isDisabled ? cn.disabled : ''}`}
-                                    onClick={() => !isDisabled && handleAttributeSelect(attribute.id, value)}
-                                    disabled={isDisabled}
-                                    type="button"
-                                  >
-                                    {value}
-                                  </button>
-                                );
-                              });
-                            })()}
-                          </div>
-                        </div>
-                      );
-                    })}
+              <div className="-mx-3 rounded-t-[28px] bg-white px-3 py-4 shadow-sm sm:-mx-4 md:m-0 md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <h1 className={cn.product_title}>{product.product_name}</h1>
+                      <div className="flex flex-wrap items-center gap-3 text-sm">
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                            isAvailable ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'
+                          }`}
+                        >
+                          {isAvailable ? 'В наличии' : 'Нет в наличии'}
+                        </span>
+                        {sku && (
+                          <span className="text-xs font-medium text-gray-500">
+                            Код: {sku}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                );
-              })()}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <p className="text-[28px] font-semibold leading-tight text-[#ff3b30] sm:text-[32px]">
+                        {currentPrice ? formatPrice(currentPrice) : 'Цена не указана'}
+                      </p>
+                      {currentPrice ? (
+                        <p className="text-sm font-medium text-[#ff3b30]/80">сум / шт.</p>
+                      ) : null}
+                    </div>
+                    <div className={`${cn.rating_row} mt-1 sm:mt-0`}>
+                      <img src="/icons/star.png" alt="" aria-hidden="true" />
+                      <strong>4.9</strong>
+                      <span className={cn.muted}>18 503 оценки</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Отображение вариантов продукта - показываем только если есть варианты и атрибуты */}
+                {(() => {
+                  const hasVariants = product.variants && product.variants.length > 0;
+                  const hasAttributes = product.attributes && product.attributes.length > 0;
+                  const hasValidAttributes = hasAttributes && product.attributes.some(attr => {
+                    return product.variants.some(variant => {
+                      const value = getAttributeValue(variant, attr.id);
+                      return value && value.trim() !== '';
+                    });
+                  });
 
+                  if (!hasVariants || !hasValidAttributes) {
+                    return null;
+                  }
+
+                  return (
+                    <div className="mt-4 space-y-4">
+                      {product.attributes.map((attribute) => {
+                        // Проверяем, есть ли у этого атрибута хотя бы одно значение в вариантах
+                        const hasValues = product.variants.some(variant => {
+                          const value = getAttributeValue(variant, attribute.id);
+                          return value && value.trim() !== '';
+                        });
+
+                        if (!hasValues) return null;
+
+                        return (
+                          <div key={attribute.id} className={cn.attribute_group}>
+                            <h4 className={cn.attribute_title}>
+                              {attribute.name} {attribute.unit && `(${attribute.unit})`}
+                            </h4>
+                            <div className={cn.attribute_values}>
+                              {(() => {
+                                // Получаем все уникальные значения для этого атрибута
+                                const uniqueValues = new Map();
+                                product.variants.forEach(variant => {
+                                  const value = getAttributeValue(variant, attribute.id);
+                                  if (value && value.trim() !== '' && !uniqueValues.has(value)) {
+                                    // Находим первый доступный вариант с этим значением
+                                    const availableVariant = product.variants.find(v => 
+                                      getAttributeValue(v, attribute.id) === value && 
+                                      v.stock > 0 && v.price !== null
+                                    ) || product.variants.find(v => 
+                                      getAttributeValue(v, attribute.id) === value
+                                    );
+                                    uniqueValues.set(value, availableVariant);
+                                  }
+                                });
+
+                                return Array.from(uniqueValues.entries()).map(([value, variant]) => {
+                                  const isSelected = selectedVariant && getAttributeValue(selectedVariant, attribute.id) === value;
+                                  const isDisabled = !variant || variant.stock === 0 || variant.price === null;
+                                  
+                                  return (
+                                    <button
+                                      key={`${attribute.id}-${value}`}
+                                      className={`${cn.attribute_value} ${isSelected ? cn.selected : ''} ${isDisabled ? cn.disabled : ''}`}
+                                      onClick={() => !isDisabled && handleAttributeSelect(attribute.id, value)}
+                                      disabled={isDisabled}
+                                      type="button"
+                                    >
+                                      {value}
+                                    </button>
+                                  );
+                                });
+                              })()}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
             </section>
             <aside className={cn.aside}>
               <div className={cn.buy_card}>
@@ -984,16 +1020,6 @@ export function Product() {
                       <span className={cn.out_of_stock}>Нет в наличии</span>
                     )
                   )}
-                </div>
-                <div className="mt-4 flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-inner">
-                  <div className="rounded-2xl bg-emerald-50 p-2">
-                    <img src="/icons/location.svg" alt="" className="h-5 w-5" />
-                  </div>
-                  <div className="text-sm">
-                    <p className="text-xs uppercase tracking-wide text-gray-400">Местоположение</p>
-                    <p className="font-medium text-gray-900">{locationLabel}</p>
-                    <p className="text-xs text-gray-500">{locationHint}</p>
-                  </div>
                 </div>
                 <div className="mt-4 hidden md:grid gap-3">
                   <button
