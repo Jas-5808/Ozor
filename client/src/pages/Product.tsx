@@ -312,6 +312,23 @@ export function Product() {
   const [quickOrderError, setQuickOrderError] = useState<string | null>(null);
   const [quickOrderFeedback, setQuickOrderFeedback] = useState<string | null>(null);
   const productRef = useRef<HTMLDivElement>(null);
+  const installmentSteps = [3, 6, 9, 12, 15, 18, 24, 33];
+  const rawInstallmentIndex = installmentSteps.indexOf(selectedInstallment);
+  const activeInstallmentIndex = rawInstallmentIndex >= 0 ? rawInstallmentIndex : 0;
+  const installmentProgress =
+    installmentSteps.length > 1
+      ? activeInstallmentIndex / (installmentSteps.length - 1)
+      : 0;
+  const installmentProgressPercent = installmentProgress * 100;
+  const INSTALLMENT_DOT_OFFSET = 14;
+  const installmentProgressWidth = (() => {
+    if (installmentSteps.length <= 1) return "0px";
+    if (activeInstallmentIndex <= 0) return `${INSTALLMENT_DOT_OFFSET}px`;
+    if (activeInstallmentIndex >= installmentSteps.length - 1) {
+      return `calc(100% - ${INSTALLMENT_DOT_OFFSET}px)`;
+    }
+    return `calc(${installmentProgressPercent}% + ${INSTALLMENT_DOT_OFFSET / 2}px)`;
+  })();
   
   const productFromState = routeState?.product;
   const product = useMemo<ProductDetail | null>(() => {
@@ -1074,38 +1091,33 @@ export function Product() {
                       {formatPrice(Math.round((currentPrice ?? 0) / Math.max(1, selectedInstallment)))} сум/мес
                     </span>
                   </div>
-                  <div className="px-1">
-                    <div className="relative h-10">
-                      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[3px] bg-slate-100 rounded-full" />
+                  <div className="px-1 pt-3 pb-1">
+                    <div className="relative h-16">
+                      <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-slate-100" />
                       <div
-                        className="absolute top-1/2 -translate-y-1/2 h-[3px] bg-[#ef3124] rounded-full transition-all"
-                        style={{
-                          width: `${((selectedInstallment - 3) / (33 - 3)) * 100}%`,
-                        }}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-[#ef3124] transition-all"
+                        style={{ width: installmentProgressWidth }}
                       />
-                      <div className="relative flex justify-between text-xs font-semibold text-slate-500">
-                        {[3, 6, 9, 12, 15, 18, 24, 33].map((months) => (
-                          <button
-                            key={months}
-                            onClick={() => setSelectedInstallment(months)}
-                            className="relative flex flex-col items-center gap-1 w-8"
-                          >
-                            <span
-                              className={`h-4 w-4 rounded-full border-2 transition ${
-                                selectedInstallment === months
-                                  ? "border-[#ef3124] bg-white shadow-[0_3px_8px_rgba(239,49,36,0.35)]"
-                                  : "border-slate-200 bg-white"
-                              }`}
-                            />
-                            <span
-                              className={`${
-                                selectedInstallment === months ? "text-[#ef3124]" : ""
-                              }`}
+                      <div className="relative mt-4 flex justify-between px-4 text-xs font-semibold text-slate-500">
+                        {installmentSteps.map((months) => {
+                          const isActive = selectedInstallment === months;
+                          return (
+                            <button
+                              key={months}
+                              onClick={() => setSelectedInstallment(months)}
+                              className="relative flex w-8 flex-col items-center gap-2 focus:outline-none"
                             >
-                              {months}
-                            </span>
-                          </button>
-                        ))}
+                              <span
+                                className={`h-5 w-5 rounded-full border-2 transition ${
+                                  isActive
+                                    ? "border-[#ef3124] bg-white shadow-[0_3px_8px_rgba(239,49,36,0.35)]"
+                                    : "border-slate-200 bg-white"
+                                }`}
+                              />
+                              <span className={isActive ? "text-[#ef3124]" : ""}>{months}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -1129,11 +1141,6 @@ export function Product() {
                               {item.name.slice(0, 1)}
                             </span>
                             <span>{item.name}</span>
-                            {item.badge && (
-                              <span className="rounded-full bg-[#e5fff3] px-2 py-0.5 text-[10px] font-bold text-[#04734b]">
-                                {item.badge}
-                              </span>
-                            )}
                           </div>
                           <div className="text-[#04734b]">{monthly} сум/мес</div>
                         </div>
@@ -1150,7 +1157,7 @@ export function Product() {
                 </div>
               </div>
 
-              <div className={cn.seller_card}>
+              {/* <div className={cn.seller_card}>
                 <div className={cn.seller_top}>
                   <div className={cn.seller_logo} />
                   <div className={cn.seller_meta}>
@@ -1163,7 +1170,7 @@ export function Product() {
                   </div>
                 </div>
                 <button type="button" className={cn.seller_btn}>Do`konga o`tish</button>
-              </div>
+              </div> */}
             </aside>
           </div>
         )}
