@@ -297,6 +297,7 @@ export function Product() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductDetail['variants'][0] | null>(null);
+  const [selectedInstallment, setSelectedInstallment] = useState<number>(12);
   const [recentlyViewed, setRecentlyViewed] = useState<ProductType[]>([]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -950,18 +951,18 @@ export function Product() {
                       ) : null}
                       {currentPrice ? (
                         <>
-                          <p className="text-sm font-medium text-[#04734b]/80">сум / шт.</p>
+                          {/* <p className="text-sm font-medium text-[#04734b]/80">сум / шт.</p> */}
                           <p className="text-xs font-medium text-gray-500">
                             Доставка по Узбекистану: <span className="text-[#04734b] font-semibold">30 000 сум</span>
                           </p>
                         </>
                       ) : null}
                     </div>
-                    <div className={`${cn.rating_row} mt-1 sm:mt-0`}>
+                    {/* <div className={`${cn.rating_row} mt-1 sm:mt-0`}>
                       <img src="/icons/star.png" alt="" aria-hidden="true" />
                       <strong>4.9</strong>
                       <span className={cn.muted}>18 503 оценки</span>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
                 
@@ -1041,6 +1042,121 @@ export function Product() {
               </div>
             </section>
             <aside className={cn.aside}>
+              <div className="hidden md:block">
+                <div className="rounded-[26px] border border-white/40 bg-white/70 shadow-[0_20px_50px_rgba(15,23,42,0.12)] backdrop-blur-md px-6 py-5 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={openQuickOrder}
+                      disabled={!canBuy}
+                      className="flex-1 h-12 rounded-[18px] bg-gradient-to-r from-[#00a779] via-[#00b78a] to-[#00c08c] text-xs md:text-sm font-semibold text-white shadow-[0_12px_24px_rgba(0,160,120,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+                    >
+                      Купить в 1 клик
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddToCart}
+                      disabled={!canBuy}
+                      className="flex-1 h-12 rounded-[18px] border border-[#d5ebe3] bg-white text-base font-semibold text-[#04734b] shadow-[inset_0_2px_6px_rgba(4,115,75,0.08)] transition hover:border-[#04734b] hover:text-[#003d32] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      В корзину
+                    </button>
+                  </div>
+                  <p className="text-center text-xs font-medium text-slate-500">
+                    Оплата при получении или онлайн после подтверждения
+                  </p>
+                </div>
+                <div className="mt-4 rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.08)] px-5 py-4 space-y-4">
+                  <div className="flex items-center justify-between text-sm font-semibold text-slate-900">
+                    <span>Рассрочка на {selectedInstallment} мес.</span>
+                    <span className="text-[#04734b]">
+                      {formatPrice(Math.round((currentPrice ?? 0) / Math.max(1, selectedInstallment)))} сум/мес
+                    </span>
+                  </div>
+                  <div className="px-1">
+                    <div className="relative h-10">
+                      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[3px] bg-slate-100 rounded-full" />
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 h-[3px] bg-[#ef3124] rounded-full transition-all"
+                        style={{
+                          width: `${((selectedInstallment - 3) / (33 - 3)) * 100}%`,
+                        }}
+                      />
+                      <div className="relative flex justify-between text-xs font-semibold text-slate-500">
+                        {[3, 6, 9, 12, 15, 18, 24, 33].map((months) => (
+                          <button
+                            key={months}
+                            onClick={() => setSelectedInstallment(months)}
+                            className="relative flex flex-col items-center gap-1 w-8"
+                          >
+                            <span
+                              className={`h-4 w-4 rounded-full border-2 transition ${
+                                selectedInstallment === months
+                                  ? "border-[#ef3124] bg-white shadow-[0_3px_8px_rgba(239,49,36,0.35)]"
+                                  : "border-slate-200 bg-white"
+                              }`}
+                            />
+                            <span
+                              className={`${
+                                selectedInstallment === months ? "text-[#ef3124]" : ""
+                              }`}
+                            >
+                              {months}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    {[
+                      { name: "Payme nasiya", price: 178000, badge: "1-Click" },
+                      { name: "Iman", price: 187450 },
+                      { name: "Open", price: 172508 },
+                      { name: "Alif nasiya", price: 190166 },
+                      { name: "Uzum nasiya", price: 183375 },
+                      { name: "Paynet", price: 180658 },
+                      { name: "Variant", price: 194241 },
+                      { name: "Anorbank", price: 186078 },
+                    ].map((item, idx) => {
+                      const monthly = formatPrice(
+                        Math.round(item.price / Math.max(1, selectedInstallment))
+                      );
+                      return (
+                        <div
+                          key={item.name}
+                          className={`flex items-center justify-between rounded-[18px] border px-4 py-3 text-sm font-semibold ${
+                            idx === 0
+                              ? "border-[#ef3124] bg-[#fff5f3]"
+                              : "border-slate-200 bg-white"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="h-8 w-8 rounded-xl bg-slate-100 text-xs grid place-items-center text-slate-500">
+                              {item.name.slice(0, 1)}
+                            </span>
+                            <span>{item.name}</span>
+                            {item.badge && (
+                              <span className="rounded-full bg-[#e5fff3] px-2 py-0.5 text-[10px] font-bold text-[#04734b]">
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[#04734b]">{monthly} сум/мес</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                    <span>Итого за {selectedInstallment} месяцев</span>
+                    <strong className="text-slate-900">{formatPrice((currentPrice ?? 0))}</strong>
+                  </div>
+                  <button className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110" style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}>
+                    Оформить
+                  </button>
+                </div>
+              </div>
 
               <div className={cn.seller_card}>
                 <div className={cn.seller_top}>
