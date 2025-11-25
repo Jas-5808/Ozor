@@ -54,6 +54,9 @@ export function Cart() {
                 {items.map((item) => {
                   const attributes = item.product.attributes || [];
                   const imageSrc = item.product.image || cartPlaceholderImage;
+                  const hasOriginal =
+                    typeof item.product.original_price === "number" &&
+                    item.product.original_price > item.product.base_price;
                   return (
                     <div
                       key={item.productId}
@@ -93,6 +96,15 @@ export function Cart() {
                         <div className="text-sm font-semibold text-[#04734b]">
                           {formatPrice(item.product.base_price)}
                         </div>
+                        {hasOriginal && (
+                          <div className="text-xs text-gray-500">
+                            Chegirmasiz:{" "}
+                            <span className="relative inline-block text-red-500 font-semibold">
+                              <span className="relative z-10">{formatPrice(item.product.original_price!)}</span>
+                              <span className="absolute left-0 right-0 top-1/2 border-t border-red-500 rotate-6"></span>
+                            </span>
+                          </div>
+                        )}
                         {attributes.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-600">
                             {attributes.map((attr, idx) => (

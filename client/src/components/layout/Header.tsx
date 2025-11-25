@@ -67,6 +67,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                     aria-label="Главная"
                   >
                     <img src="/img/logo.png" alt="OZAR" className="h-8 w-auto" />
+                    {/* <div className="text-white text-sm font-medium">OZAR</div> */}
                   </Link>
                 </li>
                 <li>
@@ -174,7 +175,8 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                     className=""
                     aria-label="На главную"
                   >
-                    <img src="/img/logo.png" alt="OZAR" className="h-8 w-auto" />
+                    {/* <img src="/img/logo.png" alt="OZAR" className="h-8 w-auto" /> */}
+                    <div className="text-white text-sm font-medium">OZAR</div>
                   </Link>
                 </div>
 
