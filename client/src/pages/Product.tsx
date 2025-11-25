@@ -1111,25 +1111,17 @@ export function Product() {
                   </div>
                   <div className="grid gap-2">
                     {[
-                      { name: "Payme nasiya", price: 178000, badge: "1-Click" },
+                      { name: "Payme nasiya", price: 178000},
                       { name: "Iman", price: 187450 },
-                      { name: "Open", price: 172508 },
-                      { name: "Alif nasiya", price: 190166 },
-                      { name: "Uzum nasiya", price: 183375 },
-                      { name: "Paynet", price: 180658 },
-                      { name: "Variant", price: 194241 },
-                      { name: "Anorbank", price: 186078 },
+                      
                     ].map((item, idx) => {
-                      const monthly = formatPrice(
-                        Math.round(item.price / Math.max(1, selectedInstallment))
-                      );
+                      const monthly = Math.round(item.price / Math.max(1, selectedInstallment)).toLocaleString("ru-RU");
+                      const isActive = idx === 0;
                       return (
                         <div
                           key={item.name}
                           className={`flex items-center justify-between rounded-[18px] border px-4 py-3 text-sm font-semibold ${
-                            idx === 0
-                              ? "border-[#ef3124] bg-[#fff5f3]"
-                              : "border-slate-200 bg-white"
+                            isActive ? "border-[#ef3124] bg-[#fff5f3]" : "border-slate-200 bg-white"
                           }`}
                         >
                           <div className="flex items-center gap-3">
@@ -1150,7 +1142,7 @@ export function Product() {
                   </div>
                   <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
                     <span>Итого за {selectedInstallment} месяцев</span>
-                    <strong className="text-slate-900">{formatPrice((currentPrice ?? 0))}</strong>
+                    <strong className="text-slate-900">{formatPrice(currentPrice ?? 0)}</strong>
                   </div>
                   <button className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110" style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}>
                     Оформить
