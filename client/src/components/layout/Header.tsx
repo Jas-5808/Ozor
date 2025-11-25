@@ -23,8 +23,10 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
   const isFavoritesActive = location.pathname === '/favorites';
   const isProfileActive = location.pathname === '/profile' || location.pathname === '/login';
   
-  // Скрываем SearchBar на страницах профиля, корзины и избранных
-  const shouldHideSearchBar = isCartActive || isFavoritesActive || isProfileActive;
+  // Для мобильной версии скрываем поисковик на отдельных страницах
+  const shouldHideSearchBarMobile = isCartActive || isFavoritesActive || isProfileActive;
+  // На десктопе оставляем поиск всегда видимым по просьбе заказчика
+  const shouldHideSearchBarDesktop = false;
   useEffect(() => {
     const onScroll = () => {
       setIsCompact(window.scrollY > 10);
@@ -188,7 +190,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                   <p className="font-medium">Katalog</p>
                 </div>
 
-                {!shouldHideSearchBar && (
+                {!shouldHideSearchBarDesktop && (
                   <SearchBar className="mx-4 flex-[1_1_720px] max-w-[840px]" />
                 )}
 
@@ -220,7 +222,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
           </div>
 
           {/* Поисковая строка - скрываем на страницах профиля, корзины и избранных */}
-          {!shouldHideSearchBar && (
+          {!shouldHideSearchBarMobile && (
             <div className="flex items-center gap-2">
               <form onSubmit={(e) => {
                 e.preventDefault();

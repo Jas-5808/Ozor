@@ -1087,9 +1087,6 @@ export function Product() {
                 <div className="mt-4 rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.08)] px-5 py-4 space-y-4">
                   <div className="flex items-center justify-between text-sm font-semibold text-slate-900">
                     <span>Рассрочка на {selectedInstallment} мес.</span>
-                    <span className="text-[#04734b]">
-                      {formatPrice(Math.round((currentPrice ?? 0) / Math.max(1, selectedInstallment)))} сум/мес
-                    </span>
                   </div>
                   <div className="px-1 pt-3 pb-1">
                     <div className="relative h-16">
