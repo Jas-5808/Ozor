@@ -323,6 +323,56 @@ export function Product() {
       : 0;
   const installmentProgressScale =
     activeInstallmentIndex === 0 ? 0 : Math.min(1, Math.max(0, installmentProgress));
+  const installmentVendors = [
+    { name: "Payme nasiya", price: 178000 },
+    { name: "Iman", price: 187450 },
+  ];
+  const renderInstallmentSlider = () => (
+    <div className="px-1 pt-3 pb-1">
+      <div className="relative h-16">
+        <div
+          className="absolute top-7 h-[3px] rounded-full bg-slate-200"
+          style={{ left: INSTALLMENT_TRACK_PADDING, right: INSTALLMENT_TRACK_PADDING }}
+        />
+        <div
+          className="absolute top-7 h-[3px] rounded-full bg-[#ef3124] origin-left transition-transform"
+          style={{
+            left: INSTALLMENT_TRACK_PADDING,
+            right: INSTALLMENT_TRACK_PADDING,
+            transform: `scaleX(${installmentProgressScale})`,
+          }}
+        />
+        <div className="relative flex justify-between px-4 text-xs font-semibold text-slate-500">
+          {installmentSteps.map((months, index) => {
+            const isActive = selectedInstallment === months;
+            const isCompleted = index <= activeInstallmentIndex;
+            return (
+              <button
+                key={months}
+                onClick={() => setSelectedInstallment(months)}
+                className="relative flex w-8 flex-col items-center gap-2 focus:outline-none"
+              >
+                <span className={isActive ? "text-[#ef3124]" : ""}>{months}</span>
+                <span
+                  className={`grid place-items-center rounded-full transition ${
+                    isCompleted
+                      ? "bg-[#ef3124] text-white shadow-[0_4px_12px_rgba(239,49,36,0.35)]"
+                      : "bg-white text-slate-400 border border-slate-200"
+                  }`}
+                  style={{
+                    width: INSTALLMENT_DOT_SIZE,
+                    height: INSTALLMENT_DOT_SIZE,
+                  }}
+                >
+                  <span className="sr-only">{months} месяцев</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
   
   const productFromState = routeState?.product;
   const product = useMemo<ProductDetail | null>(() => {
@@ -1050,6 +1100,49 @@ export function Product() {
                     </div>
                   );
                 })()}
+                <div className="md:hidden mt-6 space-y-3 rounded-[26px] border border-white/40 bg-white/95 p-4 shadow-[0_16px_30px_rgba(15,23,42,0.12)]">
+                  <div className="flex items-center justify-between text-sm font-semibold text-slate-900">
+                    <span>Рассрочка на {selectedInstallment} мес.</span>
+                    <span className="text-base text-[#04734b]">
+                      {formatPrice(Math.round((currentPrice ?? 0) / Math.max(1, selectedInstallment)))} /мес
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">Выберите удобный срок оплаты</p>
+                  {renderInstallmentSlider()}
+                  <div className="grid gap-2">
+                    {installmentVendors.map((item, idx) => {
+                      const monthly = Math.round(item.price / Math.max(1, selectedInstallment)).toLocaleString("ru-RU");
+                      const isActive = idx === 0;
+                      return (
+                        <div
+                          key={item.name}
+                          className={`flex items-center justify-between rounded-[18px] border px-3 py-2 text-xs font-semibold ${
+                            isActive ? "border-[#ef3124] bg-[#fff5f3]" : "border-slate-200 bg-white"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="h-7 w-7 rounded-xl bg-slate-100 text-[11px] grid place-items-center text-slate-500">
+                              {item.name.slice(0, 1)}
+                            </span>
+                            <span>{item.name}</span>
+                          </div>
+                          <div className="text-[#04734b]">{monthly} сум/мес</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                    <span>Итого за {selectedInstallment} месяцев</span>
+                    <strong className="text-slate-900">{formatPrice(currentPrice ?? 0)}</strong>
+                  </div>
+                  <button
+                    type="button"
+                    className="w-full h-11 rounded-[18px] text-white text-sm font-semibold shadow-[0_10px_20px_rgба(4,115,75,0.3)]"
+                    style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+                  >
+                    Оформить
+                  </button>
+                </div>
               </div>
             </section>
             <aside className={cn.aside}>
@@ -1082,56 +1175,9 @@ export function Product() {
                   <div className="flex items-center justify-between text-sm font-semibold text-slate-900">
                     <span>Рассрочка на {selectedInstallment} мес.</span>
                   </div>
-                  <div className="px-1 pt-3 pb-1">
-                    <div className="relative h-16">
-                      <div
-                        className="absolute top-7 h-[3px] rounded-full bg-slate-200"
-                        style={{ left: INSTALLMENT_TRACK_PADDING, right: INSTALLMENT_TRACK_PADDING }}
-                      />
-                      <div
-                        className="absolute top-7 h-[3px] rounded-full bg-[#ef3124] origin-left transition-transform"
-                        style={{
-                          left: INSTALLMENT_TRACK_PADDING,
-                          right: INSTALLMENT_TRACK_PADDING,
-                          transform: `scaleX(${installmentProgressScale})`,
-                        }}
-                      />
-                      <div className="relative flex justify-between px-4 text-xs font-semibold text-slate-500">
-                        {installmentSteps.map((months, index) => {
-                          const isActive = selectedInstallment === months;
-                          const isCompleted = index <= activeInstallmentIndex;
-                          return (
-                            <button
-                              key={months}
-                              onClick={() => setSelectedInstallment(months)}
-                              className="relative flex w-8 flex-col items-center gap-2 focus:outline-none"
-                            >
-                              <span className={isActive ? "text-[#ef3124]" : ""}>{months}</span>
-                              <span
-                                className={`grid place-items-center rounded-full transition ${
-                                  isCompleted
-                                    ? "bg-[#ef3124] text-white shadow-[0_4px_12px_rgba(239,49,36,0.35)]"
-                                    : "bg-white text-slate-400 border border-slate-200"
-                                }`}
-                                style={{
-                                  width: INSTALLMENT_DOT_SIZE,
-                                  height: INSTALLMENT_DOT_SIZE,
-                                }}
-                              >
-                                <span className="sr-only">{months} месяцев</span>
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
+                  {renderInstallmentSlider()}
                   <div className="grid gap-2">
-                    {[
-                      { name: "Payme nasiya", price: 178000},
-                      { name: "Iman", price: 187450 },
-                      
-                    ].map((item, idx) => {
+                    {installmentVendors.map((item, idx) => {
                       const monthly = Math.round(item.price / Math.max(1, selectedInstallment)).toLocaleString("ru-RU");
                       const isActive = idx === 0;
                       return (
