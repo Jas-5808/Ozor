@@ -1,15 +1,14 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef, FormEvent } from "react";
 import { useLocation, useParams } from "react-router-dom";
 // @ts-ignore – модуль стилей объявлен через d.ts
 import cn from "./style.module.scss";
-import { formatPrice, getProductImageUrl, storage, getVariantMainImage } from "../utils/helpers";
+import { formatPrice, getProductImageUrl, storage } from "../utils/helpers";
 import { Product as ProductType, ProductDetail } from "../types";
 import { shopAPI } from "../services/api";
 import { uzbekistanLocations } from "../data/uzbekistanLocations";
 import { useApp } from "../context/AppContext";
 import ProductCard from "../components/ui/ProductCard";
 import PhoneInput from "../components/forms/PhoneInput";
-import OrderDialog from "../components/OrderDialog";
 import useSEO from "../hooks/useSEO";
 import ProductPageSkeleton from "../components/ProductPageSkeleton";
 import { logger } from "../utils/logger";
@@ -25,9 +24,8 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
     
     // Используем новый API /api/v1/shop/product/{product_id}
     const response = await shopAPI.getProductById(productId);
-    logger.debug("Product API response", { productId, hasData: !!response.data });
-    
-    const productData = response.data;
+    const productData: any = (response as any)?.data ?? response;
+    logger.debug("Product API response", { productId, hasData: !!productData });
     
     if (!productData) {
       return null;
@@ -119,6 +117,177 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
     throw error;
   }
 }
+
+type QuickOrderSheetProps = {
+  open: boolean;
+  onClose: () => void;
+  product: ProductDetail;
+  variant: ProductDetail['variants'][0] | null;
+  name: string;
+  phone: string;
+  onNameChange: (value: string) => void;
+  onPhoneChange: (value: string) => void;
+  agreeTerms: boolean;
+  onAgreeChange: (value: boolean) => void;
+  loading: boolean;
+  error: string | null;
+  feedback: string | null;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  locationLabel: string;
+  locationHint?: string;
+};
+
+const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
+  open,
+  onClose,
+  product,
+  variant,
+  name,
+  phone,
+  onNameChange,
+  onPhoneChange,
+  agreeTerms,
+  onAgreeChange,
+  loading,
+  error,
+  feedback,
+  onSubmit,
+  locationLabel,
+  locationHint,
+}) => {
+  if (!open) return null;
+
+  const summaryImage =
+    getProductImageUrl(
+      (variant?.variant_media || []).find((m: any) => m?.is_main)?.file ||
+        variant?.variant_media?.[0]?.file ||
+        product.main_image
+    );
+  const price = variant?.price ?? product.price ?? 0;
+  const sku = variant?.sku || product.variant_sku || product.product_id;
+  const inStock = (variant?.stock ?? product.stock ?? 0) > 0;
+
+  return (
+    <div className="fixed inset-0 z-[80] flex justify-end bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="h-full w-full max-w-md rounded-l-3xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-400">Быстрый заказ</p>
+            <h3 className="text-lg font-semibold text-gray-900">Оформление товара</h3>
+          </div>
+          <button
+            type="button"
+            aria-label="Закрыть"
+            onClick={onClose}
+            className="rounded-full border border-gray-200 p-2 text-gray-500 transition hover:text-gray-900"
+          >
+            ×
+          </button>
+        </div>
+        <div className="h-[calc(100%-72px)] overflow-y-auto px-6 py-5">
+          <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4">
+            <div className="flex gap-3">
+              <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-white shadow-inner">
+                <img src={summaryImage} alt="" className="h-full w-full object-cover" />
+              </div>
+              <div className="flex flex-1 flex-col">
+                <p className="line-clamp-2 text-sm font-semibold text-gray-900">{product.product_name}</p>
+                <span className="mt-1 text-xs text-gray-400">Код: {sku}</span>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-base font-bold text-gray-900">{formatPrice(price)}</span>
+                  <span className={`text-sm font-medium ${inStock ? 'text-emerald-600' : 'text-rose-500'}`}>
+                    {inStock ? 'В наличии' : 'Нет в наличии'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3">
+            <div className="rounded-2xl bg-emerald-50 p-2">
+              <img src="/icons/location.svg" alt="" className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-400">Доставка</p>
+              <p className="text-sm font-medium text-gray-900">{locationLabel}</p>
+              {locationHint && <p className="text-xs text-gray-500">{locationHint}</p>}
+            </div>
+          </div>
+
+          <form className="mt-5 flex flex-col gap-4" onSubmit={onSubmit}>
+            <div>
+              <label className="text-sm font-medium text-gray-700" htmlFor="quick-order-name">
+                Имя
+              </label>
+              <input
+                id="quick-order-name"
+                type="text"
+                value={name}
+                onChange={(e) => onNameChange(e.target.value)}
+                className="mt-1 h-12 w-full rounded-2xl border border-gray-200 px-4 text-base outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                placeholder="Как к вам обращаться"
+                autoComplete="name"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700" htmlFor="quick-order-phone">
+                Телефон
+              </label>
+              <PhoneInput
+                className="mt-1 h-12 w-full rounded-2xl border border-gray-200 px-4 text-base outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                value={phone}
+                onChange={onPhoneChange}
+                placeholder="+998 (__) ___ __ __"
+                required
+              />
+            </div>
+
+            <label className="flex items-start gap-3 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={agreeTerms}
+                onChange={(e) => onAgreeChange(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span>
+                Я согласен с условиями{" "}
+                <a href="/terms" className="text-emerald-600 hover:underline">
+                  пользовательского соглашения
+                </a>
+              </span>
+            </label>
+
+            {error && (
+              <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+                {error}
+              </div>
+            )}
+            {feedback && (
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                {feedback}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="h-12 rounded-2xl bg-[#ff3b30] text-base font-semibold text-white shadow-lg transition hover:bg-[#ff2417] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Отправляем..." : "Заказать"}
+            </button>
+            <p className="text-center text-xs text-gray-500">
+              Мы свяжемся с вами в течение 10 минут для подтверждения заказа
+            </p>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
 export function Product() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
@@ -133,10 +302,14 @@ export function Product() {
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxZoom, setLightboxZoom] = useState(1);
   const [activeTab, setActiveTab] = useState<'description' | 'characteristics' | 'comments'>('description');
-  const [comments, setComments] = useState<Array<{ id: string; author: string; text: string; createdAt: string }>>([]);
+  const [comments] = useState<Array<{ id: string; author: string; text: string; createdAt: string }>>([]);
   const [phone, setPhone] = useState<string>("");
   const [name, setName] = useState<string>("");
-  const [orderOpen, setOrderOpen] = useState<boolean>(false);
+  const [isQuickOrderOpen, setIsQuickOrderOpen] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(true);
+  const [quickOrderLoading, setQuickOrderLoading] = useState(false);
+  const [quickOrderError, setQuickOrderError] = useState<string | null>(null);
+  const [quickOrderFeedback, setQuickOrderFeedback] = useState<string | null>(null);
   const productRef = useRef<HTMLDivElement>(null);
   
   const productFromState = routeState?.product;
@@ -153,6 +326,13 @@ export function Product() {
     return null;
   }, [productFromState, fetchedProduct]);
   const { addToCart, state: appState } = useApp();
+  const locationLabel =
+    appState.location.data?.address ||
+    appState.location.data?.city ||
+    "Местоположение не выбрано";
+  const locationHint = appState.location.data?.city
+    ? `Город доставки: ${appState.location.data.city}`
+    : "Укажите город, чтобы увидеть точные условия доставки";
 
   // Прокрутка вверх при открытии товара (особенно важно для мобильных)
   useEffect(() => {
@@ -414,6 +594,15 @@ export function Product() {
     } catch {}
   }, [product, selectedVariant]);
 
+  useEffect(() => {
+    if (!isQuickOrderOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isQuickOrderOpen]);
+
   // Лайтбокс
   const openLightbox = (index: number) => {
     setLightboxIndex(index);
@@ -453,9 +642,7 @@ export function Product() {
 
   // Добавление в корзину
   const handleAddToCart = () => {
-    if (!product) return;
-    const canBuy = selectedVariant ? (selectedVariant.stock > 0 && selectedVariant.price !== null) : (product.price !== null && product.stock > 0);
-    if (!canBuy) return;
+    if (!product || !canBuy) return;
     const item = {
       id: (selectedVariant?.id || product.variant_id),
       name: product.product_name,
@@ -464,6 +651,79 @@ export function Product() {
       referral_code: referralCode || undefined,
     };
     addToCart(item, 1);
+  };
+
+  const canBuy =
+    selectedVariant
+      ? selectedVariant.stock > 0 && selectedVariant.price !== null
+      : product?.price !== null && (product?.stock ?? 0) > 0;
+
+  const openQuickOrder = () => {
+    if (!canBuy) return;
+    setQuickOrderError(null);
+    setQuickOrderFeedback(null);
+    setIsQuickOrderOpen(true);
+  };
+
+  const closeQuickOrder = () => {
+    setIsQuickOrderOpen(false);
+  };
+
+  const handleQuickOrderSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!product) return;
+
+    if (!canBuy) {
+      setQuickOrderError("Товар сейчас недоступен для заказа");
+      return;
+    }
+    if (!name.trim()) {
+      setQuickOrderError("Введите ваше имя");
+      return;
+    }
+    if (!phone || phone.trim().length < 8) {
+      setQuickOrderError("Введите корректный номер телефона");
+      return;
+    }
+    if (!agreeTerms) {
+      setQuickOrderError("Необходимо согласиться с условиями");
+      return;
+    }
+
+    try {
+      setQuickOrderLoading(true);
+      setQuickOrderError(null);
+      const variantId = selectedVariant?.id || product.variant_id;
+      const citySource = appState.location.data?.city || "tashkent";
+      const cityCode = toCityCode(citySource) || citySource;
+      const payload = {
+        items: [
+          {
+            variant_id: variantId,
+            quantity: 1,
+            referral_code: referralCode || undefined,
+          },
+        ],
+        guest_user_number: phone,
+        full_name: name.trim(),
+        city: cityCode,
+        order_region: getRegionForCityOrRegion(cityCode),
+        order_comment: "",
+      } as any;
+      await shopAPI.guestOrder(payload);
+      setQuickOrderFeedback("Заявка отправлена! Мы свяжемся с вами в ближайшее время.");
+      setName("");
+      setPhone("");
+      setTimeout(() => {
+        setIsQuickOrderOpen(false);
+        setQuickOrderFeedback(null);
+      }, 1800);
+    } catch (err) {
+      logger.errorWithContext(err, { context: "quickOrder" });
+      setQuickOrderError("Не удалось отправить заказ. Попробуйте позже.");
+    } finally {
+      setQuickOrderLoading(false);
+    }
   };
 
   // Функция для получения значения атрибута по ID
@@ -475,31 +735,6 @@ export function Product() {
       return attrId === attributeId || attrName === attributeId;
     });
     return attributeValue?.value || '';
-  };
-
-  // Функция для получения названия атрибута по ID
-  const getAttributeName = (attributeId: string) => {
-    const attribute = product?.attributes.find(a => a.id === attributeId || a.name === attributeId);
-    return attribute?.name || '';
-  };
-
-  // Функция для выбора варианта по комбинации атрибутов
-  const selectVariantByAttributes = (selectedAttributes: Record<string, string>) => {
-    if (!product) return;
-
-    // Находим вариант, который соответствует всем выбранным атрибутам
-    const matchingVariant = product.variants.find(variant => {
-      return Object.entries(selectedAttributes).every(([attributeId, value]) => {
-        const variantValue = getAttributeValue(variant, attributeId);
-        return variantValue === value;
-      });
-    });
-
-    if (matchingVariant) {
-      setSelectedVariant(matchingVariant);
-      // Сбрасываем индекс лайтбокса на 0 при изменении варианта
-      setLightboxIndex(0);
-    }
   };
 
   // Функция для обработки выбора атрибута
@@ -733,7 +968,7 @@ export function Product() {
                   )}
                 </div>
                 <div className={cn.delivery_hint}>
-                  Yetkazib berish narxi: 30 000
+                  Доставка в {appState.location.data?.city || "Ташкент"} — точную стоимость уточнит оператор
                 </div>
                 <div className={cn.stock_info}>
                   {selectedVariant ? (
@@ -750,67 +985,37 @@ export function Product() {
                     )
                   )}
                 </div>
-                <form className={cn.buy_form} onSubmit={(e)=>{e.preventDefault(); setOrderOpen(true);}}>
-                  <input className={cn.input} placeholder="Ismingiz" value={name} onChange={(e)=>setName(e.target.value)} />
-                  <PhoneInput 
-                    className={cn.input}
-                    placeholder="Telefon raqamingiz"
-                    value={phone}
-                    onChange={setPhone}
-                    required
-                  />
-                  <button 
-                    type="submit" 
-                    className={cn.primary_btn}
-                    disabled={selectedVariant?.stock === 0 || selectedVariant?.price === null}
+                <div className="mt-4 flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-inner">
+                  <div className="rounded-2xl bg-emerald-50 p-2">
+                    <img src="/icons/location.svg" alt="" className="h-5 w-5" />
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-xs uppercase tracking-wide text-gray-400">Местоположение</p>
+                    <p className="font-medium text-gray-900">{locationLabel}</p>
+                    <p className="text-xs text-gray-500">{locationHint}</p>
+                  </div>
+                </div>
+                <div className="mt-4 hidden md:grid gap-3">
+                  <button
+                    type="button"
+                    onClick={openQuickOrder}
+                    disabled={!canBuy}
+                    className="h-12 rounded-2xl bg-[#ff3b30] text-base font-semibold text-white shadow-lg transition hover:bg-[#ff2417] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {selectedVariant?.stock === 0 ? 'Нет в наличии' : 
-                     selectedVariant?.price === null ? 'Цена не указана' : 
-                     'Buyurtma berish'}
+                    Купить в 1 клик
                   </button>
-                </form>
-                {product && (
-                  <OrderDialog
-                    open={orderOpen}
-                    onClose={() => setOrderOpen(false)}
-                    product={product}
-                    variant={selectedVariant}
-                    deliveryPrice={product.refferal_price}
-                    onBuyNow={async (qty, extra)=>{
-                      const variantId = selectedVariant?.id || product.variant_id;
-                      const cityCode = toCityCode(extra?.city || appState.location.data?.city);
-                      const payload = {
-                        items: [
-                          {
-                            variant_id: variantId,
-                            quantity: qty,
-                            referral_code: referralCode || undefined,
-                          }
-                        ],
-                        guest_user_number: phone || "",
-                        full_name: name || "",
-                        city: cityCode,
-                        order_region: getRegionForCityOrRegion(cityCode),
-                        order_comment: extra?.comment || "",
-                      } as any;
-                      try {
-                        await shopAPI.guestOrder(payload);
-                      } catch (e) {
-                        logger.errorWithContext(e, { context: 'createGuestOrder' });
-                      }
-                    }}
-                    onAddToCart={(qty)=>{
-                      const price = selectedVariant?.price ?? product.price ?? 0;
-                      addToCart({
-                        id: selectedVariant?.id || product.variant_id,
-                        name: product.product_name,
-                        refferal_price: product.refferal_price || 0,
-                        base_price: price,
-                        referral_code: referralCode || undefined,
-                      }, qty);
-                    }}
-                  />
-                )}
+                  <button
+                    type="button"
+                    onClick={handleAddToCart}
+                    disabled={!canBuy}
+                    className="h-12 rounded-2xl border border-gray-200 bg-white text-base font-semibold text-gray-900 transition hover:border-gray-300 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    В корзину
+                  </button>
+                  <p className="text-center text-xs text-gray-500">
+                    Оплата при получении или онлайн после подтверждения
+                  </p>
+                </div>
               </div>
               <div className={cn.seller_card}>
                 <div className={cn.seller_top}>
@@ -1004,6 +1209,50 @@ export function Product() {
           </div>
         )}
       </div>
+
+      {product && (
+        <QuickOrderSheet
+          open={isQuickOrderOpen}
+          onClose={closeQuickOrder}
+          product={product}
+          variant={selectedVariant}
+          name={name}
+          phone={phone}
+          onNameChange={setName}
+          onPhoneChange={setPhone}
+          agreeTerms={agreeTerms}
+          onAgreeChange={setAgreeTerms}
+          loading={quickOrderLoading}
+          error={quickOrderError}
+          feedback={quickOrderFeedback}
+          onSubmit={handleQuickOrderSubmit}
+          locationLabel={locationLabel}
+          locationHint={locationHint}
+        />
+      )}
+
+      {canBuy && (
+        <div
+          className="md:hidden fixed inset-x-0 z-40 flex gap-2 px-4"
+          style={{ bottom: "88px" }}
+        >
+          <button
+            type="button"
+            onClick={openQuickOrder}
+            className="flex-1 rounded-2xl py-3 text-sm font-semibold text-white shadow-lg transition active:scale-[0.99]"
+            style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+          >
+            Купить в 1 клик
+          </button>
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            className="flex-1 rounded-2xl border border-white/40 bg-white/90 py-3 text-sm font-semibold text-[#04734b] shadow-md backdrop-blur-lg transition active:scale-[0.99]"
+          >
+            В корзину
+          </button>
+        </div>
+      )}
 
       {/* Лайтбокс */}
       {lightboxOpen && (
