@@ -313,22 +313,16 @@ export function Product() {
   const [quickOrderFeedback, setQuickOrderFeedback] = useState<string | null>(null);
   const productRef = useRef<HTMLDivElement>(null);
   const installmentSteps = [3, 6, 9, 12, 15, 18, 24, 33];
+  const INSTALLMENT_TRACK_PADDING = 28;
+  const INSTALLMENT_DOT_SIZE = 16;
   const rawInstallmentIndex = installmentSteps.indexOf(selectedInstallment);
   const activeInstallmentIndex = rawInstallmentIndex >= 0 ? rawInstallmentIndex : 0;
   const installmentProgress =
     installmentSteps.length > 1
       ? activeInstallmentIndex / (installmentSteps.length - 1)
       : 0;
-  const installmentProgressPercent = installmentProgress * 100;
-  const INSTALLMENT_DOT_OFFSET = 14;
-  const installmentProgressWidth = (() => {
-    if (installmentSteps.length <= 1) return "0px";
-    if (activeInstallmentIndex <= 0) return `${INSTALLMENT_DOT_OFFSET}px`;
-    if (activeInstallmentIndex >= installmentSteps.length - 1) {
-      return `calc(100% - ${INSTALLMENT_DOT_OFFSET}px)`;
-    }
-    return `calc(${installmentProgressPercent}% + ${INSTALLMENT_DOT_OFFSET / 2}px)`;
-  })();
+  const installmentProgressScale =
+    activeInstallmentIndex === 0 ? 0 : Math.min(1, Math.max(0, installmentProgress));
   
   const productFromState = routeState?.product;
   const product = useMemo<ProductDetail | null>(() => {
@@ -1090,28 +1084,42 @@ export function Product() {
                   </div>
                   <div className="px-1 pt-3 pb-1">
                     <div className="relative h-16">
-                      <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-slate-100" />
                       <div
-                        className="absolute left-4 top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-[#ef3124] transition-all"
-                        style={{ width: installmentProgressWidth }}
+                        className="absolute top-7 h-[3px] rounded-full bg-slate-200"
+                        style={{ left: INSTALLMENT_TRACK_PADDING, right: INSTALLMENT_TRACK_PADDING }}
                       />
-                      <div className="relative mt-4 flex justify-between px-4 text-xs font-semibold text-slate-500">
-                        {installmentSteps.map((months) => {
+                      <div
+                        className="absolute top-7 h-[3px] rounded-full bg-[#ef3124] origin-left transition-transform"
+                        style={{
+                          left: INSTALLMENT_TRACK_PADDING,
+                          right: INSTALLMENT_TRACK_PADDING,
+                          transform: `scaleX(${installmentProgressScale})`,
+                        }}
+                      />
+                      <div className="relative flex justify-between px-4 text-xs font-semibold text-slate-500">
+                        {installmentSteps.map((months, index) => {
                           const isActive = selectedInstallment === months;
+                          const isCompleted = index <= activeInstallmentIndex;
                           return (
                             <button
                               key={months}
                               onClick={() => setSelectedInstallment(months)}
                               className="relative flex w-8 flex-col items-center gap-2 focus:outline-none"
                             >
-                              <span
-                                className={`h-5 w-5 rounded-full border-2 transition ${
-                                  isActive
-                                    ? "border-[#ef3124] bg-white shadow-[0_3px_8px_rgba(239,49,36,0.35)]"
-                                    : "border-slate-200 bg-white"
-                                }`}
-                              />
                               <span className={isActive ? "text-[#ef3124]" : ""}>{months}</span>
+                              <span
+                                className={`grid place-items-center rounded-full transition ${
+                                  isCompleted
+                                    ? "bg-[#ef3124] text-white shadow-[0_4px_12px_rgba(239,49,36,0.35)]"
+                                    : "bg-white text-slate-400 border border-slate-200"
+                                }`}
+                                style={{
+                                  width: INSTALLMENT_DOT_SIZE,
+                                  height: INSTALLMENT_DOT_SIZE,
+                                }}
+                              >
+                                <span className="sr-only">{months} месяцев</span>
+                              </span>
                             </button>
                           );
                         })}
