@@ -558,6 +558,25 @@ export function Product() {
     }
   }, [galleryImages.length, selectedVariant?.id]);
 
+  const selectedAttributesList = useMemo(() => {
+    if (!product || !selectedVariant) return [];
+    return (selectedVariant.attribute_values || [])
+      .map((attrValue) => {
+        const attrId = attrValue.attribute_id || (attrValue as any).attribute_name;
+        const attribute = product.attributes.find(
+          (attr) =>
+            attr.id === attrId ||
+            attr.name === attrId ||
+            attr.name === (attrValue as any).attribute_name
+        );
+        const label = attribute?.name || attrValue.attribute_name || "";
+        const value = attrValue.value;
+        if (!label || !value) return null;
+        return { name: label, value };
+      })
+      .filter((entry): entry is { name: string; value: string } => Boolean(entry));
+  }, [product, selectedVariant]);
+
   // Недавно просмотренные: сохраняем текущий товар
   useEffect(() => {
     // Предзагрузка ранее просмотренных, чтобы показать сразу
@@ -643,12 +662,20 @@ export function Product() {
   // Добавление в корзину
   const handleAddToCart = () => {
     if (!product || !canBuy) return;
+    const cartImage =
+      primaryImage ||
+      galleryImages[0] ||
+      (product.main_image ? getProductImageUrl(product.main_image) : undefined);
+    const cartPrice = currentPrice ?? product.price ?? 0;
     const item = {
       id: (selectedVariant?.id || product.variant_id),
       name: product.product_name,
       refferal_price: product.refferal_price || 0,
-      base_price: (selectedVariant?.base_price ?? selectedVariant?.price ?? product.price ?? 0),
+      base_price: cartPrice,
+      original_price: hasDiscount ? basePrice : null,
       referral_code: referralCode || undefined,
+      image: cartImage,
+      attributes: selectedAttributesList.length ? selectedAttributesList : undefined,
     };
     addToCart(item, 1);
   };
@@ -834,6 +861,17 @@ export function Product() {
   }
 
   const currentPrice = selectedVariant?.price ?? product.price ?? null;
+  const basePrice = selectedVariant?.base_price ?? product.price ?? null;
+  const hasDiscount =
+    currentPrice !== null &&
+    basePrice !== null &&
+    typeof currentPrice === "number" &&
+    typeof basePrice === "number" &&
+    basePrice > currentPrice;
+  const discountPercent =
+    hasDiscount && basePrice
+      ? Math.round(((basePrice - currentPrice) / basePrice) * 100)
+      : null;
   const sku = selectedVariant?.sku || product.variant_sku || product.product_id;
   const availableUnits = selectedVariant ? selectedVariant.stock : product.stock;
   const isAvailable = (availableUnits ?? 0) > 0;
@@ -876,7 +914,7 @@ export function Product() {
                 <div className="flex flex-col gap-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-2">
-                      <h1 className={cn.product_title}>{product.product_name}</h1>
+                      <h1 className={`${cn.product_title} text-slate-900`}>{product.product_name}</h1>
                       <div className="flex flex-wrap items-center gap-3 text-sm">
                         <span
                           className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
@@ -895,11 +933,28 @@ export function Product() {
                   </div>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                      <p className="text-[28px] font-semibold leading-tight text-[#ff3b30] sm:text-[32px]">
-                        {currentPrice ? formatPrice(currentPrice) : 'Цена не указана'}
-                      </p>
+                      <div className="flex items-center gap-3">
+                        <p className="text-[28px] font-semibold leading-tight text-[#04734b] sm:text-[32px]">
+                          {currentPrice ? formatPrice(currentPrice) : 'Цена не указана'}
+                        </p>
+                        {hasDiscount && discountPercent && (
+                          <span className="inline-flex items-center rounded-full bg-[#e6f4ef] px-3 py-1 text-xs font-semibold text-[#04734b]">
+                            -{discountPercent}%
+                          </span>
+                        )}
+                      </div>
+                      {hasDiscount && basePrice ? (
+                        <p className="text-sm font-medium text-gray-400 line-through">
+                          {formatPrice(basePrice)}
+                        </p>
+                      ) : null}
                       {currentPrice ? (
-                        <p className="text-sm font-medium text-[#ff3b30]/80">сум / шт.</p>
+                        <>
+                          <p className="text-sm font-medium text-[#04734b]/80">сум / шт.</p>
+                          <p className="text-xs font-medium text-gray-500">
+                            Доставка по Узбекистану: <span className="text-[#04734b] font-semibold">30 000 сум</span>
+                          </p>
+                        </>
                       ) : null}
                     </div>
                     <div className={`${cn.rating_row} mt-1 sm:mt-0`}>
@@ -986,63 +1041,7 @@ export function Product() {
               </div>
             </section>
             <aside className={cn.aside}>
-              <div className={cn.buy_card}>
-                <div className={cn.price_row}>
-                  <span className={cn.price_icon} aria-hidden="true" />
-                  <div className={cn.price_value}>
-                    {selectedVariant?.price ? 
-                      formatPrice(selectedVariant.price) : 
-                      product.price ? 
-                        formatPrice(product.price) : 
-                        'Цена не указана'
-                    } 
-                  </div>
-                  {selectedVariant && selectedVariant.price && selectedVariant.base_price && selectedVariant.price !== selectedVariant.base_price && (
-                    <div className={cn.original_price}>
-                      {formatPrice(selectedVariant.base_price)}
-                    </div>
-                  )}
-                </div>
-                <div className={cn.delivery_hint}>
-                  Доставка в {appState.location.data?.city || "Ташкент"} — точную стоимость уточнит оператор
-                </div>
-                <div className={cn.stock_info}>
-                  {selectedVariant ? (
-                    selectedVariant.stock > 0 ? (
-                      <span className={cn.in_stock}>В наличии: {selectedVariant.stock} шт.</span>
-                    ) : (
-                      <span className={cn.out_of_stock}>Нет в наличии</span>
-                    )
-                  ) : (
-                    product.stock > 0 ? (
-                      <span className={cn.in_stock}>В наличии: {product.stock} шт.</span>
-                    ) : (
-                      <span className={cn.out_of_stock}>Нет в наличии</span>
-                    )
-                  )}
-                </div>
-                <div className="mt-4 hidden md:grid gap-3">
-                  <button
-                    type="button"
-                    onClick={openQuickOrder}
-                    disabled={!canBuy}
-                    className="h-12 rounded-2xl bg-[#ff3b30] text-base font-semibold text-white shadow-lg transition hover:bg-[#ff2417] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Купить в 1 клик
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAddToCart}
-                    disabled={!canBuy}
-                    className="h-12 rounded-2xl border border-gray-200 bg-white text-base font-semibold text-gray-900 transition hover:border-gray-300 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    В корзину
-                  </button>
-                  <p className="text-center text-xs text-gray-500">
-                    Оплата при получении или онлайн после подтверждения
-                  </p>
-                </div>
-              </div>
+
               <div className={cn.seller_card}>
                 <div className={cn.seller_top}>
                   <div className={cn.seller_logo} />

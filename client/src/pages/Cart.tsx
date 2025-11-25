@@ -1,4 +1,3 @@
-import React from "react";
 import cn from "./style.module.scss";
 import { useApp } from "../context/AppContext";
 import { formatPrice } from "../utils/helpers";
@@ -10,8 +9,9 @@ export function Cart() {
     robots: "noindex,nofollow",
     canonical: typeof window !== 'undefined' ? window.location.origin + '/cart' : undefined,
   });
-  const { state, updateCartItem, removeFromCart, clearCart, getCartTotal } = useApp();
+  const { state, updateCartItem, removeFromCart, getCartTotal } = useApp();
   const items = state.cart;
+  const cartPlaceholderImage = "/img/product-placeholder.png";
 
   const handleDecrease = (productId: string, currentQty: number) => {
     const next = Math.max(1, currentQty - 1);
@@ -46,41 +46,88 @@ export function Cart() {
         <div className={cn.main_content}>
           <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="m-0 text-[22px] font-extrabold text-slate-900">Savat</h2>
-                <button onClick={clearCart} className={cn.btn_secondary}>Savtni tozalash</button>
+              <div className="flex items-center justify-between mb-3 px-1 sm:px-0">
+                <h2 className="m-0 text-[20px] font-extrabold text-slate-900 leading-tight py-3">Savat</h2>
               </div>
 
               <div className="grid gap-3">
                 {items.map((item) => {
-                  const subtotal = item.product.base_price * item.quantity;
+                  const attributes = item.product.attributes || [];
+                  const imageSrc = item.product.image || cartPlaceholderImage;
                   return (
                     <div
                       key={item.productId}
-                      className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3 items-center p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]"
+                      className="flex items-start gap-4 p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]"
                     >
-                      <div>
-                        <div className="font-extrabold text-slate-900">{item.product.name}</div>
-                        <div className="text-xs text-slate-500 mt-1">Narx: {formatPrice(item.product.base_price)}</div>
+                      <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-white border border-gray-100 flex items-center justify-center">
+                        <img
+                          src={imageSrc}
+                          alt={item.product.name}
+                          className="h-full w-full object-contain"
+                          onError={(e) => {
+                            e.currentTarget.src = cartPlaceholderImage;
+                          }}
+                        />
                       </div>
-                      <div className="inline-flex items-center gap-2" aria-label="Miqdor">
-                        <button
-                          onClick={() => handleDecrease(item.productId, item.quantity)}
-                          className="h-9 w-9 rounded-xl border border-gray-300 bg-white hover:bg-gray-50"
-                        >
-                          −
-                        </button>
-                        <strong className="min-w-7 text-center">{item.quantity}</strong>
-                        <button
-                          onClick={() => handleIncrease(item.productId, item.quantity)}
-                          className="h-9 w-9 rounded-xl border border-gray-300 bg-white hover:bg-gray-50"
-                        >
-                          +
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-2 sm:justify-end">
-                        <div className="font-extrabold text-slate-900">{formatPrice(subtotal)}</div>
-                        <button onClick={() => removeFromCart(item.productId)} className={cn.btn_secondary}>O'chirish</button>
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-start gap-3">
+                          <p className="font-semibold text-slate-900 pr-2 text-sm leading-snug line-clamp-2 flex-1">
+                            {item.product.name}
+                          </p>
+                          <div className="inline-flex items-center gap-2" aria-label="Количество">
+                            <button
+                              onClick={() => handleDecrease(item.productId, item.quantity)}
+                              className="h-9 w-9 rounded-xl border border-gray-300 bg-white hover:bg-gray-50"
+                            >
+                              −
+                            </button>
+                            <strong className="min-w-7 text-center">{item.quantity}</strong>
+                            <button
+                              onClick={() => handleIncrease(item.productId, item.quantity)}
+                              className="h-9 w-9 rounded-xl border border-gray-300 bg-white hover:bg-gray-50"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-sm font-semibold text-[#04734b]">
+                          {formatPrice(item.product.base_price)}
+                        </div>
+                        {attributes.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-600">
+                            {attributes.map((attr, idx) => (
+                              <span
+                                key={`${attr.name}-${attr.value}-${idx}`}
+                                className="rounded-full bg-slate-100 px-2 py-1"
+                              >
+                                {attr.name}: <strong className="text-slate-800">{attr.value}</strong>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex justify-end">
+                          <button
+                            onClick={() => removeFromCart(item.productId)}
+                            className="rounded-full border border-gray-200 bg-white p-2 text-gray-400 transition hover:border-rose-200 hover:text-rose-500"
+                            aria-label="Удалить товар"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              <line x1="10" y1="11" x2="10" y2="17"></line>
+                              <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
