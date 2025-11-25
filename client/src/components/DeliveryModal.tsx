@@ -22,6 +22,22 @@ interface Address {
   longitude?: number;
 }
 
+const sanitizeAddresses = (list: Address[]) => {
+  const seen = new Set<string>();
+  return list.filter((addr) => {
+    if (!addr) return false;
+    const text = (addr.text || '').trim();
+    const looksTemplate = !text || /шаблон|example|template|пример/i.test(text);
+    const hasCoords = typeof addr.latitude === 'number' && typeof addr.longitude === 'number';
+    const key = text.toLowerCase();
+    if (looksTemplate || !hasCoords || seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+};
+
 const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfirm }) => {
   const { state } = useApp();
   const [selectedMethod, setSelectedMethod] = useState<'pickup' | 'courier'>('courier');
@@ -37,10 +53,11 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
         const savedAddresses = localStorage.getItem(STORAGE_KEY);
         if (savedAddresses) {
           const parsed = JSON.parse(savedAddresses) as Address[];
-          setAddresses(parsed);
+          const cleaned = sanitizeAddresses(parsed);
+          setAddresses(cleaned);
           // Восстанавливаем выбранный адрес, если он был сохранен
           const savedSelectedId = localStorage.getItem('selectedAddressId');
-          if (savedSelectedId && parsed.some(addr => addr.id === Number(savedSelectedId))) {
+          if (savedSelectedId && cleaned.some(addr => addr.id === Number(savedSelectedId))) {
             setSelectedAddressId(Number(savedSelectedId));
           }
         }

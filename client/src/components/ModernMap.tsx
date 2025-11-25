@@ -43,6 +43,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
   onLocationSelect,
   initialLocation
 }) => {
+  const [mapboxLoaded, setMapboxLoaded] = useState(false);
   const [map, setMap] = useState<mapboxgl.Map | null>(null);
   const [marker, setMarker] = useState<mapboxgl.Marker | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<{
