@@ -39,7 +39,22 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
       <>
         <div className="fixed bottom-3 inset-x-0 z-50 md:hidden">
           <div className="mx-auto w-[min(640px,calc(100%-1.5rem))]">
-            <div className="rounded-[28px] bg-[#434344]/55 backdrop-blur-3xl border border-white/15 ring-1 ring-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)] px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
+            <div className="relative rounded-[28px] bg-white border border-gray-200 shadow-[0_10px_24px_rgba(0,0,0,0.08)] px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
+              {/* Floating centered cart button */}
+              <Link
+                to="/cart"
+              className="absolute -top-4 left-1/2 -translate-x-1/2 h-14 w-14 rounded-full shadow-xl ring-1 ring-black/10 border border-white/40 flex items-center justify-center"
+                style={{ background: 'linear-gradient(92.41deg, #003d32, #04734b)' }}
+                aria-label="Корзина"
+              >
+                <img src="/icons/korzinka2.svg" alt="" className="h-7 w-7 opacity-95" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-red-500 text-[10px] leading-5 text-white text-center font-bold">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+
               <ul className="flex items-center justify-evenly gap-1 sm:gap-2">
                 <li>
                   <Link
@@ -51,9 +66,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                     }`}
                     aria-label="Главная"
                   >
-                    <span className={`font-bold text-sm ${
-                      isHomeActive ? 'text-white' : 'text-white'
-                    }`}>OZAR</span>
+                    <img src="/img/logo.png" alt="OZAR" className="h-8 w-auto" />
                   </Link>
                 </li>
                 <li>
@@ -71,26 +84,8 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                     }`} />
                   </Link>
                 </li>
-                <li>
-                  <Link
-                    to="/cart"
-                    className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl transition relative ${
-                      isCartActive 
-                        ? 'bg-white/20 shadow-lg' 
-                        : 'hover:bg-white/10 active:bg-white/15'
-                    }`}
-                    aria-label="Корзина"
-                  >
-                    <img src="/icons/korzinka2.svg" alt="" className={`h-7 w-7 ${
-                      isCartActive ? 'opacity-100' : 'opacity-90'
-                    }`} />
-                    {cartCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-red-500 text-[10px] leading-4 text-white text-center font-bold">
-                        {cartCount}
-                      </span>
-                    )}
-                  </Link>
-                </li>
+                {/* placeholder to keep spacing for the centered floating button */}
+                <li className="w-14 h-12 pointer-events-none" />
                 <li className="relative">
                   <Link
                     to="/favorites"
@@ -162,10 +157,10 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                 {/* OZAR текст по центру в мобильной версии */}
                 <Link
                   to="/"
-                  className="absolute left-1/2 transform -translate-x-1/2 md:hidden text-xl font-extrabold tracking-tight text-white z-10"
+                  className="absolute left-1/2 transform -translate-x-1/2 md:hidden z-10"
                   aria-label="На главную"
                 >
-                  OZAR
+                  <img src="/img/logo.png" alt="OZAR" className="h-7 w-auto" />
                 </Link>
                 <div className="z-10">
                   <LanguageSwitcher />
@@ -176,10 +171,10 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                 <div className="flex items-center gap-7 md:gap-10">
                   <Link
                     to="/"
-                    className="text-2xl font-extrabold tracking-tight"
+                    className=""
                     aria-label="На главную"
                   >
-                    OZAR
+                    <img src="/img/logo.png" alt="OZAR" className="h-8 w-auto" />
                   </Link>
                 </div>
 
@@ -267,7 +262,22 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
 
       <div className="fixed bottom-3 inset-x-0 z-50 md:hidden">
         <div className="mx-auto w-[min(640px,calc(100%-1.5rem))]">
-          <div className="rounded-[28px] bg-[#434344]/55 backdrop-blur-3xl border border-white/15 ring-1 ring-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.35)] px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
+          <div className="relative rounded-[28px] bg-white border border-gray-200 shadow-[0_10px_24px_rgba(0,0,0,0.08)] px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
+            {/* Floating centered cart button */}
+            <Link
+              to="/cart"
+              className="absolute -top-4 left-1/2 -translate-x-1/2 h-14 w-14 rounded-full shadow-xl ring-1 ring-black/10 border border-white/40 flex items-center justify-center"
+              style={{ background: 'linear-gradient(92.41deg, #003d32, #04734b)' }}
+              aria-label="Корзина"
+            >
+              <img src="/icons/korzinka2.svg" alt="" className="h-7 w-7 opacity-95" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-red-500 text-[10px] leading-5 text-white text-center font-bold">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+
             <ul className="flex items-center justify-evenly gap-1 sm:gap-2">
               <li>
                 <Link
@@ -279,9 +289,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                   }`}
                   aria-label="Главная"
                 >
-                  <span className={`font-bold text-sm ${
-                    isHomeActive ? 'text-white' : 'text-white'
-                  }`}>OZAR</span>
+                  <img src="/img/logo.png" alt="OZAR" className="h-9 w-auto" />
                 </Link>
               </li>
               <li>
@@ -302,24 +310,8 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                 </Link>
               </li>
               <li>
-                <Link
-                  to="/cart"
-                  className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl transition relative ${
-                    isCartActive 
-                      ? 'bg-white/20 shadow-lg' 
-                      : 'hover:bg-white/10 active:bg-white/15'
-                  }`}
-                  aria-label="Корзина"
-                >
-                  <img src="/icons/korzinka2.svg" alt="" className={`h-7 w-7 ${
-                    isCartActive ? 'opacity-100' : 'opacity-90'
-                  }`} />
-                  {cartCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-red-500 text-[10px] leading-4 text-white text-center font-bold">
-                      {cartCount}
-                    </span>
-                  )}
-                </Link>
+                {/* placeholder to keep spacing for the centered floating button */}
+                <div className="w-14 h-12" />
               </li>
               <li className="relative">
                 <Link
