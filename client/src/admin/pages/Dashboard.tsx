@@ -1,13 +1,25 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 // @ts-ignore
 import s from '../AdminLayout.module.scss';
-import { shopAPI, userAPI } from '../../services/api';
+import { shopAPI } from '../../services/api';
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(false);
-  const [warehouseStats, setWarehouseStats] = useState(()=> ({ total: 0, low: 0, out: 0, amount: 0 }));
-  const [ordersStats, setOrdersStats] = useState(()=> ({ total: 0, avg: 0, sum: 0, pending: 0 }));
-  const [recent, setRecent] = useState<Array<{ id: string | number; name: string; client: string; status: string; sum: number; date: string }>>([]);
+  const [warehouseStats, setWarehouseStats] = useState(() => ({
+    total: 0,
+    low: 0,
+    out: 0,
+    amount: 0,
+  }));
+  const [ordersStats, setOrdersStats] = useState(() => ({
+    total: 0,
+    avg: 0,
+    sum: 0,
+    pending: 0,
+  }));
+  const [recent, setRecent] = useState<
+    Array<{ id: string | number; name: string; client: string; status: string; sum: number; date: string }>
+  >([]);
 
   // helper: normalize orders like in Orders.tsx
   const normalizeOrders = (data: any[]) => data.map((o:any)=> {
@@ -94,89 +106,92 @@ export default function Dashboard() {
     return map[status] || s.badge;
   };
 
+  const statusBoard = [
+    { label: 'В ожидании', value: ordersStats.pending, color: '#f97316', accent: '#ffedd5' },
+    { label: 'Готовы к выдаче', value: Math.max(ordersStats.total - ordersStats.pending, 0), color: '#0ea5e9', accent: '#e0f2fe' },
+    { label: 'Проблемы', value: warehouseStats.out, color: '#ef4444', accent: '#fee2e2' },
+  ];
+
   return (
-    <div>
-      {/* Верхние карточки управления */}
-      <div className={s.cardGrid} style={{marginBottom:12}}>
-        <div className={s.kpi}>
-          <div style={{display:'flex', alignItems:'center', gap:10}}>
-            <div style={{width:32, height:32, borderRadius:10, background:'#e0e7ff', display:'grid', placeItems:'center'}}>📦</div>
-            <div style={{fontWeight:700}}>Управление складом</div>
-          </div>
-          <div style={{opacity:.65, fontSize:12, marginTop:6}}>Товары, остатки, движения</div>
+    <div className={s.dashboard}>
+      <section className={s.hero}>
+        <div>
+          <p className={s.heroEyebrow}>Сводка</p>
+          <h1>Добро пожаловать в панель управления</h1>
+          <p>Следите за заказами, складом и задачами команды в одном месте.</p>
         </div>
-        <div className={s.kpi}>
-          <div style={{display:'flex', alignItems:'center', gap:10}}>
-            <div style={{width:32, height:32, borderRadius:10, background:'#dcfce7', display:'grid', placeItems:'center'}}>📑</div>
-            <div style={{fontWeight:700}}>Управление заказами</div>
+        <div className={s.heroStats}>
+          <div>
+            <span>Всего заказов </span>
+            <strong>{ordersStats.total}</strong>
           </div>
-          <div style={{opacity:.65, fontSize:12, marginTop:6}}>Заказы, статусы, клиенты</div>
-        </div>
-        <div className={s.kpi}>
-          <div style={{display:'flex', alignItems:'center', gap:10}}>
-            <div style={{width:32, height:32, borderRadius:10, background:'#fee2e2', display:'grid', placeItems:'center'}}>🛒</div>
-            <div style={{fontWeight:700}}>Управление товарами</div>
+          <div>
+            <span>Средний чек </span>
+            <strong>{ordersStats.avg.toLocaleString()} сум</strong>
           </div>
-          <div style={{opacity:.65, fontSize:12, marginTop:6}}>Каталог, категории, цены</div>
-        </div>
-        <div className={s.kpi}>
-          <div style={{display:'flex', alignItems:'center', gap:10}}>
-            <div style={{width:32, height:32, borderRadius:10, background:'#fff7ed', display:'grid', placeItems:'center'}}>🏷️</div>
-            <div style={{fontWeight:700}}>Управление категориями</div>
+          <div>
+            <span>Стоимость склада </span>
+            <strong>{warehouseStats.amount.toLocaleString()} сум</strong>
           </div>
-          <div style={{opacity:.65, fontSize:12, marginTop:6}}>Создание и редактирование</div>
         </div>
-      </div>
+      </section>
 
-      {/* Блоки статистики */}
-      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12}}>
+      <section className={s.panelRow}>
         <div className={s.panel}>
-          <div style={{fontWeight:700, marginBottom:8}}>Статистика склада</div>
-          <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', textAlign:'center'}}>
+          <div className={s.panelHeader}>
+            <span>Статусы склада</span>
+            <small>Актуально на сегодня</small>
+          </div>
+          <div className={s.statusBoard}>
             <div>
-              <div style={{color:'#2563eb', fontSize:18, fontWeight:800}}>{warehouseStats.total}</div>
-              <div style={{opacity:.7, fontSize:12}}>Всего товаров</div>
+              <p>Всего товаров</p>
+              <strong>{warehouseStats.total}</strong>
             </div>
             <div>
-              <div style={{color:'#059669', fontSize:18, fontWeight:800}}>{warehouseStats.amount.toLocaleString()} </div>
-              <div style={{opacity:.7, fontSize:12}}>Общая стоимость</div>
+              <p>Низкий остаток</p>
+              <strong>{warehouseStats.low}</strong>
             </div>
             <div>
-              <div style={{color:'#d97706', fontSize:18, fontWeight:800}}>{warehouseStats.low}</div>
-              <div style={{opacity:.7, fontSize:12}}>Низкий остаток</div>
-            </div>
-            <div>
-              <div style={{color:'#ef4444', fontSize:18, fontWeight:800}}>{warehouseStats.out}</div>
-              <div style={{opacity:.7, fontSize:12}}>Нет в наличии</div>
+              <p>Отсутствуют</p>
+              <strong>{warehouseStats.out}</strong>
             </div>
           </div>
         </div>
-        <div className={s.panel}>
-          <div style={{fontWeight:700, marginBottom:8}}>Статистика заказов</div>
-          <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr) 1fr', textAlign:'center'}}>
-            <div>
-              <div style={{color:'#2563eb', fontSize:18, fontWeight:800}}>{ordersStats.total}</div>
-              <div style={{opacity:.7, fontSize:12}}>Всего заказов</div>
-            </div>
-            <div>
-              <div style={{color:'#059669', fontSize:18, fontWeight:800}}>{ordersStats.avg.toLocaleString()} </div>
-              <div style={{opacity:.7, fontSize:12}}>Средний чек</div>
-            </div>
-            <div>
-              <div style={{color:'#16a34a', fontSize:18, fontWeight:800}}>{ordersStats.sum.toLocaleString()} </div>
-              <div style={{opacity:.7, fontSize:12}}>Общая сумма</div>
-            </div>
-            <div>
-              <div style={{color:'#ef4444', fontSize:18, fontWeight:800}}>{ordersStats.pending}</div>
-              <div style={{opacity:.7, fontSize:12}}>Ожидают</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      </section>
 
-      {/* Последние заказы */}
-      <div className={s.panel}>
-        <div style={{fontWeight:700, marginBottom:8}}>Последние заказы</div>
+      <section className={s.panelRow}>
+        <div className={`${s.panel} ${s.splitPanel}`}>
+          <div className={s.panelHeader}>
+            <span>Статус заказов</span>
+            <small>Обновляется каждые 5 минут</small>
+          </div>
+          <div className={s.statusList}>
+            {statusBoard.map((card) => (
+              <article
+                key={card.label}
+                style={{ background: card.accent }}
+                className={s.statusCard}
+              >
+                <p>{card.label}</p>
+                <strong>{card.value}</strong>
+              </article>
+            ))}
+          </div>
+        </div>
+        <div className={`${s.panel} ${s.splitPanel}`}>
+          <div className={s.panelHeader}>
+            <span>Динамика продаж</span>
+            <small>Прогноз на неделю</small>
+          </div>
+          <div className={s.chartPlaceholder}>График подготовлен</div>
+        </div>
+      </section>
+
+      <section className={s.panel}>
+        <div className={s.panelHeader}>
+          <span>Последние заказы</span>
+          {loading && <small>Обновляем данные...</small>}
+        </div>
         <table className={s.table}>
           <thead>
             <tr>
@@ -188,19 +203,25 @@ export default function Dashboard() {
             </tr>
           </thead>
           <tbody>
-            {recent.map(r=> (
+            {recent.map((r) => (
               <tr key={r.id}>
-                <td>#{r.id}<div style={{opacity:.65, fontSize:12}}>{r.name}</div></td>
+                <td>
+                  #{r.id}
+                  <div style={{ opacity: 0.65, fontSize: 12 }}>{r.name}</div>
+                </td>
                 <td>{r.client}</td>
-                <td><span className={badge(r.status)}>{r.status}</span></td>
+                <td>
+                  <span className={badge(r.status)}>{r.status}</span>
+                </td>
                 <td>{r.sum.toLocaleString()}</td>
                 <td>{r.date}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </section>
     </div>
   );
 }
+
 

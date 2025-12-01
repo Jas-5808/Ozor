@@ -533,6 +533,20 @@ export const orderAPI = {
     apiClient.get(`/orders/${orderId}`),
 };
 
+export const warehouseAPI = {
+  getOrders: (
+    params: { offset?: number; limit?: number; status?: string } = {}
+  ): Promise<TypedAxiosResponse<any>> => apiClient.get("/warehouse/orders", { params }),
+  submitOrder: (orderId: string): Promise<TypedAxiosResponse<any>> =>
+    apiClient.post("/warehouse/submit", { order_id: orderId }),
+  getMyOrders: (
+    params: { offset?: number; limit?: number } = {}
+  ): Promise<TypedAxiosResponse<any>> => apiClient.get("/warehouse/my-orders", { params }),
+  getLocations: (
+    params: { filter?: string } = {}
+  ): Promise<TypedAxiosResponse<any>> => apiClient.get("/warehouse/locations", { params }),
+};
+
 // Payments
 export const paymentAPI = {
   getUserBalance: (): Promise<TypedAxiosResponse<{ balance: number }>> => 
