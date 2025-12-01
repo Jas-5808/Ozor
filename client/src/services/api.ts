@@ -1,26 +1,14 @@
-import axios, { AxiosResponse, AxiosError } from "axios";
+import axios from "axios";
+import type { AxiosError, AxiosRequestConfig } from "axios";
 import { config } from "../utils/config";
-import {
-  Product,
-  Category,
-  User,
-  CartItem,
-  Order,
-  ApiResponse,
-  PaginatedResponse,
-} from "../types";
 import type {
   AuthResponse,
-  SignInRequest,
-  SignUpRequest,
-  RefreshTokenRequest,
   RefreshTokenResponse,
   UserProfile,
   UpdateProfileRequest,
   ProductResponse,
   CategoryResponse,
   CartItemResponse,
-  AddToCartRequest,
   OrderResponse,
   CreateOrderRequest,
   ReferralResponse,
@@ -47,30 +35,40 @@ const apiClient = axios.create({
 });
 
 // Global in-flight GET de-duplication
-const inflightGet = new Map(); // key -> Promise
-const stableStringify = (value) => {
-  if (value === null || typeof value !== 'object') return String(value);
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  const keys = Object.keys(value).sort();
-  return `{${keys.map((k)=>`${JSON.stringify(k)}:${stableStringify(value[k])}`).join(',')}}`;
+type AxiosGet = typeof apiClient.get;
+const inflightGet = new Map<string, ReturnType<AxiosGet>>();
+const stableStringify = (value: unknown): string => {
+  if (value === null || typeof value !== 'object') {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(',')}]`;
+  }
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  return `{${keys
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    .join(',')}}`;
 };
-const originalGet = apiClient.get.bind(apiClient);
-apiClient.get = (url, config = {}) => {
+const originalGet: AxiosGet = apiClient.get.bind(apiClient);
+apiClient.get = ((url, config) => {
+  const safeConfig: AxiosRequestConfig = config ?? {};
   try {
-    const paramsKey = stableStringify(config.params || {});
+    const paramsKey = stableStringify(safeConfig.params ?? {});
     const key = `${url}?${paramsKey}`;
-    if (inflightGet.has(key)) {
-      return inflightGet.get(key);
+    const cached = inflightGet.get(key);
+    if (cached) {
+      return cached;
     }
-    const promise = originalGet(url, config);
+    const promise = originalGet(url, safeConfig);
     inflightGet.set(key, promise);
     const cleanup = () => inflightGet.delete(key);
     promise.then(cleanup).catch(cleanup);
     return promise;
-  } catch (_) {
-    return originalGet(url, config);
+  } catch {
+    return originalGet(url, safeConfig);
   }
-};
+}) as AxiosGet;
 
 apiClient.interceptors.request.use(
   (config) => {
