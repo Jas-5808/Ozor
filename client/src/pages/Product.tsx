@@ -275,7 +275,8 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="h-12 rounded-2xl bg-[#ff3b30] text-base font-semibold text-white shadow-lg transition hover:bg-[#ff2417] disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-12 rounded-2xl text-base font-semibold text-white shadow-[0_12px_24px_rgba(0,63,50,0.25)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
             >
               {loading ? "Отправляем..." : "Заказать"}
             </button>
@@ -1425,7 +1426,7 @@ export function Product() {
       {canBuy && (
         <div
           className="md:hidden fixed inset-x-0 z-40 flex gap-2 px-4"
-          style={{ bottom: "88px" }}
+          style={{ bottom: "73px" }}
         >
           <button
             type="button"

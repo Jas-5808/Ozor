@@ -39,14 +39,14 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
   if (showOnlyNavbar) {
     return (
       <>
-        <div className="fixed bottom-3 inset-x-0 z-50 md:hidden">
-          <div className="mx-auto w-[min(640px,calc(100%-1.5rem))]">
-            <div className="relative rounded-[28px] bg-white border border-gray-200 shadow-[0_10px_24px_rgba(0,0,0,0.08)] px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
+        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+          <div className="mx-auto w-full">
+            <div className="relative rounded-t-[28px] rounded-b-none bg-white border-t border-x border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-2 py-1.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
               {/* Floating centered cart button */}
               <Link
                 to="/cart"
-              className="absolute -top-4 left-1/2 -translate-x-1/2 h-14 w-14 rounded-full shadow-xl ring-1 ring-black/10 border border-white/40 flex items-center justify-center"
-                style={{ background: 'linear-gradient(92.41deg, #003d32, #04734b)' }}
+                className="absolute left-1/2 -translate-x-1/2 h-14 w-14 rounded-full shadow-xl ring-1 ring-black/10 border border-white/40 flex items-center justify-center"
+                style={{ background: 'linear-gradient(92.41deg, #003d32, #04734b)', top: '6px' }}
                 aria-label="Корзина"
               >
                 <img src="/icons/korzinka2.svg" alt="" className="h-7 w-7 opacity-95" />
@@ -264,14 +264,14 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
         </div>
       </div>
 
-      <div className="fixed bottom-3 inset-x-0 z-50 md:hidden">
-        <div className="mx-auto w-[min(640px,calc(100%-1.5rem))]">
-          <div className="relative rounded-[28px] bg-white border border-gray-200 shadow-[0_10px_24px_rgba(0,0,0,0.08)] px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
+      <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+        <div className="mx-auto w-full">
+          <div className="relative rounded-t-[28px] rounded-b-none bg-white border-t border-x border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-2 py-1.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             {/* Floating centered cart button */}
             <Link
               to="/cart"
-              className="absolute -top-4 left-1/2 -translate-x-1/2 h-14 w-14 rounded-full shadow-xl ring-1 ring-black/10 border border-white/40 flex items-center justify-center"
-              style={{ background: 'linear-gradient(92.41deg, #003d32, #04734b)' }}
+              className="absolute  left-1/2 -translate-x-1/2 h-14 w-14 rounded-full shadow-xl ring-1 ring-black/10 border border-white/40 flex items-center justify-center"
+              style={{ background: 'linear-gradient(92.41deg, #003d32, #04734b)', bottom: '17px' }}
               aria-label="Корзина"
             >
               <img src="/icons/korzinka2.svg" alt="" className="h-7 w-7 opacity-95" />
