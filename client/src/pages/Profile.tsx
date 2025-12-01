@@ -15,8 +15,8 @@ export function Profile() {
   const navigate = useNavigate();
   const { profile, isAuthenticated, logout, fetchUserProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "market" | "oqim" | "stats" | "payments"
-  >("dashboard");
+    "market" | "oqim" | "stats" | "payments"
+  >("market");
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
   const {
     products,
@@ -53,7 +53,6 @@ export function Profile() {
     referralStats,
     totals,
     userBalance,
-    balanceLoading,
   } = profileData;
 
   const {
@@ -103,7 +102,6 @@ export function Profile() {
     label: string;
     icon: string;
   }> = [
-    { id: "dashboard", label: "Asosiy", icon: "🏠" },
     { id: "market", label: "Market", icon: "🛍️" },
     { id: "oqim", label: "Oqim", icon: "🔗" },
     { id: "stats", label: "Statistika", icon: "📈" },
@@ -218,84 +216,34 @@ export function Profile() {
           </div>
         </section>
 
-        <div className="mt-8 rounded-3xl border border-emerald-100 bg-white/95 p-2 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+        <div className="mt-8 rounded-3xl border border-emerald-100 bg-white/95 p-2 shadow-[0_20px_60px_rgба(15,23,42,0.08)]">
           <div className="flex flex-wrap gap-2">
-            {tabItems.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-1 min-w-[130px] items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
-                  activeTab === tab.id
-                    ? "bg-gradient-to-r from-[#003d32] to-[#04734b] text-white shadow-lg"
-                    : "text-slate-500 hover:text-slate-900"
-                }`}
-              >
-                <span className="text-lg" aria-hidden="true">
-                  {tab.icon}
-                </span>
-                {tab.label}
-              </button>
-            ))}
+            {tabItems.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex flex-1 min-w-[130px] items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
+                    isActive
+                      ? "bg-white text-emerald-700 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ring-1 ring-emerald-200"
+                      : "text-emerald-700 hover:text-emerald-900"
+                  }`}
+                >
+                  <span
+                    className={`text-lg ${
+                      isActive ? "text-emerald-700" : "text-emerald-600"
+                    }`}
+                    aria-hidden="true"
+                  >
+                    {tab.icon}
+                  </span>
+                  <span className={isActive ? "text-emerald-700" : ""}>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
-
-        {activeTab === "dashboard" && (
-          <section className="mt-6 rounded-[30px] border border-white/80 bg-white p-5 sm:p-6 shadow-[0_25px_80px_rgba(15,23,42,0.05)]">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-4">
-                  <img
-                    className="w-20 h-20 rounded-2xl object-cover ring-1 ring-gray-200"
-                    src={profileAvatar}
-                    alt={fullName}
-                    loading="lazy"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
-                    }}
-                  />
-                  <div className="flex flex-col gap-1">
-                    <div className="text-lg md:text-xl font-bold">{fullName}</div>
-                    {profile?.email && <div className="text-sm text-gray-500">{profile.email}</div>}
-                    {profile?.location && (
-                      <div className="text-xs text-gray-500">Joylashuv: {profile.location}</div>
-                    )}
-                  </div>
-                </div>
-                <Link
-                  to="/update-profile"
-                  className="inline-flex items-center justify-center rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-[#015338] transition hover:bg-gray-50"
-                >
-                  Profilni tahrirlash
-                </Link>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="rounded-xl bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-white ring-1 ring-emerald-200/60 p-4">
-                  <div className="text-xs uppercase tracking-wide text-emerald-700 font-semibold">Balans</div>
-                  {balanceLoading ? (
-                    <div className="mt-2 h-7 w-28 rounded bg-slate-200 animate-pulse" />
-                  ) : (
-                    <div className="mt-1 text-2xl font-extrabold text-gray-900">
-                      {formatPrice(userBalance ?? profile?.balance ?? 0, "UZS")}
-                    </div>
-                  )}
-                  <div className="text-xs text-gray-600">Kutilayotgan hisobingiz</div>
-                </div>
-                <div className="rounded-xl bg-gradient-to-br from-sky-500/15 via-sky-500/5 to-white ring-1 ring-sky-200/60 p-4">
-                  <div className="text-xs uppercase tracking-wide text-sky-700 font-semibold">Oqimlar</div>
-                  {apiFlowsLoading ? (
-                    <div className="mt-2 h-7 w-12 rounded bg-slate-200 animate-pulse" />
-                  ) : (
-                    <div className="mt-1 text-2xl font-extrabold text-gray-900">
-                      {(apiFlows?.length || 0) + (flows?.length || 0)}
-                    </div>
-                  )}
-                  <div className="text-xs text-gray-600">Yaratilgan referal linklar</div>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
 
         {activeTab === "market" && (
           <section className="mt-6 rounded-[30px] border border-white/80 bg-white p-4 sm:p-5 shadow-[0_25px_80px_rgба(15,23,42,0.05)]">
@@ -415,30 +363,22 @@ export function Profile() {
                             </span>
                           </div>
                         </div>
-                        <div className="mt-auto space-y-2">
+                        <div className="mt-auto space-y-3">
                           <button
                             type="button"
-                            className="relative h-12 w-full rounded-[18px] bg-gradient-to-r from-[#0f172a] via-[#0f766e] to-[#a3e635] text-sm font-semibold text-white shadow-[0_22px_48px_rgба(3,102,102,0.45)] ring-1 ring-white/30 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                            className="group relative h-12 w-full rounded-[18px] bg-gradient-to-r from-[#064e3b] via-[#047857] to-[#22c55e] text-sm font-semibold uppercase tracking-wide text-white shadow-[0_22px_48px_rgba(6,78,59,0.45)] ring-1 ring-white/20 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                             disabled={createLoading || isLoadingCard}
                             onClick={() => handleGenerate(p)}
                           >
-                            <span className="absolute inset-0 rounded-[18px] bg-gradient-to-r from-white/10 to-transparent opacity-0 transition group-hover:opacity-40" />
+                            <span className="absolute inset-0 rounded-[18px] bg-white/15 opacity-0 transition group-hover:opacity-100" />
                             <span className="relative inline-flex items-center justify-center gap-2">
                               <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                            {createLoading ? "Yaratilmoqda..." : "Nusxa yaratish"}
+                              {createLoading ? "Yaratilmoqda..." : "Oqim yaratish"}
                             </span>
                           </button>
                           <button
                             type="button"
-                            className="h-10 w-full rounded-[16px] border border-slate-200 bg-gradient-to-r from-white to-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-700 shadow-[0_8px_20px_rgба(15,23,42,0.12)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-                            onClick={() => handleGenerate(p)}
-                            disabled={createLoading || isLoadingCard}
-                          >
-                            Oqim yaratish
-                          </button>
-                          <button
-                            type="button"
-                            className="h-12 w-full rounded-[18px] border border-slate-200 bg-white text-sm font-semibold text-slate-800 shadow-[0_12px_30px_rgба(15,23,42,0.1)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="h-12 w-full rounded-[18px] border border-slate-200 bg-white text-sm font-semibold text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.1)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                             onClick={handleOpenProduct}
                             disabled={isLoadingCard || !canOpenProduct}
                           >
