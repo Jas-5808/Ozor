@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import cn from "./style.module.scss";
 import { useAuth } from "../hooks/useAuth";
 import TelegramModal from "../components/TelegramModal";
@@ -9,8 +10,9 @@ import { authAPI } from "../services/api";
 import useSEO from "../hooks/useSEO";
 
 export function Registration() {
+  const { t } = useTranslation();
   useSEO({
-    title: "Ro'yxatdan o'tish — OZAR",
+    title: t("auth.register.seoTitle"),
     robots: "noindex,nofollow",
     canonical: typeof window !== 'undefined' ? window.location.origin + '/registration' : undefined,
   });
@@ -39,12 +41,12 @@ export function Registration() {
     setError("");
 
     if (password !== confirmPassword) {
-      setError("Пароли не совпадают");
+      setError(t("auth.register.errors.passwordMismatch"));
       return;
     }
 
     if (password.length < 4) {
-      setError("Пароль должен содержать минимум 4 символа");
+      setError(t("auth.register.errors.passwordShort"));
       return;
     }
 
@@ -67,7 +69,7 @@ export function Registration() {
 
   const handleTelegramRegistration = async () => {
     if (!isPhoneValid || !cleanPhone) {
-      setError("Введите корректный номер телефона");
+      setError(t("auth.register.errors.invalidPhone"));
       return;
     }
 
@@ -79,8 +81,8 @@ export function Registration() {
       setIsTelegramModalOpen(true);
       window.open("https://t.me/send_verifix_code_bot", "_blank");
     } catch (err) {
-      setError("Ошибка при отправке кода. Попробуйте еще раз.");
-      console.error("Ошибка отправки кода:", err);
+      setError(t("auth.register.errors.codeSend"));
+      console.error("Failed to send verification code:", err);
     } finally {
       setTelegramLoading(false);
     }
@@ -95,8 +97,8 @@ export function Registration() {
       setIsTelegramModalOpen(false);
       setIsPasswordModalOpen(true);
     } catch (err) {
-      setError("Неверный код. Попробуйте еще раз.");
-      console.error("Ошибка проверки кода:", err);
+      setError(t("auth.register.errors.codeInvalid"));
+      console.error("Code verification error:", err);
     } finally {
       setTelegramLoading(false);
     }
@@ -141,12 +143,12 @@ export function Registration() {
           setIsPasswordModalOpen(false);
           navigate("/update-profile");
         } catch (signinErr) {
-          setError("Ошибка при входе в аккаунт. Попробуйте еще раз.");
-          console.error("Ошибка входа:", signinErr);
+          setError(t("auth.register.errors.signin"));
+          console.error("Auto sign-in error:", signinErr);
         }
       } else {
-        setError("Ошибка при создании аккаунта. Попробуйте еще раз.");
-        console.error("Ошибка создания аккаунта:", err);
+        setError(t("auth.register.errors.signup"));
+        console.error("Failed to create account:", err);
       }
     } finally {
       setTelegramLoading(false);
@@ -171,29 +173,19 @@ export function Registration() {
           <div className={cn.image_content}>
             <div className={cn.image_overlay}></div>
             <div className={cn.image_text}>
-              <h1 className={cn.image_title}>Добро пожаловать в OZAR</h1>
+              <h1 className={cn.image_title}>{t("auth.register.heroTitle")}</h1>
               <p className={cn.image_subtitle}>
-                Присоединяйтесь к тысячам довольных покупателей и получайте лучшие предложения каждый день
+                {t("auth.register.heroSubtitle")}
               </p>
               <div className={cn.image_features}>
-                <div className={cn.feature_item}>
-                  <svg className={cn.feature_icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Быстрая доставка</span>
-                </div>
-                <div className={cn.feature_item}>
-                  <svg className={cn.feature_icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Безопасные платежи</span>
-                </div>
-                <div className={cn.feature_item}>
-                  <svg className={cn.feature_icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Эксклюзивные скидки</span>
-                </div>
+                {["fastDelivery", "securePayments", "exclusiveDeals"].map((feature) => (
+                  <div key={feature} className={cn.feature_item}>
+                    <svg className={cn.feature_icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>{t(`auth.register.features.${feature}`)}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -203,10 +195,8 @@ export function Registration() {
         <div className={cn.registration_form_side}>
           <div className={cn.regist_content}>
             <div className={cn.form_header}>
-              <h2 className={cn.title}>Создать аккаунт</h2>
-              <p className={cn.subtitle}>
-                Зарегистрируйтесь, чтобы начать делать покупки
-              </p>
+              <h2 className={cn.title}>{t("auth.register.formTitle")}</h2>
+              <p className={cn.subtitle}>{t("auth.register.formSubtitle")}</p>
             </div>
 
             {error && <div className={cn.error_message}>{error}</div>}
@@ -214,7 +204,7 @@ export function Registration() {
             <form onSubmit={handleSubmit} className={cn.form}>
               <div className={cn.input_wrapper}>
                 <PhoneInput
-                  placeholder="+998 (99) 123 45 67"
+                  placeholder={t("auth.common.phonePlaceholder")}
                   value={phone}
                   onChange={setPhone}
                   onValidChange={handlePhoneChange}
@@ -230,16 +220,19 @@ export function Registration() {
                 onClick={handleTelegramRegistration}
                 disabled={loading || telegramLoading}
               >
-                <img src="/icons/telegram.png" alt="Telegram" />
+                <img src="/icons/telegram.png" alt={t("auth.login.telegramAlt")} />
                 {telegramLoading
-                  ? "Отправка кода..."
-                  : "Зарегистрироваться через Telegram"}
+                  ? t("auth.register.telegramLoading")
+                  : t("auth.register.telegramButton")}
               </button>
             </div>
 
             <div className={cn.auth_links}>
               <p>
-                Уже есть аккаунт? <Link to="/login" className={cn.auth_link}>Войти</Link>
+                {t("auth.register.hasAccount")}{" "}
+                <Link to="/login" className={cn.auth_link}>
+                  {t("auth.register.loginLink")}
+                </Link>
               </p>
             </div>
           </div>

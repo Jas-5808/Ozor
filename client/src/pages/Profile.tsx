@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../hooks/useAuth";
 import { shopAPI } from "../services/api";
 import { useProducts } from "../hooks/useProducts";
@@ -13,6 +14,7 @@ import { useReferralActions } from "../hooks/useReferralActions";
 
 export function Profile() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { profile, isAuthenticated, logout, fetchUserProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<
     "market" | "oqim" | "stats" | "payments"
@@ -23,6 +25,7 @@ export function Profile() {
     loading: productsLoading,
     error: productsError,
   } = useProducts();
+  const totalProducts = Array.isArray(products) ? products.length : 0;
   const { flows, removeFlow, clearFlows } = useFlows();
   
   // Используем кастомные хуки для управления данными
@@ -34,7 +37,7 @@ export function Profile() {
 
   // SEO: закрыть личный кабинет от индексации
   useSEO({
-    title: "Profil — OZAR",
+    title: t("profile.seoTitle"),
     robots: "noindex,nofollow",
     canonical: typeof window !== 'undefined' ? window.location.origin + '/profile' : undefined,
   });
@@ -72,40 +75,40 @@ export function Profile() {
 
   const fullName = useMemo(() => {
     const parts = [profile?.first_name, profile?.last_name].filter(Boolean);
-    return parts.length ? parts.join(" ") : "Foydalanuvchi";
-  }, [profile?.first_name, profile?.last_name]);
+    return parts.length ? parts.join(" ") : t("profile.hero.missingName");
+  }, [profile?.first_name, profile?.last_name, t]);
 
-  const primaryContact = profile?.email || profile?.phone || "Kontakt ma'lumoti ko'rsatilmagan";
-  const profileLocation = profile?.location || "Joylashuv ko'rsatilmagan";
+  const primaryContact = profile?.email || profile?.phone || t("profile.hero.missingContact");
+  const profileLocation = profile?.location || t("profile.hero.missingLocation");
   const profileAvatar = (profile as any)?.avatar || "/img/NaturalTitanium.jpg";
 
   const heroHighlights = [
     {
-      label: "Balans",
+      labelKey: "profile.hero.highlights.balance.label",
       value: formatPrice(userBalance ?? profile?.balance ?? 0, "UZS"),
-      helper: "Mavjud mablag'",
+      helperKey: "profile.hero.highlights.balance.helper",
     },
     {
-      label: "Faol oqimlar",
+      labelKey: "profile.hero.highlights.flows.label",
       value: ((apiFlows?.length || 0) + (flows?.length || 0)).toLocaleString("ru-RU"),
-      helper: "Yaratilgan linklar",
+      helperKey: "profile.hero.highlights.flows.helper",
     },
     {
-      label: "Umumiy daromad",
+      labelKey: "profile.hero.highlights.earnings.label",
       value: formatPrice(totals.earned, "UZS"),
-      helper: "To'langan bonuslar",
+      helperKey: "profile.hero.highlights.earnings.helper",
     },
   ];
 
   const tabItems: Array<{
     id: typeof activeTab;
-    label: string;
+    labelKey: string;
     icon: string;
   }> = [
-    { id: "market", label: "Market", icon: "🛍️" },
-    { id: "oqim", label: "Oqim", icon: "🔗" },
-    { id: "stats", label: "Statistika", icon: "📈" },
-    { id: "payments", label: "To'lov", icon: "💳" },
+    { id: "market", labelKey: "profile.tabs.market", icon: "🛍️" },
+    { id: "oqim", labelKey: "profile.tabs.flows", icon: "🔗" },
+    { id: "stats", labelKey: "profile.tabs.stats", icon: "📈" },
+    { id: "payments", labelKey: "profile.tabs.payments", icon: "💳" },
   ];
 
   const computedStats = useMemo(() => {
@@ -127,7 +130,7 @@ export function Profile() {
     return (
       <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-5 md:px-6 py-6">
         <div className="rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)] ring-1 ring-gray-100 p-6 text-gray-800">
-          <p className="text-center">Profilni ko'rish uchun tizimga kiring.</p>
+          <p className="text-center">{t("profile.guestPrompt")}</p>
         </div>
       </div>
     );
@@ -153,7 +156,7 @@ export function Profile() {
                 }}
               />
               <div>
-                <p className="text-xs uppercase tracking-[0.35em] text-white/60">Profil</p>
+                <p className="text-xs uppercase tracking-[0.35em] text-white/60">{t("profile.hero.badge")}</p>
                 <h1 className="text-3xl font-black leading-tight">{fullName}</h1>
                 <div className="mt-3 flex flex-wrap gap-4 text-sm text-white/80">
                   <span className="inline-flex items-center gap-2">
@@ -190,13 +193,13 @@ export function Profile() {
                     to="/update-profile"
                     className="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-[#015338] shadow-[0_16px_30px_rgba(255,255,255,0.35)] transition hover:translate-y-0.5"
                   >
-                    Profilni tahrirlash
+                    {t("profile.hero.edit")}
                   </Link>
                   <button
                     onClick={logout}
                     className="inline-flex items-center justify-center rounded-2xl border border-white/40 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
                   >
-                    Chiqish
+                    {t("profile.hero.logout")}
                   </button>
                 </div>
               </div>
@@ -204,19 +207,19 @@ export function Profile() {
             <div className="grid w-full max-w-xl gap-3 sm:grid-cols-3">
               {heroHighlights.map((card) => (
                 <div
-                  key={card.label}
+                  key={card.labelKey}
                   className="rounded-2xl border border-white/25 bg-white/10 p-4 backdrop-blur-md shadow-[0_15px_40px_rgba(0,0,0,0.12)]"
                 >
-                  <p className="text-xs uppercase tracking-wide text-white/70">{card.label}</p>
+                  <p className="text-xs uppercase tracking-wide text-white/70">{t(card.labelKey)}</p>
                   <p className="mt-1 text-2xl font-black">{card.value}</p>
-                  <p className="text-xs text-white/75">{card.helper}</p>
+                  <p className="text-xs text-white/75">{t(card.helperKey)}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <div className="mt-8 rounded-3xl border border-emerald-100 bg-white/95 p-2 shadow-[0_20px_60px_rgба(15,23,42,0.08)]">
+        <div className="mt-8 rounded-3xl border border-emerald-100 bg-white/95 p-2 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
           <div className="flex flex-wrap gap-2">
             {tabItems.map((tab) => {
               const isActive = activeTab === tab.id;
@@ -238,7 +241,7 @@ export function Profile() {
                   >
                     {tab.icon}
                   </span>
-                  <span className={isActive ? "text-emerald-700" : ""}>{tab.label}</span>
+                  <span className={isActive ? "text-emerald-700" : ""}>{t(tab.labelKey)}</span>
                 </button>
               );
             })}
@@ -246,15 +249,15 @@ export function Profile() {
         </div>
 
         {activeTab === "market" && (
-          <section className="mt-6 rounded-[30px] border border-white/80 bg-white p-4 sm:p-5 shadow-[0_25px_80px_rgба(15,23,42,0.05)]">
+          <section className="mt-6 rounded-[30px] border border-white/80 bg-white p-4 sm:p-5 shadow-[0_25px_80px_rgba(15,23,42,0.05)]">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.35em] text-[#015338]">Market</p>
-                <h3 className="text-2xl font-black text-slate-900">Tovarlar uchun oqim yarating</h3>
-                <p className="text-sm text-slate-500">Tanlang, baholang va referal linkni bir necha soniyada yarating.</p>
+                <p className="text-xs uppercase tracking-[0.35em] text-[#015338]">{t("profile.market.badge")}</p>
+                <h3 className="text-2xl font-black text-slate-900">{t("profile.market.title")}</h3>
+                <p className="text-sm text-slate-500">{t("profile.market.subtitle")}</p>
               </div>
               <span className="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-3 py-1 text-xs font-semibold text-slate-700 w-fit">
-                {products.length} mahsulot
+                {t("profile.market.productCount", { count: totalProducts })}
               </span>
             </div>
             {productsLoading && (
@@ -264,12 +267,12 @@ export function Profile() {
             )}
             {productsError && (
               <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                Xatolik: {String(productsError)}
+                {t("profile.market.error", { message: String(productsError) })}
               </div>
             )}
             {!productsLoading && !productsError && (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {products.map((p: any, index: number) => {
+                {(products ?? []).map((p: any, index: number) => {
                   const productId = p?.product_id || p?.id || p?.productId || "";
                   const referralValue = formatPrice(p.refferal_price || 0);
                   const priceValue = formatPrice(p.price || 0);
@@ -278,7 +281,7 @@ export function Profile() {
                   const categoryLabel =
                     typeof p.category === "string"
                       ? p.category
-                      : p.category?.name || "Kategoriya";
+                      : p.category?.name || t("profile.market.card.categoryFallback");
 
                   const handleOpenProduct = async () => {
                     if (!canOpenProduct) return;
@@ -315,7 +318,7 @@ export function Profile() {
                   return (
                     <article
                       key={productId ? `${productId}-${p.variant_id || index}` : `market-card-${index}`}
-                      className="group relative flex h-full flex-col rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-4 shadow-[0_18px_35px_rgба(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_25px_50px_rgба(15,23,42,0.12)]"
+                      className="group relative flex h-full flex-col rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-4 shadow-[0_18px_35px_rgba(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_25px_50px_rgba(15,23,42,0.12)]"
                     >
                       <button
                         type="button"
@@ -338,23 +341,25 @@ export function Profile() {
                         </span>
                         {isLoadingCard && (
                           <span className="absolute inset-0 grid place-items-center bg-white/70 text-xs font-semibold text-slate-600">
-                            Yuklanmoqda...
+                            {t("profile.market.card.loading")}
                           </span>
                         )}
                       </button>
                       <div className="mt-4 flex flex-1 flex-col gap-4">
                         <div>
                           <h4 className="text-base font-bold text-slate-900 line-clamp-2">{p.product_name}</h4>
-                          <p className="mt-1 text-xs uppercase tracking-wide text-slate-500">SKU: {p.variant_sku || "—"}</p>
+                          <p className="mt-1 text-xs uppercase tracking-wide text-slate-500">
+                            {t("profile.market.card.skuLabel")}: {p.variant_sku || "—"}
+                          </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-slate-100/60 px-3 py-2">
                           <div className="flex flex-col">
-                            <span className="text-xs text-slate-500">Narxi</span>
+                            <span className="text-xs text-slate-500">{t("profile.market.card.priceLabel")}</span>
                             <span className="text-lg font-extrabold text-slate-900">{priceValue}</span>
                           </div>
                           <div className="h-8 w-px bg-slate-200" />
                           <div className="flex flex-col">
-                            <span className="text-xs text-slate-500">Daromad</span>
+                            <span className="text-xs text-slate-500">{t("profile.market.card.incomeLabel")}</span>
                             <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#04734b]">
                               {referralValue}
                               <span className="rounded-full bg-[#e6f8ef] px-2 py-0.5 text-[11px] font-bold text-[#04734b]">
@@ -373,7 +378,7 @@ export function Profile() {
                             <span className="absolute inset-0 rounded-[18px] bg-white/15 opacity-0 transition group-hover:opacity-100" />
                             <span className="relative inline-flex items-center justify-center gap-2">
                               <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                              {createLoading ? "Yaratilmoqda..." : "Oqim yaratish"}
+                              {createLoading ? t("profile.market.card.creating") : t("profile.market.card.create")}
                             </span>
                           </button>
                           <button
@@ -382,7 +387,7 @@ export function Profile() {
                             onClick={handleOpenProduct}
                             disabled={isLoadingCard || !canOpenProduct}
                           >
-                            Ko'proq ma'lumot
+                            {t("profile.market.card.view")}
                           </button>
                         </div>
                       </div>
@@ -432,7 +437,7 @@ export function Profile() {
             {!apiFlowsLoading && !apiFlowsError && (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {referralStats.length === 0 && flows.length === 0 && (
-                  <p>Hozircha oqimlar yo'q. Marketdan link yarating.</p>
+                  <p>{t("profile.flows.empty")}</p>
                 )}
                 {referralStats.map((r) => {
                   const linkedFlow = apiFlows.find((flow) => flow.id === r.id);
@@ -460,8 +465,8 @@ export function Profile() {
                             <div className="inline-flex items-center gap-2 shrink-0">
                               <button
                                 className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50"
-                                title="Nusxalash"
-                                aria-label="Nusxalash"
+                                title={t("common.actions.copy")}
+                                aria-label={t("common.actions.copy")}
                                 onClick={() => shareLink && handleCopy(shareLink)}
                               >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -473,8 +478,8 @@ export function Profile() {
                                 className={`h-8 w-8 inline-flex items-center justify-center rounded-lg border ${
                                   deletingReferralId === r.id ? "opacity-50 cursor-not-allowed" : ""
                                 } border-red-200 hover:bg-red-50`}
-                                title="O'chirish"
-                                aria-label="O'chirish"
+                                title={t("common.actions.delete")}
+                                aria-label={t("common.actions.delete")}
                                 onClick={() => handleDeleteReferral(r.id)}
                                 disabled={deletingReferralId === r.id}
                               >
@@ -519,8 +524,8 @@ export function Profile() {
                           <div className="inline-flex items-center gap-2">
                             <button
                               className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50"
-                              title="Nusxalash"
-                              aria-label="Nusxalash"
+                              title={t("common.actions.copy")}
+                              aria-label={t("common.actions.copy")}
                               onClick={() => handleCopy(f.link)}
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -530,8 +535,8 @@ export function Profile() {
                             </button>
                             <button
                               className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-red-200 hover:bg-red-50"
-                              title="O'chirish"
-                              aria-label="O'chirish"
+                              title={t("common.actions.delete")}
+                              aria-label={t("common.actions.delete")}
                               onClick={() => removeFlow(f.id)}
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -553,7 +558,7 @@ export function Profile() {
                 {flows.length > 0 && (
                   <div className={`${cn.actions} sm:col-span-2 lg:col-span-3`}>
                     <button className={`${cn.button} ${cn.secondary} ${cn.compact}`} onClick={clearFlows}>
-                      Barchasini tozalash
+                      {t("common.actions.clearAll")}
                     </button>
                   </div>
                 )}
@@ -566,44 +571,58 @@ export function Profile() {
           <section className="mt-6 rounded-[30px] border border-white/80 bg-white p-5 sm:p-6 shadow-[0_25px_80px_rgba(15,23,42,0.05)]">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
               <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
-                <div className="text-xs tracking-wide uppercase text-emerald-900 font-bold">Umumiy arizalar</div>
+                <div className="text-xs tracking-wide uppercase text-emerald-900 font-bold">
+                  {t("profile.stats.cards.total.label")}
+                </div>
                 <div className="text-3xl font-black text-emerald-900 mt-1">{totals.total}</div>
-                <div className="text-xs text-emerald-800/80">Barcha referral havolalar bo'yicha</div>
+                <div className="text-xs text-emerald-800/80">{t("profile.stats.cards.total.helper")}</div>
               </div>
               <div className="rounded-2xl border border-amber-100 bg-amber-50/80 p-4">
-                <div className="text-xs tracking-wide uppercase text-amber-900 font-bold">Ushlab turilgan</div>
+                <div className="text-xs tracking-wide uppercase text-amber-900 font-bold">
+                  {t("profile.stats.cards.hold.label")}
+                </div>
                 <div className="text-3xl font-black text-amber-900 mt-1">{totals.hold}</div>
-                <div className="text-xs text-amber-800/80">Tekshiruv jarayonida</div>
+                <div className="text-xs text-amber-800/80">{t("profile.stats.cards.hold.helper")}</div>
               </div>
               <div className="rounded-2xl border border-sky-100 bg-sky-50/80 p-4">
-                <div className="text-xs tracking-wide uppercase text-sky-900 font-bold">To'langan</div>
+                <div className="text-xs tracking-wide uppercase text-sky-900 font-bold">
+                  {t("profile.stats.cards.paid.label")}
+                </div>
                 <div className="text-3xl font-black text-sky-900 mt-1">{totals.paid}</div>
-                <div className="text-xs text-sky-800/80">Muvaffaqиятli to'lovlar</div>
+                <div className="text-xs text-sky-800/80">
+                  {t("profile.stats.cards.paid.helper")}
+                </div>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs tracking-wide uppercase text-slate-600 font-bold">Balans</div>
+                <div className="text-xs tracking-wide uppercase text-slate-600 font-bold">
+                  {t("profile.stats.cards.balance.label")}
+                </div>
                 <div className="text-3xl font-black text-slate-900 mt-1">
                   {formatPrice(userBalance ?? profile?.balance ?? 0, "UZS")}
                 </div>
-                <div className="text-xs text-slate-500">Hozirgi hisob</div>
+                <div className="text-xs text-slate-500">{t("profile.stats.cards.balance.helper")}</div>
               </div>
             </div>
 
             <div className="rounded-2xl border border-gray-200 bg-white p-4">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-base font-extrabold text-slate-900">Havolalar bo'yicha statistikalar</div>
-                <div className="text-xs text-slate-500">Yangilangan ma'lumotlar</div>
+                <div className="text-base font-extrabold text-slate-900">
+                  {t("profile.stats.table.title")}
+                </div>
+                <div className="text-xs text-slate-500">
+                  {t("profile.stats.table.subtitle")}
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="text-slate-500">
-                      <th className="text-left py-2">Sarlavha</th>
-                      <th className="text-left py-2">Kod</th>
-                      <th className="text-right py-2">Arizalar</th>
-                      <th className="text-right py-2">Ushlab turilgan</th>
-                      <th className="text-right py-2">To'langan</th>
-                      <th className="text-right py-2">Jami daromad</th>
+                      <th className="text-left py-2">{t("profile.stats.table.headers.title")}</th>
+                      <th className="text-left py-2">{t("profile.stats.table.headers.code")}</th>
+                      <th className="text-right py-2">{t("profile.stats.table.headers.total")}</th>
+                      <th className="text-right py-2">{t("profile.stats.table.headers.hold")}</th>
+                      <th className="text-right py-2">{t("profile.stats.table.headers.paid")}</th>
+                      <th className="text-right py-2">{t("profile.stats.table.headers.earned")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -620,7 +639,7 @@ export function Profile() {
                     {computedStats.length === 0 && (
                       <tr className="border-t border-gray-100">
                         <td colSpan={6} className="py-4 text-center text-slate-500">
-                          Hali ma'lumotlar yo'q
+                          {t("profile.stats.table.empty")}
                         </td>
                       </tr>
                     )}
@@ -633,7 +652,7 @@ export function Profile() {
 
         {activeTab === "payments" && (
           <div className={`${cn.glass} ${cn.panel}`}>
-            <p>To'lov bo'limi tez orada qo'shiladi.</p>
+            <p>{t("profile.payments.comingSoon")}</p>
           </div>
         )}
 
@@ -650,7 +669,7 @@ export function Profile() {
                 {dialog.title}
               </div>
               <div className={cn.meta} style={{ marginBottom: 10 }}>
-                Referal linkni nusxalang va ulashing.
+                {t("profile.dialog.subtitle")}
               </div>
               <input
                 readOnly
@@ -663,13 +682,13 @@ export function Profile() {
                   className={`${cn.button} ${cn.compact}`}
                   onClick={() => dialog.link && handleCopy(dialog.link)}
                 >
-                  Nusxalash
+                  {t("profile.dialog.copy")}
                 </button>
                 <button
                   className={`${cn.button} ${cn.secondary} ${cn.compact}`}
                   onClick={() => setDialog({ open: false })}
                 >
-                  Yopish
+                  {t("profile.dialog.close")}
                 </button>
               </div>
             </div>
@@ -684,33 +703,35 @@ export function Profile() {
             onClick={() => setCreateModal({ open: false, title: "", agree: false })}
           >
             <div
-              className="relative w-full max-w-md rounded-[32px] bg-white p-6 shadow-[0_35px_80px_rgба(15,23,42,0.25)]"
+              className="relative w-full max-w-md rounded-[32px] bg-white p-6 shadow-[0_35px_80px_rgba(15,23,42,0.25)]"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 type="button"
                 className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"
                 onClick={() => setCreateModal({ open: false, title: "", agree: false })}
-                aria-label="Yopish"
+                aria-label={t("profile.dialog.close")}
               >
                 ×
               </button>
               <div className="mb-4 flex flex-col gap-1">
-                <p className="text-xs uppercase tracking-[0.4em] text-[#fb923c]">Nusxa yaratish</p>
+                <p className="text-xs uppercase tracking-[0.4em] text-[#fb923c]">
+                  {t("profile.createModal.badge")}
+                </p>
                 <h4 className="text-xl font-black text-slate-900">{createModal.product?.product_name}</h4>
                 <p className="text-sm text-slate-500">
-                  Mahsulot nomini tahrirlab, shartlarni tasdiqlang va referal havolani yarating.
+                  {t("profile.createModal.description")}
                 </p>
               </div>
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Sarlavha
+                    {t("profile.createModal.titleLabel")}
                   </label>
                   <input
                     value={createModal.title}
                     onChange={(e) => setCreateModal({ ...createModal, title: e.target.value })}
-                    placeholder="Mahsulot uchun qisqa nom"
+                    placeholder={t("profile.createModal.titlePlaceholder")}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-[#fb923c] focus:outline-none"
                   />
                 </div>
@@ -721,7 +742,7 @@ export function Profile() {
                     onChange={(e) => setCreateModal({ ...createModal, agree: e.target.checked })}
                     className="h-5 w-5 rounded border-slate-300 text-[#fb923c] focus:ring-[#fb923c]"
                   />
-                  Shartlarga roziman
+                  {t("profile.createModal.terms")}
                 </label>
                 {createError && (
                   <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600">
@@ -730,23 +751,23 @@ export function Profile() {
                 )}
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <button
-                    className="flex-1 rounded-2xl bg-gradient-to-r from-[#f97316] to-[#fb923c] py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgба(249,115,22,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex-1 rounded-2xl bg-gradient-to-r from-[#f97316] to-[#fb923c] py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(249,115,22,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                     onClick={submitCreateReferral}
                     disabled={createLoading || !createModal.agree}
                   >
-                    {createLoading ? "Yaratilmoqda..." : "Nusxa yaratish"}
+                    {createLoading ? t("profile.createModal.submitting") : t("profile.createModal.submit")}
                   </button>
                   <button
                     className="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
                     onClick={() => setCreateModal({ open: false, title: "", agree: false })}
                   >
-                    Bekor qilish
+                    {t("profile.createModal.cancel")}
                   </button>
                 </div>
                 {createModal.createdLink && (
                   <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
-                      Havola tayyor
+                      {t("profile.createModal.successBadge")}
                     </p>
                     <div className="flex items-center gap-2">
                       <input
@@ -758,7 +779,7 @@ export function Profile() {
                         className="inline-flex h-10 min-w-[48px] items-center justify-center rounded-2xl bg-gradient-to-r from-[#10b981] to-[#059669] px-3 text-xs font-bold uppercase text-white"
                         onClick={() => handleCopy(createModal.createdLink!)}
                       >
-                        Copy
+                        {t("common.actions.copy")}
                       </button>
                     </div>
                   </div>

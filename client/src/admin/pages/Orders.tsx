@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 // @ts-ignore
 import s from '../AdminLayout.module.scss';
 import { adminStore } from '../storage';
@@ -20,7 +21,25 @@ type OrderStatus =
 
 type Order = { id: string; customer: string; total: number; status: OrderStatus; order_number?: string; created_at?: string; location?: string };
 
+const LOCATION_OPTIONS: Array<{ value: string; labelKey: string }> = [
+  { value: 'tashkent', labelKey: 'profileUpdate.regions.tashkent' },
+  { value: 'tashkent_region', labelKey: 'profileUpdate.regions.tashkentRegion' },
+  { value: 'samarkand', labelKey: 'profileUpdate.regions.samarkand' },
+  { value: 'bukhara', labelKey: 'profileUpdate.regions.bukhara' },
+  { value: 'andijan', labelKey: 'profileUpdate.regions.andijan' },
+  { value: 'fergana', labelKey: 'profileUpdate.regions.fergana' },
+  { value: 'namangan', labelKey: 'profileUpdate.regions.namangan' },
+  { value: 'navoiy', labelKey: 'profileUpdate.regions.navoiy' },
+  { value: 'kashkadarya', labelKey: 'profileUpdate.regions.kashkadarya' },
+  { value: 'surkhandarya', labelKey: 'profileUpdate.regions.surkhandarya' },
+  { value: 'sirdarya', labelKey: 'profileUpdate.regions.sirdarya' },
+  { value: 'jizzakh', labelKey: 'profileUpdate.regions.jizzakh' },
+  { value: 'khorezm', labelKey: 'profileUpdate.regions.khorezm' },
+  { value: 'karakalpakstan', labelKey: 'profileUpdate.regions.karakalpakstan' },
+];
+
 export default function Orders() {
+  const { t } = useTranslation();
   const { profile } = useAuth() as any;
   const roleRaw = String(profile?.role || profile?.user_role || profile?.data?.role || '').toLowerCase();
   const [roleState, setRoleState] = useState<string>(roleRaw || '');
@@ -65,6 +84,33 @@ export default function Orders() {
     return null;
   };
 
+  const STATUS_CLASS_MAP: Record<string, string> = {
+    pending: `${s.badge} ${s.badgePending}`,
+    accepted: `${s.badge} ${s.badgeAccepted}`,
+    packing: `${s.badge} ${s.badgePacking}`,
+    packed: `${s.badge} ${s.badgePacked}`,
+    processing: `${s.badge} ${s.badgeProcessing}`,
+    shipped: `${s.badge} ${s.badgeShipped}`,
+    delivered: `${s.badge} ${s.badgeDelivered}`,
+    cancelled: `${s.badge} ${s.badgeCancelled}`,
+    refunded: `${s.badge} ${s.badgeRefunded}`,
+    paid: `${s.badge} ${s.badgePaid}`,
+  };
+
+  const statusLabel = (status?: string) => {
+    const code = String(status || '').toLowerCase();
+    return t(`admin.ordersPage.statuses.${code}`, code || '—');
+  };
+
+  const renderStatusBadge = (status?: string) => {
+    const code = String(status || '').toLowerCase();
+    return (
+      <span className={STATUS_CLASS_MAP[code] || s.badge}>
+        {statusLabel(code)}
+      </span>
+    );
+  };
+
   const formatRemaining = (ms: number): string => {
     const total = Math.max(0, Math.floor(ms / 1000));
     const h = Math.floor(total / 3600).toString().padStart(2, '0');
@@ -73,38 +119,7 @@ export default function Orders() {
     return `${h}:${m}:${s}`;
   };
 
-  const renderCcStatus = (status?: string) => {
-    const st = String(status || '').toLowerCase();
-    if (st === 'pending') return <span className={`${s.badge} ${s.badgePending}`}>В ожидании</span>;
-    if (st === 'accepted') return <span className={`${s.badge} ${s.badgeAccepted}`}>Принят</span>;
-    if (st === 'packing') return <span className={`${s.badge} ${s.badgePacking}`}>Упаковывается</span>;
-    if (st === 'packed') return <span className={`${s.badge} ${s.badgePacked}`}>Упакован</span>;
-    if (st === 'processing') return <span className={`${s.badge} ${s.badgeProcessing}`}>В обработке</span>;
-    if (st === 'shipped') return <span className={`${s.badge} ${s.badgeShipped}`}>Отправлен</span>;
-    if (st === 'delivered') return <span className={`${s.badge} ${s.badgeDelivered}`}>Доставлен</span>;
-    if (st === 'cancelled') return <span className={`${s.badge} ${s.badgeCancelled}`}>Отменён</span>;
-    if (st === 'refunded') return <span className={`${s.badge} ${s.badgeRefunded}`}>Возврат</span>;
-    if (st === 'paid') return <span className={`${s.badge} ${s.badgePaid}`}>Оплачен</span>;
-    return <span className={s.badge}>{st || '—'}</span>;
-  };
-
-  // City/Region options
-  const LOCATION_OPTIONS: Array<{ value: string; label: string }> = [
-    { value: 'tashkent', label: 'Ташкент' },
-    { value: 'tashkent_region', label: 'Ташкентская область' },
-    { value: 'samarkand', label: 'Самарканд' },
-    { value: 'bukhara', label: 'Бухара' },
-    { value: 'andijan', label: 'Андижан' },
-    { value: 'fergana', label: 'Фергана' },
-    { value: 'namangan', label: 'Наманган' },
-    { value: 'navoiy', label: 'Навои' },
-    { value: 'kashkadarya', label: 'Кашкадарья' },
-    { value: 'surkhandarya', label: 'Сурхандарья' },
-    { value: 'sirdarya', label: 'Сырдарья' },
-    { value: 'jizzakh', label: 'Джизак' },
-    { value: 'khorezm', label: 'Хорезм' },
-    { value: 'karakalpakstan', label: 'Каракалпакстан' },
-  ];
+  const renderCcStatus = (status?: string) => renderStatusBadge(status);
 
   const normalizeOrders = (data: any[]): Order[] => data.map((o:any)=> {
     const first = (o.buyer_firstname ?? '').trim();
@@ -282,40 +297,59 @@ export default function Orders() {
   return (
     <div className={s.panel}>
       {/* Page header with modern styling */}
-      <div style={{
-        display:'flex', alignItems:'center', justifyContent:'space-between',
-        padding:'12px 14px', marginBottom:12, borderRadius:12,
-        background:'linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%)',
-        border:'1px solid #e9d5ff'
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 14px',
+          marginBottom: 12,
+          borderRadius: 12,
+          background: 'linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%)',
+          border: '1px solid #e9d5ff',
+        }}
+      >
         <div>
-          <div style={{fontWeight:900, fontSize:18, color:'#312e81'}}>Buyurtmalar boshqaruvi</div>
-          <div style={{fontSize:12, color:'#6b7280', marginTop:4}}>Yangi buyurtmalarni ko'rish va call-center uchun tanlash</div>
+          <div style={{ fontWeight: 900, fontSize: 18, color: '#312e81' }}>
+            {t('admin.ordersPage.hero.title')}
+          </div>
+          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+            {t('admin.ordersPage.hero.subtitle')}
+          </div>
         </div>
         {isSale && (
-          <span style={{
-            padding:'6px 10px', borderRadius:999, fontSize:12, fontWeight:800,
-            background:'#ecfeff', color:'#155e75', border:'1px solid #a5f3fc'
-          }}>SALE</span>
+          <span
+            style={{
+              padding: '6px 10px',
+              borderRadius: 999,
+              fontSize: 12,
+              fontWeight: 800,
+              background: '#ecfeff',
+              color: '#155e75',
+              border: '1px solid #a5f3fc',
+            }}
+          >
+            {t('admin.ordersPage.hero.sale')}
+          </span>
         )}
       </div>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12, gap:12, flexWrap:'wrap'}}>
-        <div style={{fontWeight:700}}>Orders</div>
+        <div style={{fontWeight:700}}>{t('admin.ordersPage.title')}</div>
         <div style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center'}}>
           <select className={s.input} value={status} onChange={(e)=>setStatus(e.target.value)} style={{height:32, borderRadius:10}}>
-            <option value="">Все статусы</option>
-            <option value="pending">В ожидании</option>
-            <option value="accepted">Принят</option>
-            <option value="packing">Упаковывается</option>
-            <option value="packed">Упакован</option>
-            <option value="processing">В обработке</option>
-            <option value="shipped">Отправлен</option>
-            <option value="delivered">Доставлен</option>
-            <option value="cancelled">Отменён</option>
-            <option value="refunded">Возврат средств</option>
-            <option value="paid">Оплачен</option>
+            <option value="">{t('admin.ordersPage.filters.statusAll')}</option>
+            <option value="pending">{t('admin.ordersPage.statuses.pending')}</option>
+            <option value="accepted">{t('admin.ordersPage.statuses.accepted')}</option>
+            <option value="packing">{t('admin.ordersPage.statuses.packing')}</option>
+            <option value="packed">{t('admin.ordersPage.statuses.packed')}</option>
+            <option value="processing">{t('admin.ordersPage.statuses.processing')}</option>
+            <option value="shipped">{t('admin.ordersPage.statuses.shipped')}</option>
+            <option value="delivered">{t('admin.ordersPage.statuses.delivered')}</option>
+            <option value="cancelled">{t('admin.ordersPage.statuses.cancelled')}</option>
+            <option value="refunded">{t('admin.ordersPage.statuses.refunded')}</option>
+            <option value="paid">{t('admin.ordersPage.statuses.paid')}</option>
           </select>
-          <input className={s.input} placeholder="Search by ID/Order #/Customer" value={q} onChange={(e)=>setQ(e.target.value)} style={{minWidth:240}} />
+          <input className={s.input} placeholder={t('admin.ordersPage.filters.searchPlaceholder')} value={q} onChange={(e)=>setQ(e.target.value)} style={{minWidth:240}} />
         </div>
       </div>
       {notice && (
@@ -329,11 +363,23 @@ export default function Orders() {
           fontWeight: 600
         }}>{notice.message}</div>
       )}
-      {loading && <div style={{fontSize:12, color:'#64748b', marginBottom:8}}>Loading…</div>}
+      {loading && (
+        <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+          {t('admin.ordersPage.loading')}
+        </div>
+      )}
       <div style={{overflowX:'auto'}}>
       <table className={s.table}>
         <thead>
-          <tr style={{background:'#f8fafc', position:'sticky', top:0, zIndex:1}}><th>Order #</th><th>Customer</th><th>Total</th><th>Status</th><th>City</th><th>Time</th><th>Action</th></tr>
+          <tr style={{background:'#f8fafc', position:'sticky', top:0, zIndex:1}}>
+            <th>{t('admin.ordersPage.table.order')}</th>
+            <th>{t('admin.ordersPage.table.customer')}</th>
+            <th>{t('admin.ordersPage.table.total')}</th>
+            <th>{t('admin.ordersPage.table.status')}</th>
+            <th>{t('admin.ordersPage.table.city')}</th>
+            <th>{t('admin.ordersPage.table.time')}</th>
+            <th>{t('admin.ordersPage.table.action')}</th>
+          </tr>
         </thead>
         <tbody>
           {loading && Array.from({length: Math.min(ordersLimit, 10)}).map((_, i)=> (
@@ -354,7 +400,7 @@ export default function Orders() {
                   <span style={{fontWeight:700}}>{o.order_number || '—'}</span>
                   <button
                     className={`${s.btn} ${s.muted}`}
-                    title="Скопировать ID"
+                    title={t('admin.ordersPage.copyId.title')}
                     onClick={async ()=>{
                       try {
                         await navigator.clipboard.writeText(o.id);
@@ -363,26 +409,15 @@ export default function Orders() {
                       } catch {}
                     }}
                     style={{height:28, padding:'0 8px'}}
-                    aria-label="Скопировать ID"
+                    aria-label={t('admin.ordersPage.copyId.aria')}
                   >
-                    {copiedId === o.id ? 'Скопировано' : 'ID'}
+                    {copiedId === o.id ? t('admin.ordersPage.copyId.copied') : t('admin.ordersPage.copyId.idle')}
                   </button>
                 </div>
               </td>
               <td>{o.customer}</td>
               <td>{o.total.toLocaleString()}</td>
-              <td>
-                {o.status === 'pending' && <span className={`${s.badge} ${s.badgePending}`}>В ожидании</span>}
-                {o.status === 'accepted' && <span className={`${s.badge} ${s.badgeAccepted}`}>Принят</span>}
-                {o.status === 'packing' && <span className={`${s.badge} ${s.badgePacking}`}>Упаковывается</span>}
-                {o.status === 'packed' && <span className={`${s.badge} ${s.badgePacked}`}>Упакован</span>}
-                {o.status === 'processing' && <span className={`${s.badge} ${s.badgeProcessing}`}>В обработке</span>}
-                {o.status === 'shipped' && <span className={`${s.badge} ${s.badgeShipped}`}>Отправлен</span>}
-                {o.status === 'delivered' && <span className={`${s.badge} ${s.badgeDelivered}`}>Доставлен</span>}
-                {o.status === 'cancelled' && <span className={`${s.badge} ${s.badgeCancelled}`}>Отменён</span>}
-                {o.status === 'refunded' && <span className={`${s.badge} ${s.badgeRefunded}`}>Возврат средств</span>}
-                {o.status === 'paid' && <span className={`${s.badge} ${s.badgePaid}`}>Оплачен</span>}
-              </td>
+              <td>{renderStatusBadge(o.status)}</td>
               <td>{o.location || '-'}</td>
               <td style={{textAlign:'center', color: timeColor(o.created_at), fontVariantNumeric: 'tabular-nums'}}>
                 {formatDateTime(o.created_at)}
@@ -400,10 +435,10 @@ export default function Orders() {
                     onClick={async ()=>{
                       try {
                         await shopAPI.takeOrderCallCenter(o.id);
-                        setNotice({ type:'success', message: 'Buyurtma tanlandi (call-center).'});
+                        setNotice({ type: 'success', message: t('admin.ordersPage.cc.takeSuccess') });
                         setTimeout(()=> setNotice(null), 2000);
                       } catch (e:any) {
-                        const msg = e?.response?.data?.detail || e?.message || 'Xatolik yuz berdi';
+                        const msg = e?.response?.data?.detail || e?.message || t('common.forms.error');
                         setNotice({ type:'error', message: msg });
                         setTimeout(()=> setNotice(null), 3000);
                       }
@@ -412,7 +447,7 @@ export default function Orders() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.08 4.18 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    Tanlash
+                    {t('admin.ordersPage.cc.take')}
                   </button>
                 )}
               </td>
@@ -423,7 +458,7 @@ export default function Orders() {
       </div>
       {!loading && (
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8}}>
-          <div style={{fontSize:12, color:'#64748b'}}>Page {ordersPage} of {Math.max(1, Math.ceil(filtered.length / ordersLimit))}</div>
+          <div style={{fontSize:12, color:'#64748b'}}>{t('admin.ordersPage.pagination.page', { page: ordersPage, total: Math.max(1, Math.ceil(filtered.length / ordersLimit)) })}</div>
           <div style={{display:'flex', gap:8, alignItems:'center'}}>
             <select className={s.input} value={ordersLimit} onChange={(e)=>{ setOrdersPage(1); setOrdersLimit(Number(e.target.value)||20); }}>
               <option value={10}>10</option>
@@ -432,8 +467,8 @@ export default function Orders() {
               <option value={100}>100</option>
             </select>
             <div className={s.actions}>
-              <button className={`${s.btn} ${s.muted}`} disabled={ordersPage<=1} onClick={()=>setOrdersPage(p=>Math.max(1,p-1))}>Prev</button>
-              <button className={`${s.btn} ${s.muted}`} disabled={ordersPage>=Math.ceil(filtered.length/ordersLimit)} onClick={()=>setOrdersPage(p=>Math.min(Math.ceil(filtered.length/ordersLimit)||1,p+1))}>Next</button>
+              <button className={`${s.btn} ${s.muted}`} disabled={ordersPage<=1} onClick={()=>setOrdersPage(p=>Math.max(1,p-1))}>{t('admin.ordersPage.pagination.prev')}</button>
+              <button className={`${s.btn} ${s.muted}`} disabled={ordersPage>=Math.ceil(filtered.length/ordersLimit)} onClick={()=>setOrdersPage(p=>Math.min(Math.ceil(filtered.length/ordersLimit)||1,p+1))}>{t('admin.ordersPage.pagination.next')}</button>
             </div>
           </div>
         </div>
@@ -445,7 +480,7 @@ export default function Orders() {
             display:'flex', alignItems:'center', justifyContent:'space-between',
             marginBottom:8
           }}>
-            <div style={{fontWeight:900}}>Mening buyurtmalarim (Call-center)</div>
+            <div style={{fontWeight:900}}>{t('admin.ordersPage.cc.title')}</div>
             <div style={{display:'flex', gap:8, alignItems:'center'}}>
               <select
                 className={s.input}
@@ -453,36 +488,40 @@ export default function Orders() {
                 onChange={(e)=>{ setCcPage(1); setCcStatus(e.target.value); }}
                 style={{height:32, borderRadius:10}}
               >
-                <option value="">Barcha statuslar</option>
-                <option value="pending">В ожидании</option>
-                <option value="accepted">Принят</option>
-                <option value="packing">Упаковывается</option>
-                <option value="packed">Упакован</option>
-                <option value="processing">В обработке</option>
-                <option value="shipped">Отправлен</option>
-                <option value="delivered">Доставлен</option>
-                <option value="cancelled">Отменён</option>
-                <option value="refunded">Возврат</option>
-                <option value="paid">Оплачен</option>
+                <option value="">{t('admin.ordersPage.cc.statusAll')}</option>
+                <option value="pending">{t('admin.ordersPage.cc.statuses.pending')}</option>
+                <option value="accepted">{t('admin.ordersPage.cc.statuses.accepted')}</option>
+                <option value="packing">{t('admin.ordersPage.cc.statuses.packing')}</option>
+                <option value="packed">{t('admin.ordersPage.cc.statuses.packed')}</option>
+                <option value="processing">{t('admin.ordersPage.cc.statuses.processing')}</option>
+                <option value="shipped">{t('admin.ordersPage.cc.statuses.shipped')}</option>
+                <option value="delivered">{t('admin.ordersPage.cc.statuses.delivered')}</option>
+                <option value="cancelled">{t('admin.ordersPage.cc.statuses.cancelled')}</option>
+                <option value="refunded">{t('admin.ordersPage.cc.statuses.refunded')}</option>
+                <option value="paid">{t('admin.ordersPage.cc.statuses.paid')}</option>
               </select>
             </div>
           </div>
-          {ccLoading && <div style={{fontSize:12, color:'#64748b', marginBottom:8}}>Loading…</div>}
+          {ccLoading && (
+            <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+              {t('admin.ordersPage.loading')}
+            </div>
+          )}
           <div style={{overflowX:'auto'}}>
           <table className={s.table}>
             <thead>
               <tr style={{background:'#f8fafc', position:'sticky', top:0, zIndex:1}}>
-                <th>Order #</th>
-                <th>Full name</th>
-                <th>Phone</th>
-                <th>City</th>
-                <th>Region</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th>Time</th>
-                <th>Комментарий</th>
-                <th>Reja (datetime)</th>
-                <th>Amallar</th>
+                <th>{t('admin.ordersPage.cc.table.order')}</th>
+                <th>{t('admin.ordersPage.cc.table.fullName')}</th>
+                <th>{t('admin.ordersPage.cc.table.phone')}</th>
+                <th>{t('admin.ordersPage.cc.table.city')}</th>
+                <th>{t('admin.ordersPage.cc.table.region')}</th>
+                <th>{t('admin.ordersPage.cc.table.total')}</th>
+                <th>{t('admin.ordersPage.cc.table.status')}</th>
+                <th>{t('admin.ordersPage.cc.table.time')}</th>
+                <th>{t('admin.ordersPage.cc.table.comment')}</th>
+                <th>{t('admin.ordersPage.cc.table.schedule')}</th>
+                <th>{t('admin.ordersPage.cc.table.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -511,14 +550,14 @@ export default function Orders() {
                     >
                       <option value="">—</option>
                       {LOCATION_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
                       ))}
                     </select>
                   </td>
                   <td>
                     <input
                       className={s.input}
-                      placeholder="Region"
+                      placeholder={t('admin.ordersPage.cc.regionPlaceholder')}
                       value={o.order_region || ''}
                       onChange={(e)=> setCcOrders(prev => prev.map(x => x.id===o.id ? { ...x, order_region: e.target.value } : x))}
                       style={{height:32, borderRadius:10, padding:'0 10px', border:'1px solid #e5e7eb', background:'#fff'}}
@@ -530,7 +569,7 @@ export default function Orders() {
                   <td>
                     <input
                       className={s.input}
-                      placeholder="Комментарий"
+                      placeholder={t('admin.ordersPage.cc.commentPlaceholder')}
                       value={ccComments[o.id] ?? (o.order_comment || '')}
                       onChange={(e)=> setCcComments(prev=> ({...prev, [o.id]: e.target.value}))}
                       style={{height:32, borderRadius:10}}

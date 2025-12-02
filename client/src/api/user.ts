@@ -18,7 +18,7 @@ export const userAPI = {
   getProfile: (): Promise<AxiosResponse<User>> => apiClient.get("/profile"),
 
   updateProfile: (data: UpdateProfileRequest): Promise<AxiosResponse<User>> => {
-    console.log("API updateProfile вызван с:", data);
+    console.log("userAPI.updateProfile payload:", data);
 
     const formData = new URLSearchParams();
 

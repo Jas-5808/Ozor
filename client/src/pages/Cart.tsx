@@ -2,10 +2,12 @@ import cn from "./style.module.scss";
 import { useApp } from "../context/AppContext";
 import { formatPrice } from "../utils/helpers";
 import useSEO from "../hooks/useSEO";
+import { useTranslation } from "react-i18next";
 
 export function Cart() {
+  const { t } = useTranslation();
   useSEO({
-    title: "Savat —OZAR",
+    title: `${t("common.cart.title")} — OZAR`,
     robots: "noindex,nofollow",
     canonical: typeof window !== 'undefined' ? window.location.origin + '/cart' : undefined,
   });
@@ -27,8 +29,8 @@ export function Cart() {
         <div className={cn.main}>
           <div className={cn.main_content}>
             <div className="grid gap-3 p-6 bg-white border border-gray-200 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-              <h2 className="m-0 text-[22px] font-extrabold text-slate-900">Savat</h2>
-              <div className="grid place-items-center py-6 text-slate-500">Savat bo'sh</div>
+              <h2 className="m-0 text-[22px] font-extrabold text-slate-900">{t("common.cart.title")}</h2>
+              <div className="grid place-items-center py-6 text-slate-500">{t("common.cart.empty")}</div>
             </div>
           </div>
         </div>
@@ -47,7 +49,7 @@ export function Cart() {
           <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
             <div>
               <div className="flex items-center justify-between mb-3 px-1 sm:px-0">
-                <h2 className="m-0 text-[20px] font-extrabold text-slate-900 leading-tight py-3">Savat</h2>
+                <h2 className="m-0 text-[20px] font-extrabold text-slate-900 leading-tight py-3">{t("common.cart.title")}</h2>
               </div>
 
               <div className="grid gap-3">
@@ -77,7 +79,7 @@ export function Cart() {
                           <p className="font-semibold text-slate-900 pr-2 text-sm leading-snug line-clamp-2 flex-1">
                             {item.product.name}
                           </p>
-                          <div className="inline-flex items-center gap-2" aria-label="Количество">
+                          <div className="inline-flex items-center gap-2" aria-label={t("common.cart.quantity")}>
                             <button
                               onClick={() => handleDecrease(item.productId, item.quantity)}
                               className="h-9 w-9 rounded-xl border border-gray-300 bg-white hover:bg-gray-50"
@@ -98,7 +100,7 @@ export function Cart() {
                         </div>
                         {hasOriginal && (
                           <div className="text-xs text-gray-500">
-                            Chegirmasiz:{" "}
+                            {t("common.cart.withoutDiscount")}{" "}
                             <span className="relative inline-block text-red-500 font-semibold">
                               <span className="relative z-10">{formatPrice(item.product.original_price!)}</span>
                               <span className="absolute left-0 right-0 top-1/2 border-t border-red-500 rotate-6"></span>
@@ -121,7 +123,7 @@ export function Cart() {
                           <button
                             onClick={() => removeFromCart(item.productId)}
                             className="rounded-full border border-gray-200 bg-white p-2 text-gray-400 transition hover:border-rose-200 hover:text-rose-500"
-                            aria-label="Удалить товар"
+                            aria-label={t("common.cart.removeItem")}
                           >
                             <svg
                               width="16"
@@ -150,18 +152,18 @@ export function Cart() {
             <aside>
               <div className="sticky top-4 grid gap-3 p-4 bg-white border border-gray-200 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
                 <div className="flex items-center justify-between">
-                  <div className="text-slate-500 font-bold">Mahsulotlar</div>
+                  <div className="text-slate-500 font-bold">{t("common.cart.products")}</div>
                   <div className="text-[16px] font-extrabold">{formatPrice(total)}</div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <div className="text-slate-500 font-bold">Yetkazib berish</div>
+                  <div className="text-slate-500 font-bold">{t("common.cart.delivery")}</div>
                   <div className="text-[16px] font-extrabold">{formatPrice(delivery)}</div>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                  <div className="text-slate-700 font-black">Jami</div>
+                  <div className="text-slate-700 font-black">{t("common.cart.grandTotal")}</div>
                   <div className="text-[20px] font-black">{formatPrice(grandTotal)}</div>
                 </div>
-                <button className={`${cn.primary_btn} h-11`}>Buyurtmani rasmiylashtirish</button>
+                <button className={`${cn.primary_btn} h-11`}>{t("common.cart.checkout")}</button>
               </div>
             </aside>
           </div>

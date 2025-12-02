@@ -9,10 +9,12 @@ import useGeolocation from "./hooks/useGeolocation";
 import DeliveryModal from "./components/DeliveryModal";
 import SkipLink from "./components/SkipLink";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 function AppContent() {
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(false);
+  const { t } = useTranslation();
   
   // Проверяем, мобильное ли устройство и находимся ли на странице каталога
   useEffect(() => {
@@ -78,9 +80,9 @@ function AppContent() {
       setLocation({
         latitude: geoLocation.latitude,
         longitude: geoLocation.longitude,
-        city: geoLocation.city || "Неизвестно",
+        city: geoLocation.city || t("common.location.unknownCity"),
         address: geoLocation.address,
-        country: geoLocation.country || "Неизвестно",
+        country: geoLocation.country || t("common.location.unknownCountry"),
         isManual: false,
       });
       hideLocationModal();

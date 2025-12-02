@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Slide {
   id: string;
@@ -194,6 +195,7 @@ const slides: Slide[] = [
 ];
 
 export const SimpleSlider: React.FC = () => {
+  const { t } = useTranslation();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [mobileSlideIndex, setMobileSlideIndex] = useState(1); // Начинаем с 1, т.к. первый слайд - дубликат
   const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
@@ -399,7 +401,7 @@ export const SimpleSlider: React.FC = () => {
                 <div className="relative w-full h-full overflow-hidden rounded-2xl">
                   <img
                     src={slide.image}
-                    alt="Баннер"
+                    alt={t("slider.bannerAlt")}
                     className="w-full h-full object-cover"
                     loading={index === 0 ? "eager" : "lazy"}
                     fetchPriority={index === 0 ? "high" : "low"}
@@ -442,7 +444,7 @@ export const SimpleSlider: React.FC = () => {
               <div className="relative w-full h-full overflow-hidden rounded-2xl">
                 <img
                   src={slide.image}
-                  alt="Баннер"
+                  alt={t("slider.bannerAlt")}
                   className="w-full h-full object-cover"
                   loading={index === 0 ? "eager" : "lazy"}
                   fetchPriority={index === 0 ? "high" : "low"}
@@ -476,7 +478,7 @@ export const SimpleSlider: React.FC = () => {
                 : "bg-white/50"
             }`}
             onClick={() => goToSlide(index)}
-            aria-label={`Перейти к слайду ${index + 1}`}
+            aria-label={t("slider.goTo", { index: index + 1 })}
           />
         ))}
       </div>
@@ -487,7 +489,7 @@ export const SimpleSlider: React.FC = () => {
         onClick={() =>
           goToSlide((currentSlide - 1 + slides.length) % slides.length)
         }
-        aria-label="Предыдущий слайд"
+        aria-label={t("slider.prev")}
       >
         <svg
           className="w-5 h-5"
@@ -507,7 +509,7 @@ export const SimpleSlider: React.FC = () => {
       <button
         className="hidden md:flex absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full items-center justify-center text-white transition-all duration-200 opacity-100 z-20"
         onClick={() => goToSlide((currentSlide + 1) % slides.length)}
-        aria-label="Следующий слайд"
+        aria-label={t("slider.next")}
       >
         <svg
           className="w-5 h-5"

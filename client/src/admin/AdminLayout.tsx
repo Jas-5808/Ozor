@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 // @ts-ignore
 import s from './AdminLayout.module.scss';
+import AdminLanguageSwitcher from './components/AdminLanguageSwitcher';
 
 const iconProps = {
   width: 20,
@@ -120,25 +122,26 @@ const ACTION_ICON_MAP = {
 
 type NavIconKey = keyof typeof NAV_ICON_MAP;
 
-const NAV_ITEMS: Array<{ to: string; label: string; icon: NavIconKey; roles: string[] }> = [
-  { to: '/admin', label: 'Dashboard', icon: 'dashboard', roles: ['admin', 'manager'] },
-  { to: '/admin/orders', label: 'Orders', icon: 'orders', roles: ['admin', 'manager'] },
-  { to: '/admin/users', label: 'Users', icon: 'users', roles: ['admin'] },
-  { to: '/admin/products', label: 'Products', icon: 'products', roles: ['admin', 'manager'] },
-  { to: '/admin/warehouse', label: 'Warehouse', icon: 'warehouse', roles: ['admin', 'manager'] },
-  { to: '/admin/categories', label: 'Categories', icon: 'categories', roles: ['admin'] },
-  { to: '/admin/banners', label: 'Banners', icon: 'banners', roles: ['admin'] },
-  { to: '/admin/audit', label: 'Audit', icon: 'audit', roles: ['admin'] },
+const NAV_ITEMS: Array<{ to: string; labelKey: string; icon: NavIconKey; roles: string[] }> = [
+  { to: '/admin', labelKey: 'admin.nav.dashboard', icon: 'dashboard', roles: ['admin', 'manager'] },
+  { to: '/admin/orders', labelKey: 'admin.nav.orders', icon: 'orders', roles: ['admin', 'manager'] },
+  { to: '/admin/users', labelKey: 'admin.nav.users', icon: 'users', roles: ['admin'] },
+  { to: '/admin/products', labelKey: 'admin.nav.products', icon: 'products', roles: ['admin', 'manager'] },
+  { to: '/admin/warehouse', labelKey: 'admin.nav.warehouse', icon: 'warehouse', roles: ['admin', 'manager'] },
+  { to: '/admin/categories', labelKey: 'admin.nav.categories', icon: 'categories', roles: ['admin'] },
+  { to: '/admin/banners', labelKey: 'admin.nav.banners', icon: 'banners', roles: ['admin'] },
+  { to: '/admin/audit', labelKey: 'admin.nav.audit', icon: 'audit', roles: ['admin'] },
 ];
 
 const QUICK_FILTERS = [
-  { id: 'all', label: 'Все' },
-  { id: 'pending', label: 'Ожидают' },
-  { id: 'packing', label: 'Сборка' },
-  { id: 'ready', label: 'К отгрузке' },
+  { id: 'all', labelKey: 'admin.filters.all' },
+  { id: 'pending', labelKey: 'admin.filters.pending' },
+  { id: 'packing', labelKey: 'admin.filters.packing' },
+  { id: 'ready', labelKey: 'admin.filters.ready' },
 ];
 
 export default function AdminLayout() {
+  const { t } = useTranslation();
   const { profile, logout } = useAuth();
   const [activeFilter, setActiveFilter] = useState('all');
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -174,18 +177,18 @@ export default function AdminLayout() {
     <div className={`${s.root} ${isDarkTheme ? s.rootDark : ''}`}>
       <aside className={s.sidebar}>
         <div className={s.sidebarHeader}>
-          <div className={s.brand}>
-            <span className={s.logo}>OZ</span>
-            <div>
-              <p>Ozar Admin</p>
-              <small>Control Center</small>
+            <div className={s.brand}>
+              <span className={s.logo}>OZ</span>
+              <div>
+                <p>{t('admin.brand.title')}</p>
+                <small>{t('admin.brand.subtitle')}</small>
+              </div>
             </div>
-          </div>
           <div className={s.userCard}>
             <div className={s.avatar}>{(profile?.first_name || 'A').slice(0, 1)}</div>
             <div>
-              <p className={s.userName}>{profile?.first_name || 'Admin'}</p>
-              <small>{normalizedRole}</small>
+                <p className={s.userName}>{profile?.first_name || 'Admin'}</p>
+                <small>{t(`admin.roles.${normalizedRole}`, normalizedRole)}</small>
             </div>
           </div>
         </div>
@@ -204,31 +207,31 @@ export default function AdminLayout() {
                 <span className={s.navIcon}>
                   <Icon />
                 </span>
-                {item.label}
+                {t(item.labelKey)}
               </NavLink>
             );
           })}
         </nav>
         <div className={s.sidebarFooter}>
           <div className={s.sidebarStat}>
-            <p>В обработке</p>
-            <strong>12 заказов</strong>
+              <p>{t('admin.sidebar.processing')}</p>
+              <strong>{t('admin.sidebar.processingCount', { count: 12 })}</strong>
+            </div>
+            <div className={s.sidebarStat}>
+              <p>{t('admin.sidebar.newProducts')}</p>
+              <strong>{t('admin.sidebar.newProductsCount', { count: 8 })}</strong>
+            </div>
+            <button className={s.logout} onClick={logout}>
+              {t('admin.sidebar.logout')}
+            </button>
           </div>
-          <div className={s.sidebarStat}>
-            <p>Новых товаров</p>
-            <strong>8</strong>
-          </div>
-          <button className={s.logout} onClick={logout}>
-            Выйти
-          </button>
-        </div>
       </aside>
 
       <div className={s.body}>
         <header className={s.toolbar}>
           <div className={s.search}>
             <SearchIcon />
-            <input type="search" placeholder="Поиск по заказам, товарам, клиентам..." />
+            <input type="search" placeholder={t('admin.toolbar.searchPlaceholder')} />
           </div>
           <div className={s.filters}>
             {QUICK_FILTERS.map((chip) => (
@@ -240,25 +243,28 @@ export default function AdminLayout() {
                   activeFilter === chip.id ? `${s.filterChip} ${s.filterChipActive}` : s.filterChip
                 }
               >
-                {chip.label}
+                {t(chip.labelKey)}
               </button>
             ))}
           </div>
           <div className={s.toolbarActions}>
+            <AdminLanguageSwitcher />
             <button
               className={s.iconButton}
               type="button"
-              title={isDarkTheme ? 'Выключить тёмную тему' : 'Включить тёмную тему'}
+              title={
+                isDarkTheme ? t('admin.toolbar.themeLight') : t('admin.toolbar.themeDark')
+              }
               aria-pressed={isDarkTheme}
               onClick={toggleTheme}
             >
               <ThemeIcon />
             </button>
-            <button className={s.iconButton} type="button" title="Уведомления">
+            <button className={s.iconButton} type="button" title={t('admin.toolbar.notifications')}>
               <BellIcon />
               <span className={s.badgeDot} />
             </button>
-            <button className={s.iconButton} type="button" title="Быстрое добавление">
+            <button className={s.iconButton} type="button" title={t('admin.toolbar.quickAdd')}>
               <AddIcon />
             </button>
           </div>

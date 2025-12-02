@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import "./TelegramModal.css";
 
 interface PasswordModalProps {
@@ -21,18 +22,19 @@ export function PasswordModal({
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { t } = useTranslation();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (password !== confirmPassword) {
-      setError("Пароли не совпадают");
+      setError(t("auth.register.errors.passwordMismatch"));
       return;
     }
 
     if (password.length < 4) {
-      setError("Пароль должен содержать минимум 4 символа");
+      setError(t("auth.register.errors.passwordShort"));
       return;
     }
 
@@ -52,15 +54,15 @@ export function PasswordModal({
     <div className="telegram-modal-overlay">
       <div className="telegram-modal" onClick={(e) => e.stopPropagation()}>
         <div className="telegram-modal-header">
-          <h3>Создайте пароль</h3>
-          <button className="telegram-modal-close" onClick={handleClose}>
+          <h3>{t("auth.passwordModal.title")}</h3>
+          <button className="telegram-modal-close" onClick={handleClose} aria-label={t("common.actions.close")}>
             ×
           </button>
         </div>
 
         <div className="telegram-modal-body">
           <p className="telegram-modal-description">
-            Создайте пароль для номера {phone}
+            {t("auth.passwordModal.description", { phone })}
           </p>
 
           {error && (
@@ -76,7 +78,7 @@ export function PasswordModal({
             <div style={{ position: 'relative' }}>
               <input
                 type={showPassword ? "text" : "password"}
-                placeholder="Пароль (минимум 4 символа)"
+                placeholder={t("auth.passwordModal.passwordPlaceholder")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="telegram-modal-input"
@@ -101,7 +103,7 @@ export function PasswordModal({
                   justifyContent: 'center',
                   color: '#718096',
                 }}
-                aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                aria-label={showPassword ? t("auth.passwordModal.hidePassword") : t("auth.passwordModal.showPassword")}
               >
                 {showPassword ? (
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -120,7 +122,7 @@ export function PasswordModal({
             <div style={{ position: 'relative' }}>
               <input
                 type={showConfirmPassword ? "text" : "password"}
-                placeholder="Подтвердите пароль"
+                placeholder={t("auth.passwordModal.confirmPlaceholder")}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="telegram-modal-input"
@@ -145,7 +147,7 @@ export function PasswordModal({
                   justifyContent: 'center',
                   color: '#718096',
                 }}
-                aria-label={showConfirmPassword ? "Скрыть пароль" : "Показать пароль"}
+                aria-label={showConfirmPassword ? t("auth.passwordModal.hidePassword") : t("auth.passwordModal.showPassword")}
               >
                 {showConfirmPassword ? (
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -166,7 +168,7 @@ export function PasswordModal({
               className="telegram-modal-submit"
               disabled={loading || !password.trim() || !confirmPassword.trim()}
             >
-              {loading ? "Создание аккаунта..." : "Создать аккаунт"}
+              {loading ? t("auth.passwordModal.submitting") : t("auth.passwordModal.submit")}
             </button>
           </form>
         </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef, FormEvent } from "react";
 import { useLocation, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 // @ts-ignore – модуль стилей объявлен через d.ts
 import cn from "./style.module.scss";
 import { formatPrice, getProductImageUrl, storage } from "../utils/helpers";
@@ -156,6 +157,7 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
   locationHint,
 }) => {
   if (!open) return null;
+  const { t } = useTranslation();
 
   const summaryImage =
     getProductImageUrl(
@@ -175,12 +177,12 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
       >
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div>
-            <p className="text-xs uppercase tracking-wide text-gray-400">Быстрый заказ</p>
-            <h3 className="text-lg font-semibold text-gray-900">Оформление товара</h3>
+            <p className="text-xs uppercase tracking-wide text-gray-400">{t("product.quickOrder.badge")}</p>
+            <h3 className="text-lg font-semibold text-gray-900">{t("product.quickOrder.subtitle")}</h3>
           </div>
           <button
             type="button"
-            aria-label="Закрыть"
+            aria-label={t("common.actions.close")}
             onClick={onClose}
             className="rounded-full border border-gray-200 p-2 text-gray-500 transition hover:text-gray-900"
           >
@@ -195,11 +197,13 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
               </div>
               <div className="flex flex-1 flex-col">
                 <p className="line-clamp-2 text-sm font-semibold text-gray-900">{product.product_name}</p>
-                <span className="mt-1 text-xs text-gray-400">Код: {sku}</span>
+                <span className="mt-1 text-xs text-gray-400">
+                  {t("product.quickOrder.skuLabel")}: {sku}
+                </span>
                 <div className="mt-2 flex items-center gap-2">
                   <span className="text-base font-bold text-gray-900">{formatPrice(price)}</span>
                   <span className={`text-sm font-medium ${inStock ? 'text-emerald-600' : 'text-rose-500'}`}>
-                    {inStock ? 'В наличии' : 'Нет в наличии'}
+                    {inStock ? t("common.status.inStock") : t("common.status.outOfStock")}
                   </span>
                 </div>
               </div>
@@ -211,7 +215,7 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
               <img src="/icons/location.svg" alt="" className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-gray-400">Доставка</p>
+              <p className="text-xs uppercase tracking-wide text-gray-400">{t("product.deliveryLabel")}</p>
               <p className="text-sm font-medium text-gray-900">{locationLabel}</p>
               {locationHint && <p className="text-xs text-gray-500">{locationHint}</p>}
             </div>
@@ -220,7 +224,7 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
           <form className="mt-5 flex flex-col gap-4" onSubmit={onSubmit}>
             <div>
               <label className="text-sm font-medium text-gray-700" htmlFor="quick-order-name">
-                Имя
+                {t("product.quickOrder.nameLabel")}
               </label>
               <input
                 id="quick-order-name"
@@ -228,14 +232,14 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
                 value={name}
                 onChange={(e) => onNameChange(e.target.value)}
                 className="mt-1 h-12 w-full rounded-2xl border border-gray-200 px-4 text-base outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-                placeholder="Как к вам обращаться"
+                placeholder={t("product.quickOrder.namePlaceholder")}
                 autoComplete="name"
               />
             </div>
 
             <div>
               <label className="text-sm font-medium text-gray-700" htmlFor="quick-order-phone">
-                Телефон
+                {t("product.quickOrder.phoneLabel")}
               </label>
               <PhoneInput
                 className="mt-1 h-12 w-full rounded-2xl border border-gray-200 px-4 text-base outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
@@ -254,9 +258,9 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
                 className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
               />
               <span>
-                Я согласен с условиями{" "}
+                {t("product.quickOrder.consent")}{" "}
                 <a href="/terms" className="text-emerald-600 hover:underline">
-                  пользовательского соглашения
+                  {t("product.quickOrder.terms")}
                 </a>
               </span>
             </label>
@@ -278,10 +282,10 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
               className="h-12 rounded-2xl text-base font-semibold text-white shadow-[0_12px_24px_rgba(0,63,50,0.25)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
             >
-              {loading ? "Отправляем..." : "Заказать"}
+              {loading ? t("product.quickOrder.submitting") : t("product.quickOrder.submit")}
             </button>
             <p className="text-center text-xs text-gray-500">
-              Мы свяжемся с вами в течение 10 минут для подтверждения заказа
+              {t("product.quickOrder.note")}
             </p>
           </form>
         </div>
@@ -292,6 +296,7 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
 export function Product() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const { t } = useTranslation();
   const referralCode = useMemo(()=> new URLSearchParams(location.search).get('ref') || '', [location.search]);
   const routeState = (location.state ?? {}) as LocationState;
   const [fetchedProduct, setFetchedProduct] = useState<ProductDetail | null>(null);
@@ -365,7 +370,7 @@ export function Product() {
                     height: INSTALLMENT_DOT_SIZE,
                   }}
                 >
-                  <span className="sr-only">{months} месяцев</span>
+                <span className="sr-only">{t("product.months", { count: months })}</span>
                 </span>
               </button>
             );
@@ -392,10 +397,10 @@ export function Product() {
   const locationLabel =
     appState.location.data?.address ||
     appState.location.data?.city ||
-    "Местоположение не выбрано";
+    t("product.locationMissing");
   const locationHint = appState.location.data?.city
-    ? `Город доставки: ${appState.location.data.city}`
-    : "Укажите город, чтобы увидеть точные условия доставки";
+    ? t("product.locationCity", { city: appState.location.data.city })
+    : t("product.locationHint");
 
   // Прокрутка вверх при открытии товара (особенно важно для мобильных)
   useEffect(() => {
@@ -536,7 +541,7 @@ export function Product() {
                 requested: id,
                 received: p.product_id,
               });
-              setError(`Ошибка: загружен продукт с другим ID (запрошено: ${id}, получено: ${p.product_id})`);
+            setError(t("product.errors.loadTitle"));
               setLoading(false);
               return;
             }
@@ -554,7 +559,7 @@ export function Product() {
               setLightboxIndex(0);
             }
           } else if (!ignore && !p) {
-            setError("Продукт не найден");
+            setError(t("product.errors.notFoundTitle"));
           }
         })
         .catch((e) => {
@@ -764,19 +769,19 @@ export function Product() {
     if (!product) return;
 
     if (!canBuy) {
-      setQuickOrderError("Товар сейчас недоступен для заказа");
+      setQuickOrderError(t("product.quickOrder.errors.unavailable"));
       return;
     }
     if (!name.trim()) {
-      setQuickOrderError("Введите ваше имя");
+      setQuickOrderError(t("product.quickOrder.errors.nameRequired"));
       return;
     }
     if (!phone || phone.trim().length < 8) {
-      setQuickOrderError("Введите корректный номер телефона");
+      setQuickOrderError(t("product.quickOrder.errors.phoneInvalid"));
       return;
     }
     if (!agreeTerms) {
-      setQuickOrderError("Необходимо согласиться с условиями");
+      setQuickOrderError(t("product.quickOrder.errors.consentRequired"));
       return;
     }
 
@@ -801,7 +806,7 @@ export function Product() {
         order_comment: "",
       } as any;
       await shopAPI.guestOrder(payload);
-      setQuickOrderFeedback("Заявка отправлена! Мы свяжемся с вами в ближайшее время.");
+      setQuickOrderFeedback(t("product.quickOrder.success"));
       setName("");
       setPhone("");
       setTimeout(() => {
@@ -810,7 +815,7 @@ export function Product() {
       }, 1800);
     } catch (err) {
       logger.errorWithContext(err, { context: "quickOrder" });
-      setQuickOrderError("Не удалось отправить заказ. Попробуйте позже.");
+      setQuickOrderError(t("product.quickOrder.errors.generic"));
     } finally {
       setQuickOrderLoading(false);
     }
@@ -889,13 +894,13 @@ export function Product() {
       <div className={cn.error_screen}>
         <div className={cn.error_container}>
           <div className={cn.error_icon}>⚠️</div>
-          <h2 className={cn.error_title}>Ошибка загрузки</h2>
+          <h2 className={cn.error_title}>{t("product.errors.loadTitle")}</h2>
           <p className={cn.error_message}>{error}</p>
           <button 
             className={cn.retry_button}
             onClick={() => window.location.reload()}
           >
-            Попробовать снова
+            {t("product.errors.loadAction")}
           </button>
         </div>
       </div>
@@ -908,15 +913,15 @@ export function Product() {
       <div className={cn.not_found_screen}>
         <div className={cn.not_found_container}>
           <div className={cn.not_found_icon}>🔍</div>
-          <h2 className={cn.not_found_title}>Товар не найден</h2>
+          <h2 className={cn.not_found_title}>{t("product.errors.notFoundTitle")}</h2>
           <p className={cn.not_found_message}>
-            Товар {id ? `#${id}` : ""} не существует или был удален
+            {t("product.errors.notFoundMessage", { id: id ? `#${id}` : "" })}
           </p>
           <button 
             className={cn.back_button}
             onClick={() => window.history.back()}
           >
-            Вернуться назад
+            {t("product.errors.back")}
           </button>
         </div>
       </div>
@@ -953,7 +958,7 @@ export function Product() {
                       key={i}
                       className={`${cn.thumb} ${i === lightboxIndex ? 'active' : ''}`}
                       type="button"
-                      aria-label={`Превью ${i + 1}`}
+                      aria-label={t("product.lightbox.preview", { index: i + 1 })}
                       onClick={() => {
                         setLightboxIndex(i);
                       }}
@@ -984,11 +989,11 @@ export function Product() {
                             isAvailable ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'
                           }`}
                         >
-                          {isAvailable ? 'В наличии' : 'Нет в наличии'}
+                          {isAvailable ? t("common.status.inStock") : t("common.status.outOfStock")}
                         </span>
                         {sku && (
                           <span className="text-xs font-medium text-gray-500">
-                            Код: {sku}
+                            {t("product.quickOrder.skuLabel")}: {sku}
                           </span>
                         )}
                       </div>
@@ -998,7 +1003,7 @@ export function Product() {
                     <div>
                       <div className="flex items-center gap-3">
                         <p className="text-[28px] font-semibold leading-tight text-[#04734b] sm:text-[32px]">
-                          {currentPrice ? formatPrice(currentPrice) : 'Цена не указана'}
+                          {currentPrice ? formatPrice(currentPrice) : t("product.priceMissing")}
                         </p>
                         {hasDiscount && discountPercent && (
                           <span className="inline-flex items-center rounded-full bg-[#e6f4ef] px-3 py-1 text-xs font-semibold text-[#04734b]">
@@ -1013,9 +1018,14 @@ export function Product() {
                       ) : null}
                       {currentPrice ? (
                         <>
-                          {/* <p className="text-sm font-medium text-[#04734b]/80">сум / шт.</p> */}
                           <p className="text-xs font-medium text-gray-500">
-                            Доставка по Узбекистану: <span className="text-[#04734b] font-semibold">30 000 сум</span>
+                            {t("product.deliveryUzbekistan")}:{" "}
+                            <span className="text-[#04734b] font-semibold">
+                              {t("product.deliveryFlatRate", {
+                                price: formatPrice(30000),
+                                currency: t("common.currency"),
+                              })}
+                            </span>
                           </p>
                         </>
                       ) : null}
@@ -1023,7 +1033,7 @@ export function Product() {
                     {/* <div className={`${cn.rating_row} mt-1 sm:mt-0`}>
                       <img src="/icons/star.png" alt="" aria-hidden="true" />
                       <strong>4.9</strong>
-                      <span className={cn.muted}>18 503 оценки</span>
+                      <span className={cn.muted}>{t("product.ratingCount", { count: "18 503" })}</span>
                     </div> */}
                   </div>
                 </div>
@@ -1103,12 +1113,14 @@ export function Product() {
                 })()}
                 <div className="md:hidden mt-6 space-y-3 rounded-[26px] border border-white/40 bg-white/95 p-4 shadow-[0_16px_30px_rgba(15,23,42,0.12)]">
                   <div className="flex items-center justify-between text-sm font-semibold text-slate-900">
-                    <span>Рассрочка на {selectedInstallment} мес.</span>
+                    <span>{t("product.installment.forMonths", { count: selectedInstallment })}</span>
                     <span className="text-base text-[#04734b]">
-                      {formatPrice(Math.round((currentPrice ?? 0) / Math.max(1, selectedInstallment)))} /мес
+                      {t("product.installment.perMonth", {
+                        price: formatPrice(Math.round((currentPrice ?? 0) / Math.max(1, selectedInstallment))),
+                      })}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500">Выберите удобный срок оплаты</p>
+                  <p className="text-xs text-slate-500">{t("product.installment.selectTerm")}</p>
                   {renderInstallmentSlider()}
                   <div className="grid gap-2">
                     {installmentVendors.map((item, idx) => {
@@ -1127,21 +1139,23 @@ export function Product() {
                             </span>
                             <span>{item.name}</span>
                           </div>
-                          <div className="text-[#04734b]">{monthly} сум/мес</div>
+                          <div className="text-[#04734b]">
+                            {t("product.installment.perMonth", { price: monthly })}
+                          </div>
                         </div>
                       );
                     })}
                   </div>
                   <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-                    <span>Итого за {selectedInstallment} месяцев</span>
+                    <span>{t("product.installment.total", { count: selectedInstallment })}</span>
                     <strong className="text-slate-900">{formatPrice(currentPrice ?? 0)}</strong>
                   </div>
                   <button
                     type="button"
-                    className="w-full h-11 rounded-[18px] text-white text-sm font-semibold shadow-[0_10px_20px_rgба(4,115,75,0.3)]"
+                    className="w-full h-11 rounded-[18px] text-white text-sm font-semibold shadow-[0_10px_20px_rgba(4,115,75,0.3)]"
                     style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
                   >
-                    Оформить
+                    {t("product.buttons.checkout")}
                   </button>
                 </div>
               </div>
@@ -1157,7 +1171,7 @@ export function Product() {
                       className="flex-1 h-12 rounded-[18px] bg-gradient-to-r from-[#00a779] via-[#00b78a] to-[#00c08c] text-xs md:text-sm font-semibold text-white shadow-[0_12px_24px_rgba(0,160,120,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
                       style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
                     >
-                      Купить в 1 клик
+                      {t("product.buttons.buyOneClick")}
                     </button>
                     <button
                       type="button"
@@ -1165,16 +1179,16 @@ export function Product() {
                       disabled={!canBuy}
                       className="flex-1 h-12 rounded-[18px] border border-[#d5ebe3] bg-white text-base font-semibold text-[#04734b] shadow-[inset_0_2px_6px_rgba(4,115,75,0.08)] transition hover:border-[#04734b] hover:text-[#003d32] disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      В корзину
+                      {t("product.buttons.addToCart")}
                     </button>
                   </div>
                   <p className="text-center text-xs font-medium text-slate-500">
-                    Оплата при получении или онлайн после подтверждения
+                    {t("product.paymentInfo")}
                   </p>
                 </div>
                 <div className="mt-4 rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.08)] px-5 py-4 space-y-4">
                   <div className="flex items-center justify-between text-sm font-semibold text-slate-900">
-                    <span>Рассрочка на {selectedInstallment} мес.</span>
+                    <span>{t("product.installment.forMonths", { count: selectedInstallment })}</span>
                   </div>
                   {renderInstallmentSlider()}
                   <div className="grid gap-2">
@@ -1194,17 +1208,19 @@ export function Product() {
                             </span>
                             <span>{item.name}</span>
                           </div>
-                          <div className="text-[#04734b]">{monthly} сум/мес</div>
+                          <div className="text-[#04734b]">
+                            {t("product.installment.perMonth", { price: monthly })}
+                          </div>
                         </div>
                       );
                     })}
                   </div>
                   <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-                    <span>Итого за {selectedInstallment} месяцев</span>
+                    <span>{t("product.installment.total", { count: selectedInstallment })}</span>
                     <strong className="text-slate-900">{formatPrice(currentPrice ?? 0)}</strong>
                   </div>
                   <button className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110" style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}>
-                    Оформить
+                    {t("product.buttons.checkout")}
                   </button>
                 </div>
               </div>
@@ -1238,21 +1254,21 @@ export function Product() {
                   onClick={() => setActiveTab('description')}
                   type="button"
                 >
-                  Описание
+                  {t("product.tabs.description")}
                 </button>
                 <button
                   className={`${cn.tab} ${activeTab === 'characteristics' ? cn.tab_active : ''}`}
                   onClick={() => setActiveTab('characteristics')}
                   type="button"
                 >
-                  Характеристики
+                  {t("product.tabs.specs")}
                 </button>
                 <button
                   className={`${cn.tab} ${activeTab === 'comments' ? cn.tab_active : ''}`}
                   onClick={() => setActiveTab('comments')}
                   type="button"
                 >
-                  Комментарии
+                  {t("product.tabs.comments")}
                 </button>
               </div>
               <div className={cn.tabs_panel}>
@@ -1265,7 +1281,7 @@ export function Product() {
                         </p>
                       ))
                     ) : (
-                      <p>Описание недоступно.</p>
+                      <p>{t("product.empty.description")}</p>
                     )}
                   </div>
                 ) : activeTab === 'characteristics' ? (
@@ -1275,7 +1291,7 @@ export function Product() {
                       const hasSpecs = selectedVariant && selectedVariant.attribute_values && selectedVariant.attribute_values.length > 0;
                       
                       if (!hasSpecs || !selectedVariant) {
-                        return <p>Характеристики недоступны.</p>;
+                        return <p>{t("product.empty.specs")}</p>;
                       }
 
                       // Отображаем список характеристик
@@ -1298,7 +1314,7 @@ export function Product() {
                         .filter((spec): spec is { id: string; name: string; value: string; unit: string } => spec !== null);
 
                       if (validSpecs.length === 0) {
-                        return <p>Характеристики недоступны.</p>;
+                        return <p>{t("product.empty.specs")}</p>;
                       }
 
                       return (
@@ -1318,7 +1334,7 @@ export function Product() {
                 ) : (
                   <div className={cn.comments_section}>
                     {comments.length === 0 ? (
-                      <p className={cn.comments_empty}>Пока нет комментариев. Оставить комментарий можно после покупки товара.</p>
+                      <p className={cn.comments_empty}>{t("product.empty.comments")}</p>
                     ) : (
                       <div className={cn.specifications_list}>
                         {comments.map((c) => (
@@ -1339,7 +1355,7 @@ export function Product() {
 
             {/* Недавно просмотренные */}
             <section className={cn.recently_viewed_section}>
-              <h3 className={cn.section_title}>Недавно просмотренные</h3>
+              <h3 className={cn.section_title}>{t("product.sections.recentlyViewed")}</h3>
               <div className={cn.products_grid}>
                 {recentlyViewed && recentlyViewed.length > 0 ? (
                   recentlyViewed.map((p) => {
@@ -1365,7 +1381,7 @@ export function Product() {
 
             {/* Рекомендации */}
             <section className={cn.recommendations_section}>
-              <h3 className={cn.section_title}>Рекомендуем также</h3>
+              <h3 className={cn.section_title}>{t("product.sections.recommendations")}</h3>
               <div className={cn.products_grid}>
                 {/* Здесь будут карточки рекомендуемых товаров */}
                 <div className={cn.placeholder_card}>
@@ -1434,14 +1450,14 @@ export function Product() {
             className="flex-1 rounded-2xl py-3 text-sm font-semibold text-white shadow-lg transition active:scale-[0.99]"
             style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
           >
-            Купить в 1 клик
+            {t("product.buttons.buyOneClick")}
           </button>
           <button
             type="button"
             onClick={handleAddToCart}
             className="flex-1 rounded-2xl border border-white/40 bg-white/90 py-3 text-sm font-semibold text-[#04734b] shadow-md backdrop-blur-lg transition active:scale-[0.99]"
           >
-            В корзину
+            {t("product.buttons.addToCart")}
           </button>
         </div>
       )}
@@ -1452,21 +1468,21 @@ export function Product() {
           if (e.target === e.currentTarget) closeLightbox();
         }}>
           <div className={cn.lightbox_container}>
-            <button className={`${cn.lightbox_btn} ${cn.lightbox_close}`} onClick={closeLightbox} aria-label="Закрыть">×</button>
-            <button className={`${cn.lightbox_btn} ${cn.lightbox_prev}`} onClick={(e)=>{ e.stopPropagation(); prevImage(); }} aria-label="Предыдущее">‹</button>
-            <button className={`${cn.lightbox_btn} ${cn.lightbox_next}`} onClick={(e)=>{ e.stopPropagation(); nextImage(); }} aria-label="Следующее">›</button>
+            <button className={`${cn.lightbox_btn} ${cn.lightbox_close}`} onClick={closeLightbox} aria-label={t("product.lightbox.close")}>×</button>
+            <button className={`${cn.lightbox_btn} ${cn.lightbox_prev}`} onClick={(e)=>{ e.stopPropagation(); prevImage(); }} aria-label={t("product.lightbox.prev")}>‹</button>
+            <button className={`${cn.lightbox_btn} ${cn.lightbox_next}`} onClick={(e)=>{ e.stopPropagation(); nextImage(); }} aria-label={t("product.lightbox.next")}>›</button>
             <div className={cn.lightbox_image_wrapper}>
               <img
                 src={galleryImages[lightboxIndex] || getProductImageUrl(product?.main_image || '')}
-                alt="Просмотр"
+                alt={t("product.lightbox.view")}
                 className={cn.lightbox_image}
                 style={{ transform: `scale(${lightboxZoom})` }}
                 onClick={(e)=> e.stopPropagation()}
               />
             </div>
             <div className={cn.lightbox_zoom}>
-              <button className={cn.zoom_btn} onClick={(e)=>{ e.stopPropagation(); zoomOut(); }} aria-label="Уменьшить">−</button>
-              <button className={cn.zoom_btn} onClick={(e)=>{ e.stopPropagation(); zoomIn(); }} aria-label="Увеличить">+</button>
+              <button className={cn.zoom_btn} onClick={(e)=>{ e.stopPropagation(); zoomOut(); }} aria-label={t("product.lightbox.zoomOut")}>−</button>
+              <button className={cn.zoom_btn} onClick={(e)=>{ e.stopPropagation(); zoomIn(); }} aria-label={t("product.lightbox.zoomIn")}>+</button>
             </div>
           </div>
         </div>

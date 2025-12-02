@@ -74,7 +74,7 @@ apiClient.interceptors.request.use(
   (config) => {
     const fullUrl = `${config.baseURL}${config.url}`;
     
-    // Подробное логирование для POST запросов на signin
+    // Detailed logging for POST /auth/signin requests
     if (config.method?.toUpperCase() === 'POST' && config.url?.includes('/auth/signin')) {
       console.log("=== REQUEST INTERCEPTOR DEBUG ===");
       console.log("URL:", fullUrl);
@@ -89,15 +89,15 @@ apiClient.interceptors.request.use(
         console.log("Data.get('phone'):", config.data.get("phone"));
         console.log("Data.get('password'):", config.data.get("password") ? "***" : "undefined");
         
-        // Проверяем, что данные действительно есть
+        // Ensure both credentials are present
         const phone = config.data.get("phone");
         const password = config.data.get("password");
         if (!phone || !password) {
-          console.error("❌ В URLSearchParams отсутствуют данные!");
+          console.error("❌ Missing data in URLSearchParams!");
           console.error("   phone:", phone);
           console.error("   password:", password ? "***" : "undefined");
         } else {
-          console.log("✅ Данные присутствуют в URLSearchParams");
+          console.log("✅ URLSearchParams payload is valid");
         }
       } else if (typeof config.data === 'string') {
         console.log("Data is string:", config.data.replace(/password=[^&]*/, 'password=***'));
@@ -122,7 +122,7 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Флаг для предотвращения бесконечных циклов обновления токена
+// Flag to avoid infinite refresh loops
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value?: unknown) => void;
@@ -148,10 +148,10 @@ apiClient.interceptors.response.use(
   async (error: AxiosError<ApiErrorResponse>) => {
     const originalRequest = error.config as typeof error.config & { _retry?: boolean };
     
-    // Если ошибка 401 и это не запрос на обновление токена
+    // Handle 401 responses (except refresh requests)
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        // Если токен уже обновляется, добавляем запрос в очередь
+        // If refresh in progress — queue the request
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -174,7 +174,7 @@ apiClient.interceptors.response.use(
       if (!refreshToken) {
         processQueue(error);
         isRefreshing = false;
-        // Перенаправляем на страницу входа
+        // Redirect to sign-in page
         if (window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
@@ -205,7 +205,7 @@ apiClient.interceptors.response.use(
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
         
-        // Перенаправляем на страницу входа
+        // Redirect to sign-in page
         if (window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
@@ -267,7 +267,7 @@ export const shopAPI = {
     apiClient.post("/shop/category", payload),
   getCategoryById: (categoryId: string): Promise<TypedAxiosResponse<CategoryResponse>> =>
     apiClient.get(`/shop/category/${categoryId}`),
-  // Расширенный метод для получения всех вариантов товара
+  // Extended method for fetching product variants
   getAllProductVariants: (() => {
     const cache = new Map<string, { 
       time: number; 
@@ -322,9 +322,9 @@ export const shopAPI = {
 
 export const authAPI = {
   signin: (phone: string, password: string): Promise<TypedAxiosResponse<AuthResponse>> => {
-    // Подробное логирование для отладки
+    // Verbose logging for debugging
     console.log("=== SIGNIN DEBUG START ===");
-    console.log("1. Параметры функции:", { 
+    console.log("1. Function parameters:", { 
       phone: phone, 
       password: password ? "***" : undefined,
       phoneType: typeof phone,
@@ -333,7 +333,7 @@ export const authAPI = {
       passwordLength: password?.length
     });
 
-    // Проверяем, что данные не undefined
+    // Ensure both fields are provided
     if (!phone || !password) {
       console.error("❌ Missing phone or password", { 
         phone: phone, 
@@ -345,14 +345,14 @@ export const authAPI = {
       throw new Error("Phone and password are required");
     }
 
-    // Используем URLSearchParams для form-urlencoded формата
+    // Build URLSearchParams payload
     const formData = new URLSearchParams();
-    console.log("2. Создан URLSearchParams, добавляем данные...");
+    console.log("2. URLSearchParams created, appending fields...");
     
     formData.append("phone", phone);
     formData.append("password", password);
     
-    console.log("3. Данные добавлены в formData:");
+    console.log("3. Form data appended:");
     console.log("   - phone:", formData.get("phone"));
     console.log("   - password:", formData.get("password") ? "***" : "undefined");
     console.log("   - formData.toString():", formData.toString().replace(/password=[^&]*/, 'password=***'));
@@ -362,10 +362,10 @@ export const authAPI = {
       hasPassword: !!formData.get("password") 
     });
 
-    console.log("4. Отправляем запрос с formData объектом");
+    console.log("4. Sending request with form data payload");
     console.log("=== SIGNIN DEBUG END ===");
 
-    // Передаем URLSearchParams объект напрямую - Axios автоматически преобразует его
+    // Axios will serialize the URLSearchParams payload automatically
     return apiClient.post("/auth/signin", formData, {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -376,18 +376,18 @@ export const authAPI = {
   signup: (phone: string, password: string): Promise<TypedAxiosResponse<AuthResponse>> => {
     logger.debug("API signup called", { phone: phone?.substring(0, 4) + '***', hasPassword: !!password });
 
-    // Проверяем, что данные не undefined
+    // Ensure payload is defined
     if (!phone || !password) {
       logger.error("Missing phone or password", { phone: !!phone, password: !!password });
       throw new Error("Phone and password are required");
     }
 
-    // Используем URLSearchParams для form-urlencoded формата
+    // Build URLSearchParams payload
     const formData = new URLSearchParams();
     formData.append("phone", phone);
     formData.append("password", password);
 
-    // Передаем URLSearchParams объект напрямую - Axios автоматически преобразует его
+    // Axios will serialize the URLSearchParams payload automatically
     return apiClient.post("/auth/signup", formData, {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -406,7 +406,7 @@ export const authAPI = {
     const formData = new URLSearchParams();
     formData.append("phone", phone);
 
-    // Передаем URLSearchParams объект напрямую
+    // Axios will serialize the URLSearchParams payload automatically
     return apiClient.post("/auth/send-code", formData, {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -426,7 +426,7 @@ export const authAPI = {
     formData.append("phone", phone);
     formData.append("code", code);
 
-    // Передаем URLSearchParams объект напрямую
+    // Axios will serialize the URLSearchParams payload automatically
     return apiClient.post("/auth/verify-code", formData, {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -477,7 +477,7 @@ export const userAPI = {
 
     const formData = new URLSearchParams();
 
-    // Добавляем только те поля, которые есть в данных
+    // Append only provided fields
     if (data.first_name !== undefined) {
       formData.append("first_name", data.first_name);
     }

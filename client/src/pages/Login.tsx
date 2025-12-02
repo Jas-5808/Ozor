@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import cn from "./style.module.scss";
 import { useAuth } from "../hooks/useAuth";
 import PhoneInput from "../components/forms/PhoneInput";
@@ -8,8 +9,9 @@ import { logger } from "../utils/logger";
 import { ROUTES, ERROR_MESSAGES } from "../constants";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
 export function Login() {
+  const { t } = useTranslation();
   useSEO({
-    title: "Kirish — OZAR",
+    title: t("auth.login.seoTitle"),
     robots: "noindex,nofollow",
     canonical: typeof window !== 'undefined' ? window.location.origin + '/login' : undefined,
   });
@@ -30,7 +32,7 @@ export function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("=== Login.handleSubmit DEBUG ===");
-    console.log("Исходные значения из state:", { 
+    console.log("Initial form values:", { 
       phone: phone, 
       password: password ? "***" : undefined,
       phoneType: typeof phone,
@@ -41,9 +43,9 @@ export function Login() {
     setLoading(true);
     try {
       const normalizedPhone = '+' + phone.replace(/\D/g, '');
-      console.log("Нормализованный телефон:", normalizedPhone);
-      console.log("Пароль:", password ? "***" : "undefined");
-      console.log("Вызываем signin с:", { phone: normalizedPhone, password: password ? "***" : undefined });
+      console.log("Normalized phone:", normalizedPhone);
+      console.log("Password:", password ? "***" : "undefined");
+      console.log("Calling signin with:", { phone: normalizedPhone, password: password ? "***" : undefined });
       
       logger.debug('Login attempt', { phone: normalizedPhone.substring(0, 4) + '***' });
       await signin(normalizedPhone, password);
@@ -70,29 +72,19 @@ export function Login() {
           <div className={cn.image_content}>
             <div className={cn.image_overlay}></div>
             <div className={cn.image_text}>
-              <h1 className={cn.image_title}>Добро пожаловать обратно в OZAR</h1>
+              <h1 className={cn.image_title}>{t("auth.login.heroTitle")}</h1>
               <p className={cn.image_subtitle}>
-                Войдите в свой аккаунт, чтобы продолжить делать покупки и отслеживать заказы
+                {t("auth.login.heroSubtitle")}
               </p>
               <div className={cn.image_features}>
-                <div className={cn.feature_item}>
-                  <svg className={cn.feature_icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Быстрая доставка</span>
-                </div>
-                <div className={cn.feature_item}>
-                  <svg className={cn.feature_icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Безопасные платежи</span>
-                </div>
-                <div className={cn.feature_item}>
-                  <svg className={cn.feature_icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Эксклюзивные скидки</span>
-                </div>
+                {["fastDelivery", "securePayments", "exclusiveDeals"].map((feature) => (
+                  <div key={feature} className={cn.feature_item}>
+                    <svg className={cn.feature_icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>{t(`auth.login.features.${feature}`)}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -102,10 +94,8 @@ export function Login() {
         <div className={cn.registration_form_side}>
           <div className={cn.regist_content}>
             <div className={cn.form_header}>
-              <h2 className={cn.title}>Вход в аккаунт</h2>
-              <p className={cn.subtitle}>
-                Введите номер телефона и пароль для входа
-              </p>
+              <h2 className={cn.title}>{t("auth.login.formTitle")}</h2>
+              <p className={cn.subtitle}>{t("auth.login.formSubtitle")}</p>
             </div>
 
             {error && <div className={cn.error_message}>{error}</div>}
@@ -113,7 +103,7 @@ export function Login() {
             <form onSubmit={handleSubmit} className={cn.form}>
               <div className={cn.input_wrapper}>
                 <PhoneInput
-                  placeholder="+998 (99) 123 45 67"
+                  placeholder={t("auth.common.phonePlaceholder")}
                   value={phone}
                   onChange={setPhone}
                   className={cn.input}
@@ -124,7 +114,7 @@ export function Login() {
                 <div className={cn.password_input_container}>
                   <input
                     type={showPassword ? "text" : "password"}
-                    placeholder="Пароль"
+                    placeholder={t("auth.common.passwordPlaceholder")}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className={cn.input}
@@ -134,7 +124,7 @@ export function Login() {
                     type="button"
                     className={cn.password_toggle}
                     onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                    aria-label={showPassword ? t("auth.common.hidePassword") : t("auth.common.showPassword")}
                   >
                     {showPassword ? (
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -155,11 +145,11 @@ export function Login() {
                 className={cn.btn_primary}
                 disabled={loading}
               >
-                {loading ? 'Вход...' : 'Войти'}
+                {loading ? t("auth.login.submitting") : t("auth.login.submit")}
               </button>
             </form>
 
-            <div className={cn.divider}><span>или</span></div>
+            <div className={cn.divider}><span>{t("auth.login.divider")}</span></div>
 
             <div className={cn.socials}>
               <button 
@@ -167,14 +157,17 @@ export function Login() {
                 onClick={handleTelegramLogin}
                 disabled={loading}
               >
-                <img src="/icons/telegram.png" alt="Telegram" />
-                Войти через Telegram
+                <img src="/icons/telegram.png" alt={t("auth.login.telegramAlt")} />
+                {t("auth.login.telegramButton")}
               </button>
             </div>
 
             <div className={cn.auth_links}>
               <p>
-                Нет аккаунта? <Link to="/registration" className={cn.auth_link}>Зарегистрироваться</Link>
+                {t("auth.login.noAccount")}{" "}
+                <Link to="/registration" className={cn.auth_link}>
+                  {t("auth.login.registerLink")}
+                </Link>
               </p>
             </div>
           </div>

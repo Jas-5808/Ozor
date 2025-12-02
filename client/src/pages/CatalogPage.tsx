@@ -1,14 +1,17 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useCategories, getMainCategories, getSubcategories } from "../hooks/useCategories";
 import cn from "../components/mainCss.module.scss";
 import useSEO from "../hooks/useSEO";
 
 export function CatalogPage() {
+  const { t } = useTranslation();
   useSEO({
-    title: "Каталог — OZAR",
+    title: t("catalog.seoTitle"),
     robots: "noindex,nofollow",
-    canonical: typeof window !== 'undefined' ? window.location.origin + '/catalog' : undefined,
+    canonical:
+      typeof window !== "undefined" ? window.location.origin + "/catalog" : undefined,
   });
   
   const navigate = useNavigate();
@@ -60,7 +63,7 @@ export function CatalogPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Искать в каталоге..."
+            placeholder={t("catalog.searchPlaceholder")}
             className={cn.mobileCatalogSearchInput}
           />
           <button type="submit" className={cn.mobileCatalogSearchButton}>
@@ -75,16 +78,16 @@ export function CatalogPage() {
       {/* Каталог */}
       <div className={cn.mobileCatalogContent}>
         <div className={cn.mobileCatalogHeader}>
-          <h2>Каталог</h2>
+          <h2>{t("catalog.header")}</h2>
         </div>
         <div className={cn.mobileCatalogList}>
           {loading ? (
             <div className={cn.mobileCatalogLoading}>
-              Загрузка категорий...
+              {t("catalog.loading")}
             </div>
           ) : filteredCategories.length === 0 ? (
             <div className={cn.mobileCatalogEmpty}>
-              <p>Ничего не найдено</p>
+              <p>{t("catalog.empty")}</p>
             </div>
           ) : (
             filteredCategories.map((category) => {

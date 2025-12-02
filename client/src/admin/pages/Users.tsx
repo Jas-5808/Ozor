@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 // @ts-ignore
 import s from '../AdminLayout.module.scss';
 import { adminStore } from '../storage';
@@ -6,16 +7,15 @@ import { userAPI } from '../../services/api';
 
 type User = { id: string; name: string; phone: string; role: string; email?: string; date_joined?: string; is_active?: boolean };
 
-const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: 'ceo', label: 'Chief Executive Officer' },
-  { value: 'sale_manager', label: 'Sale Manager' },
-  { value: 'driver_manager', label: 'Driver Manager' },
-  { value: 'client', label: 'Client' },
-  { value: 'driver', label: 'Driver' },
-  { value: 'sale', label: 'Sale' },
-  { value: 'warehouse_manager', label: 'Warehouse Manager' },
-  // legacy/fallback option to avoid breaking select when existing users have admin
-  { value: 'admin', label: 'Admin' },
+const ROLE_OPTIONS: Array<{ value: string; labelKey: string }> = [
+  { value: 'ceo', labelKey: 'admin.usersPage.roles.ceo' },
+  { value: 'sale_manager', labelKey: 'admin.usersPage.roles.sale_manager' },
+  { value: 'driver_manager', labelKey: 'admin.usersPage.roles.driver_manager' },
+  { value: 'client', labelKey: 'admin.usersPage.roles.client' },
+  { value: 'driver', labelKey: 'admin.usersPage.roles.driver' },
+  { value: 'sale', labelKey: 'admin.usersPage.roles.sale' },
+  { value: 'warehouse_manager', labelKey: 'admin.usersPage.roles.warehouse_manager' },
+  { value: 'admin', labelKey: 'admin.usersPage.roles.admin' },
 ];
 
 const apiRoleToUiRole = (role: string): string => {
@@ -33,6 +33,7 @@ const uiRoleToApiRole = (role: string): string => {
 };
 
 export default function Users() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<User[]>(adminStore.load<User[]>('admin_users', []));
   const [q, setQ] = useState('');
   const [role, setRole] = useState('');
@@ -45,6 +46,11 @@ export default function Users() {
   const [forbidden, setForbidden] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const filtered = items;
+
+  const getRoleLabel = (value: string) => {
+    const opt = ROLE_OPTIONS.find((r) => r.value === value);
+    return opt ? t(opt.labelKey) : value;
+  };
 
   const addUser = () => {
     const u: User = { id: Math.random().toString(36).slice(2), name: `User ${items.length+1}`, phone: '+998', role: 'customer' };
@@ -88,10 +94,13 @@ export default function Users() {
         setItems(normalized);
         setTotalPages(payload.total_pages || 1);
       } catch (e:any) {
-        // Обработка 403: доступ только для CEO
+        // Handle 403 responses: access allowed only for CEO
         if (!ignore && e?.response?.status === 403) {
           setForbidden(true);
-          const msg = e?.response?.data?.detail || e?.response?.data?.message || 'Доступ разрешён только для CEO';
+          const msg =
+            e?.response?.data?.detail ||
+            e?.response?.data?.message ||
+            t('admin.usersPage.errors.ceoOnly');
           setErrorMsg(msg);
           setItems([]);
           setTotalPages(1);
@@ -105,13 +114,13 @@ export default function Users() {
   return (
     <div className={s.panel}>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12}}>
-        <div style={{fontWeight:700}}>Users</div>
+        <div style={{fontWeight:700}}>{t('admin.usersPage.title')}</div>
         <div style={{display:'flex', gap:8}}>
-          <input className={s.input} placeholder="Search name/email/username" value={q} onChange={(e)=>{ setPage(1); setQ(e.target.value); }} disabled={forbidden} />
+          <input className={s.input} placeholder={t('admin.usersPage.filters.searchPlaceholder')} value={q} onChange={(e)=>{ setPage(1); setQ(e.target.value); }} disabled={forbidden} />
           <select className={s.input} value={role} onChange={(e)=>{ setPage(1); setRole(e.target.value); }} disabled={forbidden}>
-            <option value="">All roles</option>
+            <option value="">{t('admin.usersPage.filters.roleAll')}</option>
             {ROLE_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
             ))}
           </select>
           <select className={s.input} value={limit} onChange={(e)=>{ setPage(1); setLimit(Number(e.target.value)||10); }} disabled={forbidden}>
@@ -135,10 +144,22 @@ export default function Users() {
           {errorMsg}
         </div>
       )}
-      {loading && <div style={{fontSize:12, color:'#64748b', marginBottom:8}}>Loading…</div>}
+      {loading && (
+        <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+          {t('common.loading')}
+        </div>
+      )}
       <table className={s.table}>
         <thead>
-          <tr><th>Name</th><th>Phone</th><th>Email</th><th>Joined</th><th>Status</th><th>Role</th><th></th></tr>
+          <tr>
+            <th>{t('admin.usersPage.table.name')}</th>
+            <th>{t('admin.usersPage.table.phone')}</th>
+            <th>{t('admin.usersPage.table.email')}</th>
+            <th>{t('admin.usersPage.table.joined')}</th>
+            <th>{t('admin.usersPage.table.status')}</th>
+            <th>{t('admin.usersPage.table.role')}</th>
+            <th>{t('admin.usersPage.table.actions')}</th>
+          </tr>
         </thead>
         <tbody>
           {filtered.map(u => (
@@ -147,9 +168,15 @@ export default function Users() {
               <td>{u.phone}</td>
               <td>{u.email || '-'}</td>
               <td>{u.date_joined ? new Date(u.date_joined).toLocaleString() : '-'}</td>
-              <td>{u.is_active ? <span className={`${s.badge} ${s.badgeActive}`}>Active</span> : <span className={`${s.badge} ${s.badgeInactive}`}>Inactive</span>}</td>
               <td>
-                {ROLE_OPTIONS.find(r => r.value === u.role)?.label || u.role}
+                {u.is_active ? (
+                  <span className={`${s.badge} ${s.badgeActive}`}>{t('admin.usersPage.status.active')}</span>
+                ) : (
+                  <span className={`${s.badge} ${s.badgeInactive}`}>{t('admin.usersPage.status.inactive')}</span>
+                )}
+              </td>
+              <td>
+                {getRoleLabel(u.role)}
               </td>
               <td>
                 <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
@@ -169,7 +196,7 @@ export default function Users() {
                     style={{minWidth:160}}
                   >
                     {ROLE_OPTIONS.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
                     ))}
                   </select>
                 </div>
@@ -179,10 +206,10 @@ export default function Users() {
         </tbody>
       </table>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:12}}>
-        <div style={{fontSize:12, color:'#64748b'}}>Page {page} of {totalPages}</div>
+        <div style={{fontSize:12, color:'#64748b'}}>{t('admin.usersPage.pagination.page', { page, total: totalPages })}</div>
         <div className={s.actions}>
-          <button className={`${s.btn} ${s.muted}`} disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>Prev</button>
-          <button className={`${s.btn} ${s.muted}`} disabled={page>=totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))}>Next</button>
+          <button className={`${s.btn} ${s.muted}`} disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>{t('admin.usersPage.pagination.prev')}</button>
+          <button className={`${s.btn} ${s.muted}`} disabled={page>=totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))}>{t('admin.usersPage.pagination.next')}</button>
         </div>
       </div>
     </div>

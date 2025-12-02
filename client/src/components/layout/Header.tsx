@@ -6,6 +6,7 @@ import SearchBar from "../SearchBar";
 import HeaderActions from "../HeaderActions";
 import { useApp } from "../../context/AppContext";
 import { useAuth } from "../../hooks/useAuth";
+import { useTranslation } from "react-i18next";
 export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean }) {
   const { state, showLocationModal, getCartItemCount } = useApp();
   const cartCount = getCartItemCount();
@@ -15,6 +16,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
   const location = useLocation();
   const [isSideCatalogOpen, setIsSideCatalogOpen] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
+  const { t } = useTranslation();
   
   // Определяем активные маршруты
   const isHomeActive = location.pathname === '/';
@@ -47,7 +49,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                 to="/cart"
                 className="absolute left-1/2 -translate-x-1/2 h-14 w-14 rounded-full shadow-xl ring-1 ring-black/10 border border-white/40 flex items-center justify-center"
                 style={{ background: 'linear-gradient(92.41deg, #003d32, #04734b)', top: '6px' }}
-                aria-label="Корзина"
+                aria-label={t("common.navigation.cart")}
               >
                 <img src="/icons/korzinka2.svg" alt="" className="h-7 w-7 opacity-95" />
                 {cartCount > 0 && (
@@ -66,7 +68,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                         ? 'bg-white/20 shadow-lg' 
                         : 'hover:bg-white/10 active:bg-white/15'
                     }`}
-                    aria-label="Главная"
+                    aria-label={t("common.navigation.home")}
                   >
                     <img src="/img/logo.png" alt="OZAR" className="h-8 w-auto" />
                     {/* <div className="text-white text-sm font-medium">OZAR</div> */}
@@ -80,7 +82,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                         ? 'bg-white/20 shadow-lg' 
                         : 'hover:bg-white/10 active:bg-white/15'
                     }`}
-                    aria-label="Каталог"
+                    aria-label={t("common.navigation.catalog")}
                   >
                     <img src="/icons/catalog.png" alt="" className={`h-7 w-7 ${
                       isCatalogActive ? 'opacity-100' : 'opacity-90'
@@ -97,7 +99,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                         ? 'bg-white/20 shadow-lg' 
                         : 'hover:bg-white/10 active:bg-white/15'
                     }`}
-                    aria-label="Избранное"
+                    aria-label={t("common.navigation.favorites")}
                   >
                     <img src="/icons/like4.svg" alt="" className={`h-7 w-7 ${
                       isFavoritesActive ? 'opacity-100' : 'opacity-90'
@@ -118,7 +120,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                         ? 'bg-white/20 shadow-lg' 
                         : 'hover:bg-white/10 active:bg-white/15'
                     }`}
-                    aria-label={isAuthenticated ? "Профиль" : "Войти"}
+                    aria-label={isAuthenticated ? t("common.auth.profile") : t("common.auth.login")}
                   >
                     <img src="/icons/user2.svg" alt="" className={`h-7 w-7 ${
                       isProfileActive ? 'opacity-100' : 'opacity-90'
@@ -147,21 +149,21 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                 <div
                   onClick={showLocationModal}
                   className="flex items-center gap-1.5 cursor-pointer select-none z-10"
-                  title="Нажмите, чтобы изменить местоположение"
+                  title={t("header.locationTooltip")}
                 >
                   <img src="/icons/location.svg" alt="" className="size-4" />
                   <p
                     className="text-xs md:text-sm max-w-[80px] md:max-w-[240px] truncate whitespace-nowrap overflow-hidden"
-                    title={state.location.data?.address || "Местоположение не определено"}
+                    title={state.location.data?.address || t("header.locationFallback")}
                   >
-                    {state.location.data?.address || "Местоположение не определено"}
+                    {state.location.data?.address || t("header.locationFallback")}
                   </p>
                 </div>
                 {/* OZAR текст по центру в мобильной версии */}
                 <Link
                   to="/"
                   className="absolute left-1/2 transform -translate-x-1/2 md:hidden z-10"
-                  aria-label="На главную"
+                  aria-label={t("common.navigation.home")}
                 >
                   <img src="/img/logo.png" alt="OZAR" className="h-7 w-auto" />
                 </Link>
@@ -175,7 +177,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                   <Link
                     to="/"
                     className=""
-                    aria-label="На главную"
+                    aria-label={t("common.navigation.home")}
                   >
                     {/* <img src="/img/logo.png" alt="OZAR" className="h-8 w-auto" /> */}
                     <div className="text-white text-sm font-medium">OZAR</div>
@@ -212,13 +214,13 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
             >
               <img src="/icons/location.svg" alt="" className="size-5" />
               <p className="text-xs font-medium text-gray-900">
-                {state.location.data?.address?.split(',')[0] || "Ташкент"}
+                {state.location.data?.address?.split(',')[0] || t("common.delivery.defaultCity")}
               </p>
               <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </div>
-            <p className="text-xs text-gray-500">город доставки</p>
+            <p className="text-xs text-gray-500">{t("common.delivery.cityLabel")}</p>
           </div>
 
           {/* Поисковая строка - скрываем на страницах профиля, корзины и избранных */}
@@ -239,7 +241,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                   <input
                     type="text"
                     name="search"
-                    placeholder="Искать товары и категории"
+                    placeholder={t("header.searchPlaceholder")}
                     className="flex-1 bg-gray-100 outline-none text-sm text-gray-900 placeholder:text-gray-400 border-0"
                     style={{ background: 'transparent' }}
                   />
@@ -248,7 +250,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
               <Link
                 to="/favorites"
                 className="p-2 relative"
-                aria-label="Избранное"
+                aria-label={t("common.navigation.favorites")}
               >
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -272,7 +274,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
               to="/cart"
               className="absolute  left-1/2 -translate-x-1/2 h-14 w-14 rounded-full shadow-xl ring-1 ring-black/10 border border-white/40 flex items-center justify-center"
               style={{ background: 'linear-gradient(92.41deg, #003d32, #04734b)', bottom: '17px' }}
-              aria-label="Корзина"
+              aria-label={t("common.navigation.cart")}
             >
               <img src="/icons/korzinka2.svg" alt="" className="h-7 w-7 opacity-95" />
               {cartCount > 0 && (
@@ -291,7 +293,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                       ? 'bg-white/20 shadow-lg' 
                       : 'hover:bg-white/10 active:bg-white/15'
                   }`}
-                  aria-label="Главная"
+                  aria-label={t("common.navigation.home")}
                 >
                   <img src="/img/logo.png" alt="OZAR" className="h-9 w-auto" />
                 </Link>
@@ -301,14 +303,14 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                   type="button"
                   onClick={() => setIsSideCatalogOpen((prev) => !prev)}
                   className="hidden md:inline-flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-white/10 active:bg-white/10 transition"
-                  aria-label="Каталог"
+                  aria-label={t("common.navigation.catalog")}
                 >
                   <img src="/icons/catalog.png" alt="" className="h-7 w-7" />
                 </button>
                 <Link
                   to="/catalog"
                   className="md:hidden inline-flex h-12 w-12 items-center justify-center rounded-2xl hover:bg-white/10 active:bg-white/10 transition"
-                  aria-label="Каталог"
+                  aria-label={t("common.navigation.catalog")}
                 >
                   <img src="/icons/catalog.png" alt="" className="h-7 w-7" />
                 </Link>
@@ -325,7 +327,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                       ? 'bg-white/20 shadow-lg' 
                       : 'hover:bg-white/10 active:bg-white/15'
                   }`}
-                  aria-label="Избранное"
+                  aria-label={t("common.navigation.favorites")}
                 >
                   <img src="/icons/like4.svg" alt="" className={`h-7 w-7 ${
                     isFavoritesActive ? 'opacity-100' : 'opacity-90'
@@ -346,7 +348,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                       ? 'bg-white/20 shadow-lg' 
                       : 'hover:bg-white/10 active:bg-white/15'
                   }`}
-                  aria-label={isAuthenticated ? "Профиль" : "Войти"}
+                  aria-label={isAuthenticated ? t("common.auth.profile") : t("common.auth.login")}
                 >
                   <img src="/icons/user2.svg" alt="" className={`h-7 w-7 ${
                     isProfileActive ? 'opacity-100' : 'opacity-90'

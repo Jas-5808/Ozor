@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import "./TelegramModal.css";
 
 interface TelegramModalProps {
@@ -17,6 +18,7 @@ export function TelegramModal({
   phone,
 }: TelegramModalProps) {
   const [code, setCode] = useState("");
+  const { t } = useTranslation();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,21 +38,21 @@ export function TelegramModal({
     <div className="telegram-modal-overlay">
       <div className="telegram-modal" onClick={(e) => e.stopPropagation()}>
         <div className="telegram-modal-header">
-          <h3>Введите код из Telegram</h3>
-          <button className="telegram-modal-close" onClick={handleClose}>
+          <h3>{t("auth.telegramModal.title")}</h3>
+          <button className="telegram-modal-close" onClick={handleClose} aria-label={t("common.actions.close")}>
             ×
           </button>
         </div>
 
         <div className="telegram-modal-body">
           <p className="telegram-modal-description">
-            Введите код, который вы получили от Telegram бота для номера {phone}
+            {t("auth.telegramModal.description", { phone })}
           </p>
 
           <form onSubmit={handleSubmit} className="telegram-modal-form">
             <input
               type="text"
-              placeholder="Введите код"
+              placeholder={t("auth.telegramModal.codePlaceholder")}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               className="telegram-modal-input"
@@ -63,7 +65,7 @@ export function TelegramModal({
               className="telegram-modal-submit"
               disabled={loading || !code.trim()}
             >
-              {loading ? "Проверка..." : "Подтвердить"}
+              {loading ? t("auth.telegramModal.submitting") : t("auth.telegramModal.submit")}
             </button>
           </form>
         </div>

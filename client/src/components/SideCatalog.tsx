@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import cn from "./mainCss.module.scss";
 import { useCategories, getMainCategories, getSubcategories } from "../hooks/useCategories";
 interface SideCatalogProps {
@@ -9,6 +10,7 @@ export default function SideCatalog({ open, onClose }: SideCatalogProps) {
   const [isVisible, setIsVisible] = useState(open);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const { categories, loading } = useCategories();
+  const { t } = useTranslation();
   useEffect(() => {
     if (open) {
       setIsVisible(true);
@@ -51,11 +53,11 @@ export default function SideCatalog({ open, onClose }: SideCatalogProps) {
         className={`${cn.sideCatalog_panel} ${open ? cn.open : cn.close}`}
       >
         <div className={cn.sideCatalog_header}>
-          <span>Каталог</span>
+          <span>{t("catalog.header")}</span>
           <button 
             className={cn.sideCatalog_close}
             onClick={onClose}
-            aria-label="Закрыть каталог"
+            aria-label={t("catalog.sidePanel.close")}
           >
             ×
           </button>
@@ -63,7 +65,7 @@ export default function SideCatalog({ open, onClose }: SideCatalogProps) {
         <div className={cn.sideCatalog_list}>
           {loading ? (
             <div className={cn.sideCatalog_loading}>
-              Загрузка категорий...
+              {t("catalog.loading")}
             </div>
           ) : (
             mainCategories.map((category) => {

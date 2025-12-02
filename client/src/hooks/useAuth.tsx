@@ -6,6 +6,7 @@ import {
   ReactNode,
 } from "react";
 import { authAPI, userAPI } from "../api";
+import i18n from "../i18n";
 
 interface User {
   token: string;
@@ -59,7 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setProfile(response.data);
       return response.data;
     } catch (err) {
-      console.error("Ошибка при получении профиля:", err);
+      console.error("Failed to fetch profile:", err);
       throw err;
     }
   };
@@ -87,7 +88,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
   const signin = async (phone: string, password: string) => {
     console.log("=== useAuth.signin DEBUG ===");
-    console.log("Получены параметры:", { 
+    console.log("Received parameters:", { 
       phone: phone, 
       password: password ? "***" : undefined,
       phoneType: typeof phone,
@@ -97,7 +98,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      console.log("Вызываем authAPI.signin с параметрами:", { phone, password: password ? "***" : undefined });
+      console.log("Calling authAPI.signin with params:", { phone, password: password ? "***" : undefined });
       const response = await authAPI.signin(phone, password);
       const { access_token, refresh_token } = response.data;
       localStorage.setItem("access_token", access_token);
@@ -109,7 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await fetchUserProfile();
       return response.data;
     } catch (err) {
-      const errorMessage = err.response?.data?.message || "Ошибка входа";
+      const errorMessage = err.response?.data?.message || i18n.t("common.errors.auth.signin");
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -131,7 +132,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await fetchUserProfile();
       return response.data;
     } catch (err) {
-      const errorMessage = err.response?.data?.message || "Ошибка регистрации";
+      const errorMessage = err.response?.data?.message || i18n.t("common.errors.auth.signup");
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -142,7 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await authAPI.logout();
     } catch (err) {
-      console.error("Ошибка при выходе:", err);
+      console.error("Failed to logout:", err);
     } finally {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");

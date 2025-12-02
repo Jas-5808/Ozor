@@ -331,6 +331,32 @@
   gap: 10px;
 }
 
+.langSwitch {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font-weight: 600;
+}
+
+.langSelect {
+  border: none;
+  background: transparent;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  outline: none;
+}
+
+.langSelect option {
+  color: #0f172a;
+}
+
 .iconButton {
   height: 40px;
   width: 40px;
@@ -408,6 +434,17 @@
   .toolbarActions {
     align-self: flex-end;
   }
+}
+
+.rootDark .langSwitch {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.rootDark .langSelect,
+.rootDark .langSelect option {
+  color: #f8fafc;
+  background: #0f172a;
 }
 
 @media (max-width: 640px) {

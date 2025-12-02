@@ -1,9 +1,35 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import cn from "./style.module.scss";
 import { userAPI } from "../services/api";
+import useSEO from "../hooks/useSEO";
+
+const REGION_OPTIONS: Array<{ value: string; labelKey: string }> = [
+  { value: "tashkent", labelKey: "profileUpdate.regions.tashkent" },
+  { value: "tashkent_region", labelKey: "profileUpdate.regions.tashkentRegion" },
+  { value: "samarkand", labelKey: "profileUpdate.regions.samarkand" },
+  { value: "bukhara", labelKey: "profileUpdate.regions.bukhara" },
+  { value: "andijan", labelKey: "profileUpdate.regions.andijan" },
+  { value: "fergana", labelKey: "profileUpdate.regions.fergana" },
+  { value: "namangan", labelKey: "profileUpdate.regions.namangan" },
+  { value: "navoiy", labelKey: "profileUpdate.regions.navoiy" },
+  { value: "kashkadarya", labelKey: "profileUpdate.regions.kashkadarya" },
+  { value: "surkhandarya", labelKey: "profileUpdate.regions.surkhandarya" },
+  { value: "sirdarya", labelKey: "profileUpdate.regions.sirdarya" },
+  { value: "jizzakh", labelKey: "profileUpdate.regions.jizzakh" },
+  { value: "khorezm", labelKey: "profileUpdate.regions.khorezm" },
+  { value: "karakalpakstan", labelKey: "profileUpdate.regions.karakalpakstan" },
+];
 
 export function UpdateProfile() {
+  const { t } = useTranslation();
+  useSEO({
+    title: t("profileUpdate.seoTitle"),
+    robots: "noindex,nofollow",
+    canonical:
+      typeof window !== "undefined" ? window.location.origin + "/update-profile" : undefined,
+  });
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -16,37 +42,22 @@ export function UpdateProfile() {
   const [success, setSuccess] = useState(false);
   const [region, setRegion] = useState<string>("");
 
-  // ORDER_CITY (regions/city) with Uzbek labels
-  const REGIONS_UZ: Array<{ value: string; label: string }> = [
-    { value: "tashkent", label: "Toshkent" },
-    { value: "tashkent_region", label: "Toshkent viloyati" },
-    { value: "samarkand", label: "Samarqand" },
-    { value: "bukhara", label: "Buxoro" },
-    { value: "andijan", label: "Andijon" },
-    { value: "fergana", label: "Farg'ona" },
-    { value: "namangan", label: "Namangan" },
-    { value: "navoiy", label: "Navoiy" },
-    { value: "kashkadarya", label: "Qashqadaryo" },
-    { value: "surkhandarya", label: "Surxondaryo" },
-    { value: "sirdarya", label: "Sirdaryo" },
-    { value: "jizzakh", label: "Jizzax" },
-    { value: "khorezm", label: "Xorazm" },
-    { value: "karakalpakstan", label: "Qoraqalpog'iston" },
-  ];
+  const regionOptions = useMemo(
+    () =>
+      REGION_OPTIONS.map((opt) => ({
+        value: opt.value,
+        label: t(opt.labelKey),
+      })),
+    [t]
+  );
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Проверяем, есть ли JWT токен
     const token = localStorage.getItem("access_token");
     if (!token) {
       navigate("/login");
     }
-    // Инициализация региона из ранее сохранённой локации
-    try {
-      const saved = (formData.location || "").trim();
-      if (saved) setRegion(saved);
-    } catch {}
   }, [navigate]);
 
   const handleInputChange = (
@@ -65,8 +76,6 @@ export function UpdateProfile() {
     setLoading(true);
 
     try {
-      // Подготавливаем данные для отправки
-      // Отправляем все поля, обязательные с пустыми строками если не заполнены
       const updateData = {
         first_name: formData.first_name.trim() || "",
         last_name: formData.last_name.trim() || "",
@@ -75,33 +84,29 @@ export function UpdateProfile() {
         bio: formData.bio.trim() || "",
       };
 
-      console.log("Отправляем данные:", updateData);
+      console.log("Submitting profile data:", updateData);
 
       await userAPI.updateProfile(updateData);
       setSuccess(true);
 
-      // Через 2 секунды перенаправляем на главную страницу
       setTimeout(() => {
         navigate("/");
       }, 2000);
     } catch (err: any) {
-      console.error("Ошибка обновления профиля:", err);
+      console.error("Profile update failed:", err);
 
-      // Более детальная обработка ошибок
       if (err.response?.data?.detail) {
         const details = err.response.data.detail;
         if (Array.isArray(details)) {
           const errorMessages = details
             .map((detail: any) => detail.msg)
             .join(", ");
-          setError(`Ошибка валидации: ${errorMessages}`);
+          setError(t("profileUpdate.errors.validation", { message: errorMessages }));
         } else {
-          setError(`Ошибка: ${details}`);
+          setError(t("profileUpdate.errors.detail", { message: details }));
         }
       } else {
-        setError(
-          err.response?.data?.message || "Ошибка при обновлении профиля"
-        );
+        setError(err.response?.data?.message || t("profileUpdate.errors.generic"));
       }
     } finally {
       setLoading(false);
@@ -118,9 +123,9 @@ export function UpdateProfile() {
         <div className={cn.regist_content}>
           <div style={{ textAlign: "center", padding: "40px 0" }}>
             <h2 style={{ color: "green", marginBottom: "20px" }}>
-              Профиль успешно обновлен!
+              {t("profileUpdate.success.title")}
             </h2>
-            <p>Перенаправление на главную страницу...</p>
+            <p>{t("profileUpdate.success.redirect")}</p>
           </div>
         </div>
       </div>
@@ -130,15 +135,17 @@ export function UpdateProfile() {
   return (
     <div className="container">
       <div className={cn.regist_content}>
-        <div style={{
-          background: 'linear-gradient(135deg, #eef2ff, #faf5ff)',
-          border: '1px solid #e9d5ff',
-          borderRadius: 16,
-          padding: 20,
-          width: '100%'
-        }}>
-          <h2 className={cn.title}>Profil ma'lumotlari</h2>
-          <p className={cn.subtitle}>Qo'shimcha ma'lumotlarni kiriting (ixtiyoriy)</p>
+        <div
+          style={{
+            background: "linear-gradient(135deg, #eef2ff, #faf5ff)",
+            border: "1px solid #e9d5ff",
+            borderRadius: 16,
+            padding: 20,
+            width: "100%",
+          }}
+        >
+          <h2 className={cn.title}>{t("profileUpdate.title")}</h2>
+          <p className={cn.subtitle}>{t("profileUpdate.subtitle")}</p>
 
           {error && <div className={cn.error_message}>{error}</div>}
 
@@ -147,7 +154,7 @@ export function UpdateProfile() {
               <input
                 type="text"
                 name="first_name"
-                placeholder="Ism"
+                placeholder={t("profileUpdate.placeholders.firstName")}
                 value={formData.first_name}
                 onChange={handleInputChange}
                 className={cn.input}
@@ -155,7 +162,7 @@ export function UpdateProfile() {
               <input
                 type="text"
                 name="last_name"
-                placeholder="Familiya"
+                placeholder={t("profileUpdate.placeholders.lastName")}
                 value={formData.last_name}
                 onChange={handleInputChange}
                 className={cn.input}
@@ -165,27 +172,24 @@ export function UpdateProfile() {
             <input
               type="email"
               name="email"
-              placeholder="Email (ixtiyoriy)"
+              placeholder={t("profileUpdate.placeholders.email")}
               value={formData.email}
               onChange={handleInputChange}
               className={cn.input}
             />
 
-            {/* Region only selector */}
-            <select
-              className={cn.input}
-              value={region}
-              onChange={(e)=> setRegion(e.target.value)}
-            >
-              <option value="">— Hududni tanlang —</option>
-              {REGIONS_UZ.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+            <select className={cn.input} value={region} onChange={(e) => setRegion(e.target.value)}>
+              <option value="">{t("profileUpdate.placeholders.regionPlaceholder")}</option>
+              {regionOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </select>
 
             <textarea
               name="bio"
-              placeholder="Qo'shimcha ma'lumot (ixtiyoriy)"
+              placeholder={t("profileUpdate.placeholders.bio")}
               value={formData.bio}
               onChange={handleInputChange}
               className={cn.textarea}
@@ -194,7 +198,7 @@ export function UpdateProfile() {
 
             <div className={cn.button_row}>
               <button type="submit" className={cn.btn_primary} disabled={loading}>
-                {loading ? "Saqlanmoqda..." : "Saqlash"}
+                {loading ? t("profileUpdate.buttons.saving") : t("profileUpdate.buttons.save")}
               </button>
               <button
                 type="button"
@@ -202,7 +206,7 @@ export function UpdateProfile() {
                 className={cn.btn_secondary}
                 disabled={loading}
               >
-                O'tkazib yuborish
+                {t("profileUpdate.buttons.skip")}
               </button>
             </div>
           </form>

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 // @ts-ignore
 import s from '../AdminLayout.module.scss';
 import { shopAPI } from '../../services/api';
@@ -13,6 +14,7 @@ type ApiCategory = {
 };
 
 export default function Categories() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<ApiCategory[]>([]);
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
@@ -28,7 +30,7 @@ export default function Categories() {
       const res = await shopAPI.getCategories(); // GET /shop/categories
       setItems(res.data?.data || res.data || []);
     } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || 'Load error');
+      setError(e?.response?.data?.message || e?.message || t('admin.categoriesPage.form.errorLoad'));
     } finally {
       setLoading(false);
     }
@@ -42,7 +44,7 @@ export default function Categories() {
       setName(''); setParentId('');
       await load();
     } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || 'Create error');
+      setError(e?.response?.data?.message || e?.message || t('admin.categoriesPage.form.errorCreate'));
     } finally {
       setLoading(false);
     }
@@ -60,18 +62,24 @@ export default function Categories() {
 
   return (
     <div className={s.panel}>
-      <div style={{fontWeight:700, marginBottom:12}}>Categories</div>
+      <div style={{fontWeight:700, marginBottom:12}}>{t('admin.categoriesPage.title')}</div>
       <div className={s.form} style={{marginBottom:12}}>
-        <input className={s.input} placeholder="Name" value={name} onChange={(e)=>setName(e.target.value)} />
-        <input className={s.input} placeholder="Parent ID (optional)" value={parentId} onChange={(e)=>setParentId(e.target.value)} />
+        <input className={s.input} placeholder={t('admin.categoriesPage.form.namePlaceholder')} value={name} onChange={(e)=>setName(e.target.value)} />
+        <input className={s.input} placeholder={t('admin.categoriesPage.form.parentPlaceholder')} value={parentId} onChange={(e)=>setParentId(e.target.value)} />
         <button className={`${s.btn} ${s.primary}`} disabled={!canSubmit || loading} onClick={addItem}>
-          {loading ? 'Please wait...' : 'Add category'}
+          {loading ? t('admin.categoriesPage.form.submitting') : t('admin.categoriesPage.form.submit')}
         </button>
       </div>
       {error && <div style={{ color: '#b91c1c', marginBottom: 10 }}>{error}</div>}
       <table className={s.table}>
         <thead>
-          <tr><th>Name</th><th>Parent</th><th>Subcats</th><th>Products</th><th>ID</th></tr>
+          <tr>
+            <th>{t('admin.categoriesPage.table.name')}</th>
+            <th>{t('admin.categoriesPage.table.parent')}</th>
+            <th>{t('admin.categoriesPage.table.subcats')}</th>
+            <th>{t('admin.categoriesPage.table.products')}</th>
+            <th>{t('admin.categoriesPage.table.id')}</th>
+          </tr>
         </thead>
         <tbody>
           {items.map(i=> (
@@ -99,9 +107,9 @@ export default function Categories() {
                   ) : (
                     <button
                       className={`${s.btn} ${s.muted}`}
-                      title="Копировать ID"
+                    title={t('admin.categoriesPage.table.copyTitle')}
                       onClick={()=>copyId(i.id)}
-                      aria-label="Копировать ID"
+                    aria-label={t('admin.categoriesPage.table.copyAria')}
                       style={{ height: 30, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

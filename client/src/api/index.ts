@@ -34,15 +34,15 @@ apiClient.interceptors.request.use(
         console.log("Data.get('phone'):", config.data.get("phone"));
         console.log("Data.get('password'):", config.data.get("password") ? "***" : "undefined");
         
-        // Проверяем, что данные действительно есть
+        // Ensure both credentials exist
         const phone = config.data.get("phone");
         const password = config.data.get("password");
         if (!phone || !password) {
-          console.error("❌ В URLSearchParams отсутствуют данные!");
+          console.error("❌ Missing data inside URLSearchParams!");
           console.error("   phone:", phone);
           console.error("   password:", password ? "***" : "undefined");
         } else {
-          console.log("✅ Данные присутствуют в URLSearchParams");
+          console.log("✅ URLSearchParams payload is valid");
         }
       } else if (typeof config.data === 'string') {
         console.log("Data is string:", config.data.replace(/password=[^&]*/, 'password=***'));
@@ -54,7 +54,7 @@ apiClient.interceptors.request.use(
       console.log("=== API index.ts REQUEST INTERCEPTOR DEBUG END ===");
     }
     
-    console.log("Отправляем запрос:", config.method?.toUpperCase(), fullUrl);
+    console.log("Sending request:", config.method?.toUpperCase(), fullUrl);
     const token = localStorage.getItem("access_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -68,7 +68,7 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   (response) => {
-    console.log("Получен ответ:", response.status, response.config.url);
+    console.log("Received response:", response.status, response.config.url);
     return response;
   },
   (error) => {

@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { useAuth } from "../../hooks/useAuth";
+import { useTranslation } from "react-i18next";
 
 export function BottomNavbar() {
   const { getCartItemCount, state } = useApp();
@@ -8,6 +9,10 @@ export function BottomNavbar() {
   const location = useLocation();
   const cartCount = getCartItemCount();
   const likedCount = state.likedProducts?.size || 0;
+  const { t } = useTranslation();
+  const nav = t("common.navigation", { returnObjects: true }) as Record<string, string>;
+  const navShort = t("common.navigationShort", { returnObjects: true }) as Record<string, string>;
+  const auth = t("common.auth", { returnObjects: true }) as Record<string, string>;
 
   // Определяем активные маршруты
   const isHomeActive = location.pathname === '/';
@@ -29,13 +34,13 @@ export function BottomNavbar() {
                     ? 'text-[#003d32]' 
                     : 'text-gray-600 hover:text-[#003d32] active:scale-95'
                 }`}
-                aria-label="Главная"
+                aria-label={nav.home}
               >
                 <span className={`text-base font-extrabold tracking-tight ${isHomeActive ? '' : 'opacity-70'}`}>
                   OZAR
                 </span>
                 <span className={`text-[10px] font-medium ${isHomeActive ? 'font-semibold' : ''}`}>
-                  Bosh
+                  {navShort.home}
                 </span>
               </Link>
             </li>
@@ -47,7 +52,7 @@ export function BottomNavbar() {
                     ? 'text-[#003d32]' 
                     : 'text-gray-600 hover:text-[#003d32] active:scale-95'
                 }`}
-                aria-label="Каталог"
+                aria-label={nav.catalog}
               >
                 <svg 
                   width="24" 
@@ -64,7 +69,7 @@ export function BottomNavbar() {
                   <rect x="3" y="14" width="7" height="7"/>
                 </svg>
                 <span className={`text-[10px] font-medium ${isCatalogActive ? 'font-semibold' : ''}`}>
-                  Katalog
+                  {navShort.catalog}
                 </span>
               </Link>
             </li>
@@ -76,7 +81,7 @@ export function BottomNavbar() {
                     ? 'text-[#003d32]' 
                     : 'text-gray-600 hover:text-[#003d32] active:scale-95'
                 }`}
-                aria-label="Корзина"
+                aria-label={nav.cart}
               >
                 <svg 
                   width="24" 
@@ -97,7 +102,7 @@ export function BottomNavbar() {
                   </span>
                 )}
                 <span className={`text-[10px] font-medium ${isCartActive ? 'font-semibold' : ''}`}>
-                  Savatcha
+                  {navShort.cart}
                 </span>
               </Link>
             </li>
@@ -109,7 +114,7 @@ export function BottomNavbar() {
                     ? 'text-[#003d32]' 
                     : 'text-gray-600 hover:text-[#003d32] active:scale-95'
                 }`}
-                aria-label="Избранное"
+                aria-label={nav.favorites}
               >
                 <svg 
                   width="24" 
@@ -128,7 +133,7 @@ export function BottomNavbar() {
                   </span>
                 )}
                 <span className={`text-[10px] font-medium ${isFavoritesActive ? 'font-semibold' : ''}`}>
-                  Tanlanganlar
+                  {navShort.favorites}
                 </span>
               </Link>
             </li>
@@ -141,7 +146,7 @@ export function BottomNavbar() {
                     ? 'text-[#003d32]' 
                     : 'text-gray-600 hover:text-[#003d32] active:scale-95'
                 }`}
-                aria-label={isAuthenticated ? "Профиль" : "Войти"}
+                aria-label={isAuthenticated ? auth.profile : auth.login}
               >
                 <svg 
                   width="24" 
@@ -156,7 +161,7 @@ export function BottomNavbar() {
                   <circle cx="12" cy="7" r="4"/>
                 </svg>
                 <span className={`text-[10px] font-medium ${isProfileActive ? 'font-semibold' : ''}`}>
-                  {isAuthenticated ? 'Profil' : 'Kirish'}
+                  {isAuthenticated ? navShort.profile : auth.login}
                 </span>
               </Link>
             </li>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 interface LocationState {
   latitude: number | null;
@@ -18,6 +19,7 @@ interface AddressData {
 }
 
 const useGeolocation = () => {
+  const { t } = useTranslation();
   const [location, setLocation] = useState<LocationState>({
     latitude: null,
     longitude: null,
@@ -54,8 +56,8 @@ const useGeolocation = () => {
           adr.village ||
           adr.locality ||
           adr.county ||
-          "Неизвестно";
-        const country = adr.country || "Неизвестно";
+          t("common.location.unknownCity");
+        const country = adr.country || t("common.location.unknownCountry");
         const compactAddress = streetHouse || data.display_name;
         return {
           address: compactAddress,
@@ -65,7 +67,7 @@ const useGeolocation = () => {
       }
       return null;
     } catch (error) {
-      console.error("Ошибка при получении адреса:", error);
+      console.error("Failed to resolve address:", error);
       return null;
     }
   };
@@ -73,7 +75,7 @@ const useGeolocation = () => {
     if (!navigator.geolocation) {
       setLocation((prev) => ({
         ...prev,
-        error: "Геолокация не поддерживается вашим браузером",
+        error: t("common.errors.geolocation.unsupported"),
         loading: false,
       }));
       return;
@@ -86,28 +88,28 @@ const useGeolocation = () => {
         setLocation({
           latitude,
           longitude,
-          address: addressData?.address || "Адрес не найден",
-          city: addressData?.city || "Неизвестно",
-          country: addressData?.country || "Неизвестно",
+          address: addressData?.address || t("common.errors.geolocation.addressNotFound"),
+          city: addressData?.city || t("common.location.unknownCity"),
+          country: addressData?.country || t("common.location.unknownCountry"),
           error: null,
           loading: false,
           permissionGranted: true,
         });
       },
       (error) => {
-        let errorMessage = "Не удалось определить местоположение";
+        let errorMessage = t("common.errors.geolocation.failed");
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            errorMessage = "Доступ к геолокации запрещен пользователем";
+            errorMessage = t("common.errors.geolocation.denied");
             break;
           case error.POSITION_UNAVAILABLE:
-            errorMessage = "Информация о местоположении недоступна";
+            errorMessage = t("common.errors.geolocation.unavailable");
             break;
           case error.TIMEOUT:
-            errorMessage = "Время ожидания запроса геолокации истекло";
+            errorMessage = t("common.errors.geolocation.timeout");
             break;
           default:
-            errorMessage = "Произошла неизвестная ошибка";
+            errorMessage = t("common.errors.geolocation.unknown");
             break;
         }
         setLocation((prev) => ({
@@ -135,7 +137,7 @@ const useGeolocation = () => {
         setLocation((prev) => ({ ...prev, ...parsedLocation, loading: false }));
       } catch (error) {
         console.error(
-          "Ошибка при загрузке сохраненного местоположения:",
+          "Failed to read stored location:",
           error
         );
       }

@@ -1,6 +1,6 @@
 import React, { memo, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
-// CSS module removed - using Tailwind utilities
+import { useTranslation } from "react-i18next";
 import { useApp } from "../../context/AppContext";
 import { formatPrice, truncateText, getProductImageUrl, getVariantMainImage } from "../../utils/helpers";
 import { Product } from "../../types";
@@ -18,6 +18,7 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
   isLiked = false,
 }) => {
   const { toggleLike, isLiked: isProductLiked } = useApp();
+  const { t } = useTranslation();
   
   // Создаем уникальный идентификатор: product_id + variant_id (если есть)
   // Это гарантирует, что разные варианты одного товара считаются разными
@@ -80,7 +81,9 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
             style={{ backgroundColor: 'white' }}
             onClick={handleToggleLikeMemo}
             aria-pressed={liked}
-            aria-label={liked ? "Убрать из избранного" : "Добавить в избранное"}
+            aria-label={
+              liked ? t("common.actions.removeFavorite") : t("common.actions.addFavorite")
+            }
           >
             <img
               src={liked ? "/icons/like3.svg" : "/icons/like2.svg"}
@@ -97,7 +100,7 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
             <h3 className="font-semibold text-sm" style={{ color: '#059669' }}>
               {product.price && product.price > 0
                 ? formatPrice(product.price)
-                : "Цена не указана"}
+                : t("product.priceMissing")}
             </h3>
           </div>
           <div className="font-semibold text-sm leading-tight">

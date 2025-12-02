@@ -1,24 +1,30 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import useSEO from "../hooks/useSEO";
 import ProductsList from "../components/ProductsList";
 import SimpleSlider from "../components/SimpleSlider";
 
 export function MainPage() {
+  const { t } = useTranslation();
+  const pageTitle = t("home.seoTitle");
+  const pageDescription = t("home.seoDescription");
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+
   useSEO({
-    title: "OZAR — onlayn do'kon",
-    description: "Smartfonlar, elektronika va maishiy texnika. O'zbekiston bo'ylab tez yetkazib berish.",
-    canonical: typeof window !== 'undefined' ? window.location.origin + '/' : undefined,
+    title: pageTitle,
+    description: pageDescription,
+    canonical: origin ? `${origin}/` : undefined,
     openGraph: {
-      'og:title': "OZAR — onlayn do'kon",
-      'og:description': "Smartfonlar, elektronika va maishiy texnika. O'zbekiston bo'ylab tez yetkazib berish.",
-      'og:type': 'website',
-      'og:url': typeof window !== 'undefined' ? window.location.origin + '/' : '',
+      "og:title": pageTitle,
+      "og:description": pageDescription,
+      "og:type": "website",
+      "og:url": origin ? `${origin}/` : "",
     },
     twitter: {
-      'twitter:card': 'summary_large_image',
-      'twitter:title': "OZAR — onlayn do'kon",
-      'twitter:description': "Smartfonlar, elektronika va maishiy texnika. O'zbekiston bo'ylab tez yetkazib berish."
-    }
+      "twitter:card": "summary_large_image",
+      "twitter:title": pageTitle,
+      "twitter:description": pageDescription,
+    },
   });
 
   return (

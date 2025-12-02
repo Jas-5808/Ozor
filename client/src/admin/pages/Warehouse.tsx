@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 // @ts-ignore
 import s from '../AdminLayout.module.scss';
 import { warehouseAPI } from '../../services/api';
@@ -33,21 +34,15 @@ interface WarehouseLocation {
   total_stock?: number;
 }
 
-const STATUS_TABS: Array<{ key: WarehouseStatus; label: string }> = [
-  { key: 'all', label: 'Все' },
-  { key: 'accepted', label: 'Ожидают' },
-  { key: 'packing', label: 'Сборка' },
-  { key: 'ready_to_ship', label: 'К отгрузке' },
+const STATUS_TABS: Array<{ key: WarehouseStatus; labelKey: string }> = [
+  { key: 'all', labelKey: 'admin.warehouse.tabs.all' },
+  { key: 'accepted', labelKey: 'admin.warehouse.tabs.accepted' },
+  { key: 'packing', labelKey: 'admin.warehouse.tabs.packing' },
+  { key: 'ready_to_ship', labelKey: 'admin.warehouse.tabs.ready' },
 ];
 
-const STATUS_LABELS: Record<string, string> = {
-  accepted: 'Ожидает',
-  packing: 'Сборка',
-  ready_to_ship: 'К отгрузке',
-  shipped: 'Отправлен',
-};
-
 export default function Warehouse() {
+  const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState<WarehouseStatus>('all');
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('all');
@@ -60,12 +55,12 @@ export default function Warehouse() {
 
   const kpis = useMemo(
     () => [
-      { label: 'SKU', value: 128, accent: '#e0e7ff' },
-      { label: 'Всего остатков', value: 4521, accent: '#dcfce7' },
-      { label: 'Товаров < min', value: 14, accent: '#fee2e2' },
-      { label: 'Зарезервировано', value: 236, accent: '#fff7ed' },
+      { label: t('admin.warehouse.kpis.sku'), value: 128, accent: '#e0e7ff' },
+      { label: t('admin.warehouse.kpis.totalStock'), value: 4521, accent: '#dcfce7' },
+      { label: t('admin.warehouse.kpis.lowStock'), value: 14, accent: '#fee2e2' },
+      { label: t('admin.warehouse.kpis.reserved'), value: 236, accent: '#fff7ed' },
     ],
-    []
+    [t]
   );
 
   useEffect(() => {
@@ -104,7 +99,7 @@ export default function Warehouse() {
         }
       } catch (err) {
         if (!ignore) {
-          setError('Не удалось загрузить данные склада');
+          setError(t('admin.warehouse.errors.loadFailed'));
         }
       } finally {
         if (!ignore) {
@@ -168,7 +163,7 @@ export default function Warehouse() {
         )
       );
     } catch (err) {
-      setError('Не удалось обновить статус заказа');
+      setError(t('admin.warehouse.errors.updateFailed'));
     } finally {
       setUpdatingId(null);
     }
@@ -178,9 +173,9 @@ export default function Warehouse() {
     <div className={s.dashboard}>
       <section className={s.hero}>
         <div>
-          <p className={s.heroEyebrow}>Склад</p>
-          <h1>Управление запасами</h1>
-          <p>Контролируйте остатки, движения и дефицит по всем локациям.</p>
+          <p className={s.heroEyebrow}>{t('admin.warehouse.hero.eyebrow')}</p>
+          <h1>{t('admin.warehouse.hero.title')}</h1>
+          <p>{t('admin.warehouse.hero.subtitle')}</p>
         </div>
         <div className={s.heroStats}>
           {kpis.slice(0, 3).map((item) => (
@@ -202,10 +197,10 @@ export default function Warehouse() {
       </section>
 
       <section className={s.panel}>
-        <div className={s.panelHeader}>
-          <span>Заказы для комплектации</span>
-          <small>Обновлено 5 минут назад</small>
-        </div>
+          <div className={s.panelHeader}>
+            <span>{t('admin.warehouse.queue.title')}</span>
+            <small>{t('admin.warehouse.queue.subtitle')}</small>
+          </div>
         <div className={s.warehouseFilters}>
           <div className={s.tabChips}>
             {STATUS_TABS.map((item) => (
@@ -219,7 +214,7 @@ export default function Warehouse() {
                     : s.filterChip
                 }
               >
-                {item.label}
+                {t(item.labelKey)}
               </button>
             ))}
           </div>
@@ -228,36 +223,38 @@ export default function Warehouse() {
               <span>🔎</span>
               <input
                 type="search"
-                placeholder="Поиск заказа или SKU"
+                placeholder={t('admin.warehouse.filters.search')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
             <select className={s.input} value={location} onChange={(e) => setLocation(e.target.value)}>
-              <option value="all">Все локации</option>
-              <option value="tashkent">Ташкент</option>
-              <option value="navoiy">Навои</option>
-              <option value="karshi">Карши</option>
+              <option value="all">{t('admin.warehouse.filters.allLocations')}</option>
+              <option value="tashkent">{t('admin.warehouse.filters.tashkent')}</option>
+              <option value="navoiy">{t('admin.warehouse.filters.navoiy')}</option>
+              <option value="karshi">{t('admin.warehouse.filters.karshi')}</option>
             </select>
             <button className={`${s.btn} ${s.primary}`} type="button">
-              Применить
+              {t('common.actions.apply')}
             </button>
           </div>
         </div>
       </section>
 
       <section className={s.panel}>
-        <div className={s.panelHeader}>
-          <span>Очередь заказов</span>
-          <small>
-            Статус: {STATUS_TABS.find((t) => t.key === statusFilter)?.label}
-          </small>
-        </div>
+          <div className={s.panelHeader}>
+            <span>{t('admin.warehouse.queue.boardTitle')}</span>
+            <small>
+              {t('admin.warehouse.queue.currentStatus', {
+                status: t(STATUS_TABS.find((t) => t.key === statusFilter)?.labelKey ?? ''),
+              })}
+            </small>
+          </div>
         <div className={s.ordersBoard}>
-          {loading && <p>Загружаем заказы...</p>}
+          {loading && <p>{t('admin.warehouse.queue.loading')}</p>}
           {error && !loading && <p style={{ color: '#b91c1c' }}>{error}</p>}
           {!loading && !error && filteredOrders.length === 0 && (
-            <p>Заказы по текущим фильтрам не найдены.</p>
+            <p>{t('admin.warehouse.queue.empty')}</p>
           )}
           {!loading &&
             !error &&
@@ -269,12 +266,12 @@ export default function Warehouse() {
                     <span>{new Date(order.created_at).toLocaleString()}</span>
                   </div>
                   <span className={`${s.badge} ${s.badgeInfo}`}>
-                    {STATUS_LABELS[order.status] || order.status}
+                    {t(`admin.warehouse.status.${order.status}`, order.status)}
                   </span>
                 </header>
                 <div className={s.orderMeta}>
-                  <span>Город: {order.city || '—'}</span>
-                  <span>Регион: {order.order_region || '—'}</span>
+                  <span>{t('admin.warehouse.order.city')}: {order.city || '—'}</span>
+                  <span>{t('admin.warehouse.order.region')}: {order.order_region || '—'}</span>
                   {order.order_comment && <p>{order.order_comment}</p>}
                 </div>
                 <ul className={s.orderItems}>
@@ -296,13 +293,13 @@ export default function Warehouse() {
                     onClick={() => handleAdvance(order)}
                   >
                     {updatingId === order.id
-                      ? 'Обновляем...'
+                      ? t('admin.warehouse.actions.updating')
                       : order.status === 'accepted'
-                      ? 'Начать сборку'
-                      : 'Готов к отгрузке'}
+                      ? t('admin.warehouse.actions.startPacking')
+                      : t('admin.warehouse.actions.readyToShip')}
                   </button>
                   <button className={`${s.btn} ${s.muted}`} type="button">
-                    Детали
+                    {t('admin.warehouse.actions.details')}
                   </button>
                 </footer>
               </article>
@@ -313,8 +310,8 @@ export default function Warehouse() {
       {myOrders.length > 0 && (
         <section className={s.panel}>
           <div className={s.panelHeader}>
-            <span>Мои сборки</span>
-            <small>Заказы, над которыми вы работаете</small>
+            <span>{t('admin.warehouse.myOrders.title')}</span>
+            <small>{t('admin.warehouse.myOrders.subtitle')}</small>
           </div>
           <div className={s.myOrdersWrapper}>
             {myOrders.map((order) => (
@@ -329,8 +326,8 @@ export default function Warehouse() {
                   </span>
                 </header>
                 <div className={s.orderMeta}>
-                  <span>Телефон: {order.client_phone || '—'}</span>
-                  <span>Сумма: {order.total_price?.toLocaleString() || '—'}</span>
+                  <span>{t('admin.warehouse.order.phone')}: {order.client_phone || '—'}</span>
+                  <span>{t('admin.warehouse.order.total')}: {order.total_price?.toLocaleString() || '—'}</span>
                 </div>
                 <ul className={s.orderItems}>
                   {order.items.map((item) => (
@@ -350,7 +347,7 @@ export default function Warehouse() {
                     disabled={updatingId === order.id}
                     onClick={() => handleAdvance(order)}
                   >
-                    {updatingId === order.id ? 'Отправляем...' : 'Готово к отгрузке'}
+                    {updatingId === order.id ? t('admin.warehouse.actions.submitting') : t('admin.warehouse.actions.readyToShip')}
                   </button>
                 </footer>
               </article>
@@ -362,15 +359,17 @@ export default function Warehouse() {
       {locations.length > 0 && (
         <section className={s.panel}>
           <div className={s.panelHeader}>
-            <span>Локации склада</span>
-            <small>Ячейки и остатки</small>
+            <span>{t('admin.warehouse.locations.title')}</span>
+            <small>{t('admin.warehouse.locations.subtitle')}</small>
           </div>
           <div className={s.locationsGrid}>
             {locations.map((loc) => (
               <article key={loc.id} className={s.locationCard}>
                 <div className={s.locationCode}>{loc.code || '—'}</div>
-                <p>{loc.description || 'Без описания'}</p>
-                <strong>{loc.total_stock?.toLocaleString() ?? '—'} шт.</strong>
+                <p>{loc.description || t('admin.warehouse.locations.noDescription')}</p>
+                <strong>
+                  {loc.total_stock?.toLocaleString() ?? '—'} {t('admin.warehouse.locations.units')}
+                </strong>
               </article>
             ))}
           </div>

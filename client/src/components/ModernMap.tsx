@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type mapboxgl from 'mapbox-gl';
 import { MAPBOX_CONFIG } from '../config/mapbox';
 import './ModernMap.css';
 
-// Динамический импорт mapbox-gl для уменьшения initial bundle
+// Dynamically import mapbox-gl to reduce the initial bundle size
 let mapboxglLib: typeof mapboxgl | null = null;
 let mapboxglCssLoaded = false;
 
@@ -11,7 +12,7 @@ const loadMapbox = async () => {
   if (!mapboxglLib) {
     const [mapboxModule] = await Promise.all([
       import('mapbox-gl'),
-      // Загружаем CSS только один раз
+      // Load the CSS bundle only once
       mapboxglCssLoaded 
         ? Promise.resolve() 
         : import('mapbox-gl/dist/mapbox-gl.css').then(() => { mapboxglCssLoaded = true; })
@@ -43,14 +44,15 @@ const ModernMap: React.FC<ModernMapProps> = ({
   onLocationSelect,
   initialLocation
 }) => {
+  const { t } = useTranslation();
   const [mapboxLoaded, setMapboxLoaded] = useState(false);
   const [map, setMap] = useState<mapboxgl.Map | null>(null);
   const [marker, setMarker] = useState<mapboxgl.Marker | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<{
     latitude: number;
     longitude: number;
-    address: string; // краткий адрес: улица + дом
-    fullAddress?: string; // полный форматированный адрес
+    address: string; // short form: street + house number
+    fullAddress?: string; // full formatted address
     city: string;
     country: string;
     region?: string;
@@ -67,9 +69,9 @@ const ModernMap: React.FC<ModernMapProps> = ({
   const [searchType, setSearchType] = useState<'address' | 'poi'>('address');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  // Ручной ввод адреса
+  // Manual address input
   const [showManualInput, setShowManualInput] = useState(false);
-  const [manualCity, setManualCity] = useState('Ташкент');
+  const [manualCity, setManualCity] = useState('');
   const [manualStreet, setManualStreet] = useState('');
   const [manualHouse, setManualHouse] = useState('');
   const [manualApartment, setManualApartment] = useState('');
@@ -83,8 +85,8 @@ const ModernMap: React.FC<ModernMapProps> = ({
       const road = adr.road || adr.pedestrian || adr.cycleway || adr.footway || adr.path || '';
       const house = adr.house_number || '';
       const streetHouse = `${road}${house ? ' ' + house : ''}`.trim();
-      const city = adr.city || adr.town || adr.village || adr.locality || adr.county || 'Неизвестно';
-      const country = adr.country || 'Неизвестно';
+      const city = adr.city || adr.town || adr.village || adr.locality || adr.county || t('common.location.unknownCity');
+      const country = adr.country || t('common.location.unknownCountry');
       const fullAddress = data?.display_name || [streetHouse, city, country].filter(Boolean).join(', ');
       return {
         latitude: lat,
@@ -101,7 +103,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
   };
   const mapRef = useRef<HTMLDivElement>(null);
   
-  // Загружаем mapbox только когда модалка открыта
+  // Load Mapbox assets only when the modal is open
   useEffect(() => {
     if (isOpen && !mapboxLoaded) {
       loadMapbox().then((mapbox) => {
@@ -138,13 +140,13 @@ const ModernMap: React.FC<ModernMapProps> = ({
       );
       const data = await response.json();
       if (data.features && data.features.length > 0) {
-        // Предпочитаем максимально точный адрес: сначала тип 'address', затем 'poi', затем остальные
+        // Prefer the most precise feature: address → poi → everything else
         const sorted = [...data.features].sort((a: any, b: any) => {
           const priority = (f: any) => (f.place_type?.includes('address') ? 0 : f.place_type?.includes('poi') ? 1 : 2);
           const da = priority(a);
           const db = priority(b);
           if (da !== db) return da - db;
-          // далее по релевантности, если доступна
+          // fallback to relevance when available
           return (b.relevance || 0) - (a.relevance || 0);
         });
         const feature = sorted[0];
@@ -152,13 +154,13 @@ const ModernMap: React.FC<ModernMapProps> = ({
         const city = feature.text?.length && feature.place_type?.includes('place') ? feature.text :
                     context.find((c: any) => c.id.startsWith('place.'))?.text || 
                     context.find((c: any) => c.id.startsWith('locality.'))?.text || 
-                    'Неизвестно';
-        const country = context.find((c: any) => c.id.startsWith('country.'))?.text || 'Неизвестно';
+                    t('common.location.unknownCity');
+        const country = context.find((c: any) => c.id.startsWith('country.'))?.text || t('common.location.unknownCountry');
         const region = context.find((c: any) => c.id.startsWith('region.'))?.text || '';
-        // Конструируем компактный адрес: улица + дом, если это тип address, иначе полное имя
+        // Build a short address (street + house) for address features, otherwise use place_name
         const isAddress = feature.place_type?.includes('address');
-        const street = feature.text; // например, название улицы
-        const house = (feature as any).address; // номер дома, если есть
+        const street = feature.text; // street label
+        const house = (feature as any).address; // house number if present
         const shortAddress = isAddress && (street || house)
           ? `${street || ''}${house ? ' ' + house : ''}`.trim()
           : feature.place_name;
@@ -172,7 +174,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
           country: country,
           region
         };
-        // Если Mapbox не дал улицу/дом (часто в Узбекистане), пробуем OSM
+        // If Mapbox misses street/house data, try OSM as a fallback
         const lacksStreet = !isAddress || !street;
         const onlyCityCountry = !shortAddress || shortAddress === city || shortAddress === country || shortAddress === `${city}, ${country}`;
         if (lacksStreet || onlyCityCountry) {
@@ -185,7 +187,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
       }
       return null;
     } catch (error) {
-      console.error('Ошибка при получении адреса:', error);
+      console.error('Address lookup failed:', error);
       return null;
     } finally {
       setIsLoading(false);
@@ -196,7 +198,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
     if (manualStreet) parts.push(manualStreet);
     if (manualHouse) parts.push(manualHouse);
     const streetPart = parts.join(' ').trim();
-    const queryCore = [streetPart, manualCity, 'Узбекистан'].filter(Boolean).join(', ');
+    const queryCore = [streetPart, manualCity, 'Uzbekistan'].filter(Boolean).join(', ');
     if (!queryCore) return;
     try {
       setIsLoading(true);
@@ -214,8 +216,8 @@ const ModernMap: React.FC<ModernMapProps> = ({
         const context = feature.context || [];
         const city = feature.text?.length && feature.place_type?.includes('place') ? feature.text :
           context.find((c: any) => c.id.startsWith('place.'))?.text ||
-          context.find((c: any) => c.id.startsWith('locality.'))?.text || manualCity || 'Неизвестно';
-        const country = context.find((c: any) => c.id.startsWith('country.'))?.text || 'Узбекистан';
+          context.find((c: any) => c.id.startsWith('locality.'))?.text || manualCity || t('common.location.unknownCity');
+        const country = context.find((c: any) => c.id.startsWith('country.'))?.text || 'Uzbekistan';
         const isAddress = feature.place_type?.includes('address');
         const street = feature.text;
         const house = (feature as any).address;
@@ -235,7 +237,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
         setShowSearchHistory(false);
       }
     } catch (error) {
-      console.error('Ошибка геокодирования ручного адреса:', error);
+      console.error('Manual geocoding failed:', error);
     } finally {
       setIsLoading(false);
     }
@@ -267,14 +269,14 @@ const ModernMap: React.FC<ModernMapProps> = ({
       setSearchResults(filteredResults);
       setShowSearchResults(filteredResults.length > 0);
     } catch (error) {
-      console.error('Ошибка поиска:', error);
+      console.error('Search request failed:', error);
       setSearchResults([]);
       setShowSearchResults(false);
     }
   };
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert('Геолокация не поддерживается вашим браузером');
+      alert(t('map.alerts.geolocationUnsupported'));
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -290,8 +292,8 @@ const ModernMap: React.FC<ModernMapProps> = ({
         }
       },
       (error) => {
-        console.error('Ошибка геолокации:', error);
-        alert('Не удалось определить ваше местоположение');
+        console.error('Geolocation error:', error);
+        alert(t('map.alerts.geolocationFailed'));
       },
       {
         enableHighAccuracy: true,
@@ -325,7 +327,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
   };
   const addToSearchHistory = (query: string) => {
     if (query.trim() && !searchHistory.includes(query.trim())) {
-      const newHistory = [query.trim(), ...searchHistory.slice(0, 4)]; // Храним последние 5 запросов
+    const newHistory = [query.trim(), ...searchHistory.slice(0, 4)]; // keep last 5 queries
       setSearchHistory(newHistory);
       localStorage.setItem('mapSearchHistory', JSON.stringify(newHistory));
     }
@@ -345,7 +347,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
       try {
         setSearchHistory(JSON.parse(savedHistory));
       } catch (error) {
-        console.error('Ошибка загрузки истории поиска:', error);
+        console.error('Failed to load search history:', error);
       }
     }
   }, []);
@@ -416,13 +418,13 @@ const ModernMap: React.FC<ModernMapProps> = ({
       setMap(mapInstance);
       setMarker(markerInstance);
     } catch (error) {
-      console.error('Ошибка создания карты Mapbox:', error);
+      console.error('Failed to initialize Mapbox map:', error);
       if (mapRef.current) {
         mapRef.current.innerHTML = `
           <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f3f4f6; color: #6b7280; text-align: center; padding: 20px;">
             <div>
-              <h4>Карта временно недоступна</h4>
-              <p>Проверьте настройки Mapbox токена</p>
+              <h4>${t('map.errors.mapUnavailableTitle')}</h4>
+              <p>${t('map.errors.mapUnavailableDescription')}</p>
             </div>
           </div>
         `;
@@ -448,7 +450,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
         }
       };
       document.removeEventListener('keydown', cleanupHandler);
-      // Очищаем таймер поиска при размонтировании
+      // Clear pending timers when unmounting
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
@@ -463,13 +465,13 @@ const ModernMap: React.FC<ModernMapProps> = ({
     const query = e.target.value;
     setSearchQuery(query);
     
-    // Очищаем предыдущий таймер
+    // Reset previous debounce timer
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
     
     if (query.length >= 2) {
-      // Debounce: ждем 300ms перед запросом
+      // Debounce: wait ~300ms before firing search
       searchTimeoutRef.current = setTimeout(() => {
         searchAddresses(query);
         setShowSearchHistory(false);
@@ -517,7 +519,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
               </svg>
               <input
                 type="text"
-                placeholder="Поиск адреса в Узбекистане..."
+                placeholder={t('map.search.placeholder')}
                 value={searchQuery}
                 onChange={handleSearch}
                 onFocus={() => {
@@ -531,10 +533,10 @@ const ModernMap: React.FC<ModernMapProps> = ({
                 }}
                 onBlur={(e) => {
                   setIsSearchFocused(false);
-                  // Не скрываем результаты сразу, даем время для клика
+                    // Delay hiding results so users can click
                   setTimeout(() => {
                     setShowSearchHistory(false);
-                    // Скрываем результаты только если фокус действительно потерян
+                    // Hide results only when focus truly leaves the list
                     const relatedTarget = e.relatedTarget as HTMLElement;
                     if (document.activeElement !== e.target && !relatedTarget?.closest('.search-results')) {
                       setShowSearchResults(false);
@@ -548,14 +550,14 @@ const ModernMap: React.FC<ModernMapProps> = ({
                 <button 
                   className={`search-type-btn ${searchType === 'address' ? 'active' : ''}`}
                   onClick={() => setSearchType('address')}
-                  title="Поиск адресов"
+                  title={t('map.search.addressMode')}
                 >
                   🏠
                 </button>
                 <button 
                   className={`search-type-btn ${searchType === 'poi' ? 'active' : ''}`}
                   onClick={() => setSearchType('poi')}
-                  title="Поиск мест"
+                  title={t('map.search.poiMode')}
                 >
                   📍
                 </button>
@@ -577,32 +579,59 @@ const ModernMap: React.FC<ModernMapProps> = ({
               )}
             </div>
             {showManualInput && (
-              <div className="manual-input-panel" role="region" aria-label="Ручной ввод адреса">
+              <div className="manual-input-panel" role="region" aria-label={t('map.manual.aria')}>
                 <div className="manual-row">
                   <div className="field">
-                    <label htmlFor="manual-city">Город</label>
-                    <input id="manual-city" value={manualCity} onChange={(e) => setManualCity(e.target.value)} placeholder="Например: Ташкент" />
+                    <label htmlFor="manual-city">{t('map.manual.labels.city')}</label>
+                    <input
+                      id="manual-city"
+                      value={manualCity}
+                      onChange={(e) => setManualCity(e.target.value)}
+                      placeholder={t('map.manual.placeholders.city')}
+                    />
                   </div>
                   <div className="field field-large">
-                    <label htmlFor="manual-street">Улица</label>
-                    <input id="manual-street" value={manualStreet} onChange={(e) => setManualStreet(e.target.value)} placeholder="Например: Абдула Кадыри" />
+                    <label htmlFor="manual-street">{t('map.manual.labels.street')}</label>
+                    <input
+                      id="manual-street"
+                      value={manualStreet}
+                      onChange={(e) => setManualStreet(e.target.value)}
+                      placeholder={t('map.manual.placeholders.street')}
+                    />
                   </div>
                   <div className="field field-small">
-                    <label htmlFor="manual-house">Дом</label>
-                    <input id="manual-house" value={manualHouse} onChange={(e) => setManualHouse(e.target.value)} placeholder="12A" />
+                    <label htmlFor="manual-house">{t('map.manual.labels.house')}</label>
+                    <input
+                      id="manual-house"
+                      value={manualHouse}
+                      onChange={(e) => setManualHouse(e.target.value)}
+                      placeholder={t('map.manual.placeholders.house')}
+                    />
                   </div>
                 </div>
                 <div className="manual-row">
                   <div className="field">
-                    <label htmlFor="manual-apartment">Квартира (необязательно)</label>
-                    <input id="manual-apartment" value={manualApartment} onChange={(e) => setManualApartment(e.target.value)} placeholder="Например: 45" />
+                    <label htmlFor="manual-apartment">{t('map.manual.labels.apartment')}</label>
+                    <input
+                      id="manual-apartment"
+                      value={manualApartment}
+                      onChange={(e) => setManualApartment(e.target.value)}
+                      placeholder={t('map.manual.placeholders.apartment')}
+                    />
                   </div>
                   <div className="field field-grow">
-                    <label htmlFor="manual-note">Комментарий курьеру</label>
-                    <input id="manual-note" value={manualNote} onChange={(e) => setManualNote(e.target.value)} placeholder="Подъезд, домофон и т.д." />
+                    <label htmlFor="manual-note">{t('map.manual.labels.note')}</label>
+                    <input
+                      id="manual-note"
+                      value={manualNote}
+                      onChange={(e) => setManualNote(e.target.value)}
+                      placeholder={t('map.manual.placeholders.note')}
+                    />
                   </div>
                   <div className="actions">
-                    <button className="locate-btn" onClick={geocodeManualAddress} title="Найти на карте">Найти</button>
+                    <button className="locate-btn" onClick={geocodeManualAddress} title={t('map.manual.findTitle')}>
+                      {t('map.manual.find')}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -611,11 +640,11 @@ const ModernMap: React.FC<ModernMapProps> = ({
             {showSearchHistory && searchHistory.length > 0 && !searchQuery && (
               <div className="search-history">
                 <div className="search-history-header">
-                  <span>История поиска</span>
+                  <span>{t('map.search.historyTitle')}</span>
                   <button 
                     className="clear-history-btn"
                     onClick={clearSearchHistory}
-                    title="Очистить историю"
+                    title={t('map.search.clearHistory')}
                   >
                     🗑️
                   </button>
@@ -641,7 +670,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
                     className="search-result-item"
                     onClick={() => handleSearchResultSelect(result)}
                     onMouseDown={(e) => {
-                      // Предотвращаем blur событие при клике
+                      // Prevent blur when clicking inside the list
                       e.preventDefault();
                     }}
                   >
@@ -651,8 +680,8 @@ const ModernMap: React.FC<ModernMapProps> = ({
                     <div className="result-content">
                       <div className="result-name">{result.place_name}</div>
                       <div className="result-type">
-                        {result.place_type?.join(', ') || 'Адрес'}
-                        {result.distance && ` • ${Math.round(result.distance)}м`}
+                        {result.place_type?.join(', ') || t('map.resultType')}
+                        {result.distance && ` • ${t('map.search.distanceMeters', { value: Math.round(result.distance) })}`}
                       </div>
                     </div>
                   </div>
@@ -662,8 +691,8 @@ const ModernMap: React.FC<ModernMapProps> = ({
             {searchQuery.length >= 2 && showSearchResults && searchResults.length === 0 && !isLoading && (
               <div className="search-results">
                 <div className="search-no-results">
-                  <p>Ничего не найдено</p>
-                  <p className="search-no-results-hint">Попробуйте изменить запрос</p>
+                  <p>{t('map.search.noResults')}</p>
+                  <p className="search-no-results-hint">{t('map.search.noResultsHint')}</p>
                 </div>
               </div>
             )}
@@ -671,7 +700,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
           <div className="header-controls">
             {favoritePlaces.length > 0 && (
               <div className="favorites-dropdown">
-                <button className="favorites-toggle" title="Избранные места">
+                <button className="favorites-toggle" title={t('map.favorites.title')}>
                   ⭐ {favoritePlaces.length}
                 </button>
                 <div className="favorites-dropdown-content">
@@ -694,7 +723,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
                 </div>
               </div>
             )}
-            <button className="close-btn" onClick={onClose} title="Закрыть (Esc)">
+            <button className="close-btn" onClick={onClose} title={`${t('map.controls.close')} (Esc)`}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
@@ -707,7 +736,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
           <button 
             className="map-control-btn map-geolocation-btn" 
             onClick={getCurrentLocation} 
-            title="Мое местоположение (Ctrl+G)"
+            title={`${t('map.controls.myLocation')} (Ctrl+G)`}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor"/>
@@ -717,16 +746,16 @@ const ModernMap: React.FC<ModernMapProps> = ({
             <button 
               className="map-control-btn map-zoom-in-btn" 
               onClick={() => map && map.zoomIn()} 
-              title="Приблизить"
-              aria-label="Приблизить"
+              title={t('map.controls.zoomIn')}
+              aria-label={t('map.controls.zoomIn')}
             >
               +
             </button>
             <button 
               className="map-control-btn map-zoom-out-btn" 
               onClick={() => map && map.zoomOut()} 
-              title="Отдалить"
-              aria-label="Отдалить"
+              title={t('map.controls.zoomOut')}
+              aria-label={t('map.controls.zoomOut')}
             >
               −
             </button>
@@ -738,8 +767,8 @@ const ModernMap: React.FC<ModernMapProps> = ({
                   map.flyTo({ center: [pos.lng, pos.lat], zoom: 16 });
                 }
               }} 
-              title="Центрировать на маркере"
-              aria-label="Центрировать на маркере"
+              title={t('map.controls.recenter')}
+              aria-label={t('map.controls.recenter')}
             >
               ⊙
             </button>
@@ -748,7 +777,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
             <button 
               className={`map-style-btn ${currentMapStyle === MAPBOX_CONFIG.styles.streets ? 'active' : ''}`}
               onClick={() => changeMapStyle(MAPBOX_CONFIG.styles.streets)}
-              title="Улицы"
+              title={t('map.controls.streets')}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M3 3h18v18H3V3zm2 2v14h14V5H5zm2 2h10v2H7V7zm0 4h10v2H7v-2zm0 4h7v2H7v-2z" fill="currentColor"/>
@@ -757,7 +786,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
             <button 
               className={`map-style-btn ${currentMapStyle === MAPBOX_CONFIG.styles.satellite ? 'active' : ''}`}
               onClick={() => changeMapStyle(MAPBOX_CONFIG.styles.satellite)}
-              title="Спутник"
+              title={t('map.controls.satellite')}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/>
@@ -766,7 +795,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
             <button 
               className={`map-style-btn ${currentMapStyle === MAPBOX_CONFIG.styles.dark ? 'active' : ''}`}
               onClick={() => changeMapStyle(MAPBOX_CONFIG.styles.dark)}
-              title="Темная тема"
+              title={t('map.controls.dark')}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z" fill="currentColor"/>
@@ -776,7 +805,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
           {isLoading && (
             <div className="map-loading">
               <div className="loading-spinner"></div>
-              <p>Получение адреса...</p>
+              <p>{t('map.status.gettingAddress')}</p>
             </div>
           )}
         </div>
@@ -786,13 +815,13 @@ const ModernMap: React.FC<ModernMapProps> = ({
           <div className="footer-center">
             <div 
               className="selected-address" 
-              title={selectedLocation ? (selectedLocation.fullAddress || selectedLocation.address) : 'Выберите точку на карте'}
+              title={selectedLocation ? (selectedLocation.fullAddress || selectedLocation.address) : t('map.status.selectOnMap')}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor"/>
               </svg>
               <div className="selected-address-text">
-                {selectedLocation ? (selectedLocation.fullAddress || selectedLocation.address) : 'Выберите точку на карте'}
+                {selectedLocation ? (selectedLocation.fullAddress || selectedLocation.address) : t('map.status.selectOnMap')}
               </div>
             </div>
           </div>
@@ -801,7 +830,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
               <button 
                 className="favorite-btn"
                 onClick={() => toggleFavorite(selectedLocation)}
-                title="Добавить в избранное"
+                title={t('map.controls.addFavorite')}
               >
                 {favoritePlaces.some(fav => 
                   fav.latitude === selectedLocation.latitude && fav.longitude === selectedLocation.longitude
@@ -816,7 +845,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              Подтвердить выбор
+              {t('map.confirm')}
             </button>
           </div>
         </div>

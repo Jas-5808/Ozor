@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import i18n from "../i18n";
 import { shopAPI } from "../api";
 import { Category } from "../types";
 import { logger } from "../utils/logger";
@@ -15,7 +16,7 @@ export const useCategories = () => {
       setCategories(response.data);
     } catch (error) {
       const appError = handleApiError(error);
-      const errorMessage = getUserFriendlyMessage(appError) || "Ошибка при загрузке категорий";
+      const errorMessage = getUserFriendlyMessage(appError) || i18n.t("common.errors.categoriesLoad");
       setError(errorMessage);
       logger.errorWithContext(appError, { context: 'fetchCategories' });
     } finally {
@@ -51,7 +52,7 @@ export const useCategoryById = (categoryId: string | undefined) => {
       setCategory(response.data);
     } catch (error) {
       const appError = handleApiError(error);
-      const errorMessage = getUserFriendlyMessage(appError) || "Ошибка при загрузке категории";
+      const errorMessage = getUserFriendlyMessage(appError) || i18n.t("common.errors.categoryLoad");
       setError(errorMessage);
       logger.errorWithContext(appError, { context: 'fetchCategory' });
     } finally {

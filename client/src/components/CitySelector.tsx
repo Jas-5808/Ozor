@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { uzbekistanLocations, getRegions, getCitiesByRegion, searchLocations, Location } from '../data/uzbekistanLocations';
 import './CitySelector.css';
 interface CitySelectorProps {
@@ -7,6 +8,7 @@ interface CitySelectorProps {
   currentLocation?: Location | null;
 }
 const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentLocation }) => {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'regions' | 'cities' | 'search'>('regions');
@@ -50,7 +52,7 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
   const handleMapLocationSelect = (location: any) => {
     const mapLocation: Location = {
       id: `map_${Date.now()}`,
-      name: location.city || 'Выбранное местоположение',
+      name: location.city || t('citySelector.mapSelection'),
       type: 'city',
       coordinates: {
         lat: location.latitude,
@@ -63,8 +65,8 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
   const renderRegions = () => (
     <div className="city-selector-content">
       <div className="city-selector-header">
-        <h3>Выберите область</h3>
-        <button className="close-btn" onClick={onClose}>×</button>
+        <h3>{t('citySelector.title')}</h3>
+        <button className="close-btn" onClick={onClose} aria-label={t('common.actions.close')}>×</button>
       </div>
       <div className="search-container">
         <div className="search-input-wrapper">
@@ -74,7 +76,7 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
           </svg>
           <input
             type="text"
-            placeholder="Поиск города или области..."
+            placeholder={t('citySelector.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             className="search-input"
@@ -89,7 +91,7 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
           href="#"
         >
           <span className="map-icon">🗺️</span>
-          Выбрать на карте
+          {t('citySelector.pickOnMap')}
         </a>
       </div>
       <div className="regions-grid">
@@ -102,7 +104,7 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
             <div className="region-icon">🏛️</div>
             <div className="region-info">
               <h4>{region.name}</h4>
-              <p>{getCitiesByRegion(region.id).length} городов</p>
+              <p>{t('citySelector.cards.citiesCount', { count: getCitiesByRegion(region.id).length })}</p>
             </div>
             <div className="region-arrow">→</div>
           </div>
@@ -116,10 +118,10 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
       <div className="city-selector-content">
         <div className="city-selector-header">
           <button className="back-btn" onClick={handleBackToRegions}>
-            ← Назад
+            ← {t('citySelector.back')}
           </button>
           <h3>{region?.name}</h3>
-          <button className="close-btn" onClick={onClose}>×</button>
+          <button className="close-btn" onClick={onClose} aria-label={t('common.actions.close')}>×</button>
         </div>
         <div className="cities-list">
           {filteredCities.map((city) => (
@@ -131,7 +133,7 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
               <div className="city-icon">🏙️</div>
               <div className="city-info">
                 <h4>{city.name}</h4>
-                <p>Город</p>
+                  <p>{t('citySelector.cards.cityLabel')}</p>
               </div>
               {currentLocation?.id === city.id && (
                 <div className="selected-indicator">✓</div>
@@ -146,10 +148,10 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
     <div className="city-selector-content">
       <div className="city-selector-header">
         <button className="back-btn" onClick={() => setViewMode('regions')}>
-          ← Назад
+          ← {t('citySelector.back')}
         </button>
-        <h3>Результаты поиска</h3>
-        <button className="close-btn" onClick={onClose}>×</button>
+        <h3>{t('citySelector.resultsTitle')}</h3>
+        <button className="close-btn" onClick={onClose} aria-label={t('common.actions.close')}>×</button>
       </div>
       <div className="search-container">
         <div className="search-input-wrapper">
@@ -159,7 +161,7 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
           </svg>
           <input
             type="text"
-            placeholder="Поиск города или области..."
+            placeholder={t('citySelector.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             className="search-input"
@@ -179,7 +181,11 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
               </div>
               <div className="result-info">
                 <h4>{location.name}</h4>
-                <p>{location.type === 'region' ? 'Область' : 'Город'}</p>
+                <p>
+                  {location.type === 'region'
+                    ? t('citySelector.cards.regionLabel')
+                    : t('citySelector.cards.cityLabel')}
+                </p>
               </div>
               {currentLocation?.id === location.id && (
                 <div className="selected-indicator">✓</div>
@@ -189,8 +195,8 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
         ) : (
           <div className="no-results">
             <div className="no-results-icon">🔍</div>
-            <p>Ничего не найдено</p>
-            <span>Попробуйте изменить запрос</span>
+            <p>{t('citySelector.empty.title')}</p>
+            <span>{t('citySelector.empty.hint')}</span>
           </div>
         )}
       </div>
@@ -207,15 +213,15 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
       {showMapModal && (
         <div className="map-modal-overlay" style={{ zIndex: 1002 }}>
           <div className="map-modal">
-            <div className="map-modal-header">
-              <h3>Выберите местоположение на карте</h3>
-              <button className="close-btn" onClick={() => setShowMapModal(false)}>×</button>
+        <div className="map-modal-header">
+          <h3>{t('citySelector.mapModal.title')}</h3>
+          <button className="close-btn" onClick={() => setShowMapModal(false)} aria-label={t('common.actions.close')}>×</button>
             </div>
             <div className="map-container">
               <div className="interactive-map">
                 <div className="map-header">
-                  <h4>Карта Узбекистана</h4>
-                  <p>Нажмите на область для выбора города</p>
+                  <h4>{t('citySelector.mapModal.header')}</h4>
+                  <p>{t('citySelector.mapModal.hint')}</p>
                 </div>
                 <div className="map-regions">
                   <div 
@@ -223,72 +229,72 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
                     onClick={() => handleMapLocationSelect({
                       latitude: 41.2995,
                       longitude: 69.2401,
-                      city: 'Ташкент'
+                      city: t('profileUpdate.regions.tashkent')
                     })}
-                    title="Ташкент"
+                    title={t('profileUpdate.regions.tashkent')}
                   >
-                    <span className="region-label">Ташкент</span>
+                    <span className="region-label">{t('profileUpdate.regions.tashkent')}</span>
                   </div>
                   <div 
                     className="map-region samarkand"
                     onClick={() => handleMapLocationSelect({
                       latitude: 39.6542,
                       longitude: 66.9597,
-                      city: 'Самарканд'
+                      city: t('profileUpdate.regions.samarkand')
                     })}
-                    title="Самарканд"
+                    title={t('profileUpdate.regions.samarkand')}
                   >
-                    <span className="region-label">Самарканд</span>
+                    <span className="region-label">{t('profileUpdate.regions.samarkand')}</span>
                   </div>
                   <div 
                     className="map-region andijan"
                     onClick={() => handleMapLocationSelect({
                       latitude: 40.7833,
                       longitude: 72.3333,
-                      city: 'Андижан'
+                      city: t('profileUpdate.regions.andijan')
                     })}
-                    title="Андижан"
+                    title={t('profileUpdate.regions.andijan')}
                   >
-                    <span className="region-label">Андижан</span>
+                    <span className="region-label">{t('profileUpdate.regions.andijan')}</span>
                   </div>
                   <div 
                     className="map-region bukhara"
                     onClick={() => handleMapLocationSelect({
                       latitude: 39.7756,
                       longitude: 64.4286,
-                      city: 'Бухара'
+                      city: t('profileUpdate.regions.bukhara')
                     })}
-                    title="Бухара"
+                    title={t('profileUpdate.regions.bukhara')}
                   >
-                    <span className="region-label">Бухара</span>
+                    <span className="region-label">{t('profileUpdate.regions.bukhara')}</span>
                   </div>
                   <div 
                     className="map-region fergana"
                     onClick={() => handleMapLocationSelect({
                       latitude: 40.3833,
                       longitude: 71.7833,
-                      city: 'Фергана'
+                      city: t('profileUpdate.regions.fergana')
                     })}
-                    title="Фергана"
+                    title={t('profileUpdate.regions.fergana')}
                   >
-                    <span className="region-label">Фергана</span>
+                    <span className="region-label">{t('profileUpdate.regions.fergana')}</span>
                   </div>
                   <div 
                     className="map-region namangan"
                     onClick={() => handleMapLocationSelect({
                       latitude: 40.9969,
                       longitude: 71.6725,
-                      city: 'Наманган'
+                      city: t('profileUpdate.regions.namangan')
                     })}
-                    title="Наманган"
+                    title={t('profileUpdate.regions.namangan')}
                   >
-                    <span className="region-label">Наманган</span>
+                    <span className="region-label">{t('profileUpdate.regions.namangan')}</span>
                   </div>
                 </div>
                 <div className="map-legend">
                   <div className="legend-item">
                     <div className="legend-color"></div>
-                    <span>Нажмите на область для выбора</span>
+                    <span>{t('citySelector.mapModal.hint')}</span>
                   </div>
                 </div>
               </div>
@@ -298,7 +304,7 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
                 className="confirm-location-btn"
                 onClick={() => setShowMapModal(false)}
               >
-                Закрыть карту
+                {t('citySelector.mapModal.close')}
               </button>
             </div>
           </div>
@@ -307,4 +313,4 @@ const CitySelector: React.FC<CitySelectorProps> = ({ onSelect, onClose, currentL
     </div>
   );
 };
-export default CitySelector;
+export default CitySelector;

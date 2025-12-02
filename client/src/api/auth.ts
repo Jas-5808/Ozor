@@ -25,14 +25,14 @@ export interface VerifyCodeRequest {
 export const authAPI = {
   signin: (phone: string, password: string): Promise<AxiosResponse<AuthResponse>> => {
     console.log("=== API auth.ts signin DEBUG ===");
-    console.log("Получены параметры:", { 
+    console.log("Received parameters:", { 
       phone: phone, 
       password: password ? "***" : undefined,
       phoneType: typeof phone,
       passwordType: typeof password
     });
 
-    // Проверяем, что данные не undefined
+    // Ensure both credentials exist
     if (!phone || !password) {
       console.error("❌ Missing phone or password", { 
         phone: phone, 
@@ -47,7 +47,7 @@ export const authAPI = {
     formData.append("phone", phone);
     formData.append("password", password);
 
-    console.log("Данные добавлены в formData:");
+    console.log("Form data populated:");
     console.log("   - phone:", formData.get("phone"));
     console.log("   - password:", formData.get("password") ? "***" : "undefined");
     console.log("   - formData.toString():", formData.toString().replace(/password=[^&]*/, 'password=***'));
@@ -61,7 +61,7 @@ export const authAPI = {
   },
 
   signup: (phone: string, password: string): Promise<AxiosResponse<AuthResponse>> => {
-    console.log("API signup вызван с:", { phone, password: password ? "***" : undefined });
+    console.log("authAPI.signup called with:", { phone, password: password ? "***" : undefined });
 
     if (!phone || !password) {
       throw new Error("Phone and password are required");
@@ -79,7 +79,7 @@ export const authAPI = {
   },
 
   sendCode: (phone: string): Promise<AxiosResponse<any>> => {
-    console.log("API sendCode вызван с:", { phone });
+    console.log("authAPI.sendCode called with:", { phone });
 
     const formData = new URLSearchParams();
     formData.append("phone", phone);
@@ -94,7 +94,7 @@ export const authAPI = {
   verifyCode: (
     data: VerifyCodeRequest
   ): Promise<AxiosResponse<AuthResponse>> => {
-    console.log("API verifyCode вызван с:", data);
+    console.log("authAPI.verifyCode called with:", data);
 
     const formData = new URLSearchParams();
     formData.append("phone", data.phone);

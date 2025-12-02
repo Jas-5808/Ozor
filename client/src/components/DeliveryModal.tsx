@@ -1,8 +1,9 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 import './DeliveryModal.css';
 import { useApp } from '../context/AppContext';
 
-// Lazy load ModernMap для уменьшения initial bundle size
+// Lazy load ModernMap to keep the initial bundle lean
 const ModernMap = lazy(() => import('./ModernMap'));
 
 const STORAGE_KEY = 'deliveryAddresses';
@@ -27,7 +28,7 @@ const sanitizeAddresses = (list: Address[]) => {
   return list.filter((addr) => {
     if (!addr) return false;
     const text = (addr.text || '').trim();
-    const looksTemplate = !text || /шаблон|example|template|пример/i.test(text);
+    const looksTemplate = !text || /template|sample|example|draft/i.test(text);
     const hasCoords = typeof addr.latitude === 'number' && typeof addr.longitude === 'number';
     const key = text.toLowerCase();
     if (looksTemplate || !hasCoords || seen.has(key)) {
@@ -39,6 +40,7 @@ const sanitizeAddresses = (list: Address[]) => {
 };
 
 const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfirm }) => {
+  const { t } = useTranslation();
   const { state } = useApp();
   const [selectedMethod, setSelectedMethod] = useState<'pickup' | 'courier'>('courier');
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
@@ -46,7 +48,7 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
   const [showMap, setShowMap] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
 
-  // Загрузка адресов из localStorage при открытии модалки
+  // Load addresses from localStorage when the modal opens
   useEffect(() => {
     if (isOpen) {
       try {
@@ -55,19 +57,19 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
           const parsed = JSON.parse(savedAddresses) as Address[];
           const cleaned = sanitizeAddresses(parsed);
           setAddresses(cleaned);
-          // Восстанавливаем выбранный адрес, если он был сохранен
+          // Restore selected address if it was saved previously
           const savedSelectedId = localStorage.getItem('selectedAddressId');
           if (savedSelectedId && cleaned.some(addr => addr.id === Number(savedSelectedId))) {
             setSelectedAddressId(Number(savedSelectedId));
           }
         }
       } catch (error) {
-        console.error('Ошибка при загрузке адресов из localStorage:', error);
+        console.error('Failed to load saved addresses:', error);
       }
     }
   }, [isOpen]);
 
-  // Сохранение адресов в localStorage при изменении
+  // Persist addresses into localStorage when they change
   useEffect(() => {
     if (isOpen && addresses.length >= 0) {
       try {
@@ -78,7 +80,7 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
           localStorage.removeItem('selectedAddressId');
         }
       } catch (error) {
-        console.error('Ошибка при сохранении адресов в localStorage:', error);
+        console.error('Failed to save addresses:', error);
       }
     }
   }, [addresses, selectedAddressId, isOpen]);
@@ -90,9 +92,9 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
       location: {
         latitude: selected?.latitude,
         longitude: selected?.longitude,
-        city: selected?.city || 'Неизвестно',
+        city: selected?.city || t('common.location.unknownCity'),
         address: selected?.text || '',
-        country: selected?.country || 'Неизвестно',
+        country: selected?.country || t('common.location.unknownCountry'),
         isManual: true
       }
     });
@@ -129,20 +131,20 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
     country: string;
     region?: string;
   }) => {
-    // Формируем компактный адрес: улица, район, город (квартиру извлекаем из адреса если есть)
+    // Build a compact string: street, region, city (apartment extracted if present)
     const addressParts: string[] = [];
     
-    // Улица (может содержать номер дома)
+    // Street (may include house number)
     if (location.address && location.address.trim()) {
       addressParts.push(location.address.trim());
     }
     
-    // Район
+    // Region
     if (location.region && location.region.trim()) {
       addressParts.push(location.region.trim());
     }
     
-    // Город
+    // City
     if (location.city && location.city.trim()) {
       addressParts.push(location.city.trim());
     }
@@ -168,21 +170,23 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
     <div className="delivery-modal-overlay">
       <div className="delivery-modal">
         <div className="delivery-modal-header">
-          <h3>Доставка</h3>
-          <button className="close-btn" onClick={onClose}>×</button>
+          <h3>{t('deliveryModal.title')}</h3>
+          <button className="close-btn" onClick={onClose} aria-label={t('common.actions.close')}>
+            ×
+          </button>
         </div>
         <div className="delivery-tabs">
           <button 
             className={`tab ${selectedMethod === 'pickup' ? 'active' : ''}`}
             onClick={() => setSelectedMethod('pickup')}
           >
-            Пункт выдачи
+            {t('deliveryModal.tabs.pickup')}
           </button>
           <button 
             className={`tab ${selectedMethod === 'courier' ? 'active' : ''}`}
             onClick={() => setSelectedMethod('courier')}
           >
-            Курьером
+            {t('deliveryModal.tabs.courier')}
           </button>
         </div>
         <div className="delivery-content">
@@ -190,8 +194,8 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
             <div className="pickup-content">
               <div className="coming-soon">
                 <div className="coming-soon-icon">📦</div>
-                <h4>Скоро</h4>
-                <p>Пункты выдачи будут доступны в ближайшее время</p>
+                <h4>{t('deliveryModal.pickup.comingSoonTitle')}</h4>
+                <p>{t('deliveryModal.pickup.comingSoonDescription')}</p>
               </div>
             </div>
           ) : (
@@ -201,10 +205,10 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
                   <div className="empty-addresses">
                     <img 
                       src="/icons/empty-addresses.svg" 
-                      alt="Пусто" 
+                      alt={t('deliveryModal.empty.illustrationAlt')} 
                       className="empty-addresses-icon"
                       onError={(e) => {
-                        // Если изображение не найдено, показываем emoji
+                        // If the image fails to load, show an emoji fallback
                         const img = e.currentTarget;
                         img.style.display = 'none';
                         const placeholder = document.createElement('div');
@@ -250,7 +254,7 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
                             className="delete-btn"
                             onClick={() => handleDeleteAddress(address.id)}
                           >
-                            Удалить
+                            {t('common.actions.delete')}
                           </button>
                         </div>
                       )}
@@ -260,7 +264,7 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
               </div>
               <button className="add-address-btn" onClick={handleAddNewAddress}>
                 <div className="add-icon">+</div>
-                Добавить новый адрес
+                {t('deliveryModal.addresses.add')}
               </button>
             </div>
           )}
@@ -271,11 +275,11 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, onConfir
             onClick={handleConfirm}
             disabled={selectedMethod === 'courier' && (selectedAddressId === null)}
           >
-            Подтвердить
+            {t('deliveryModal.confirm')}
           </button>
         </div>
       </div>
-      <Suspense fallback={<div className="delivery-modal-map-loading">Загрузка карты...</div>}>
+      <Suspense fallback={<div className="delivery-modal-map-loading">{t('deliveryModal.mapLoading')}</div>}>
         <ModernMap
           isOpen={showMap}
           onClose={() => setShowMap(false)}

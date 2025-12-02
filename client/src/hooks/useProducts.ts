@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import i18n from "../i18n";
 import { shopAPI } from "../api";
 import { Product } from "../types";
 import { logger } from "../utils/logger";
@@ -19,7 +20,7 @@ export const useProducts = () => {
       setProducts(filteredProducts);
     } catch (error) {
       const appError = handleApiError(error);
-      const errorMessage = getUserFriendlyMessage(appError) || "Ошибка при загрузке продуктов";
+      const errorMessage = getUserFriendlyMessage(appError) || i18n.t("common.errors.productsLoad");
       setError(errorMessage);
       logger.errorWithContext(appError, { context: 'fetchProducts' });
     } finally {
@@ -57,7 +58,7 @@ export const useProductById = (productId: string | undefined) => {
       setProduct(response.data);
     } catch (error) {
       const appError = handleApiError(error);
-      const errorMessage = getUserFriendlyMessage(appError) || "Ошибка при загрузке продукта";
+      const errorMessage = getUserFriendlyMessage(appError) || i18n.t("common.errors.productLoad");
       setError(errorMessage);
       logger.errorWithContext(appError, { context: 'fetchProduct' });
     } finally {
@@ -96,7 +97,7 @@ export const useProductsByCategory = (categoryId: string | undefined) => {
       setProducts(filteredProducts);
     } catch (error) {
       const appError = handleApiError(error);
-      const errorMessage = getUserFriendlyMessage(appError) || "Ошибка при загрузке продуктов категории";
+      const errorMessage = getUserFriendlyMessage(appError) || i18n.t("common.errors.productCategoryLoad");
       setError(errorMessage);
       logger.errorWithContext(appError, { context: 'fetchProductsByCategory' });
     } finally {
