@@ -477,7 +477,8 @@ export function Profile() {
                         <div className="mt-auto space-y-3">
                           <button
                             type="button"
-                            className="group relative h-12 w-full rounded-[18px] bg-gradient-to-r from-[#064e3b] via-[#047857] to-[#22c55e] text-sm font-semibold uppercase tracking-wide text-white shadow-[0_22px_48px_rgba(6,78,59,0.45)] ring-1 ring-white/20 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                            className="group relative h-12 w-full rounded-[18px] text-sm font-semibold uppercase tracking-wide text-white shadow-[0_22px_48px_rgba(6,78,59,0.45)] ring-1 ring-white/20 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                            style={{ background: "linear-gradient(92.41deg, rgb(0, 61, 50), rgb(4, 115, 75))" }}
                             disabled={createLoading || isLoadingCard}
                             onClick={() => handleGenerate(p)}
                           >
@@ -1011,7 +1012,8 @@ export function Profile() {
                 )}
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <button
-                    className="flex-1 rounded-2xl bg-gradient-to-r from-[#f97316] to-[#fb923c] py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgба(249,115,22,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex-1 rounded-2xl py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(6,78,59,0.35)] transition hover:brightness-110"
+                    style={{ background: "linear-gradient(92.41deg, rgb(0, 61, 50), rgb(4, 115, 75))" }}
                     onClick={submitCreateReferral}
                     disabled={createLoading || !createModal.agree}
                   >
@@ -1036,7 +1038,7 @@ export function Profile() {
                         className="flex-1 rounded-2xl border border-emerald-200 bg-white px-3 py-2 text-sm text-emerald-800 focus:outline-none"
                       />
                       <button
-                        className="inline-flex h-10 min-w-[48px] items-center justify-center rounded-2xl bg-gradient-to-r from-[#10b981] to-[#059669] px-3 text-xs font-bold uppercase text-white"
+                        className="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-[#015338] shadow-[0_16px_30px_rgba(255,255,255,0.35)] transition hover:translate-y-0.5"
                         onClick={() => handleCopy(createModal.createdLink!)}
                       >
                         Copy

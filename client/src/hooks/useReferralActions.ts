@@ -100,6 +100,7 @@ export function useReferralActions(
     try {
       const res = await shopAPI.createReferral({
         product_id: createModal.product.product_id,
+        title: createModal.title || createModal.product.product_name || '',
       });
 
       const link = res.data?.link || makeReferralLink(createModal.product.product_id);
