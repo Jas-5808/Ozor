@@ -206,7 +206,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
       {/* Мобильная версия хедера с поиском */}
       <div className="md:hidden sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
         <div className="px-4 py-3 space-y-3">
-          {/* Верхняя строка: локация и город доставки */}
+          {/* Верхняя строка: локация и переключатель языка */}
           <div className="flex items-center justify-between">
             <div
               onClick={showLocationModal}
@@ -220,7 +220,9 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </div>
-            <p className="text-xs text-gray-500">{t("common.delivery.cityLabel")}</p>
+            <div className="flex items-center gap-2">
+              <LanguageSwitcher variant="mobile" />
+            </div>
           </div>
 
           {/* Поисковая строка - скрываем на страницах профиля, корзины и избранных */}
