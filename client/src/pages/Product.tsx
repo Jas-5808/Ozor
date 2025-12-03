@@ -393,7 +393,7 @@ export function Product() {
     }
     return null;
   }, [productFromState, fetchedProduct]);
-  const { addToCart, state: appState } = useApp();
+  const { addToCart, updateCartItem, removeFromCart, state: appState } = useApp();
   const locationLabel =
     appState.location.data?.address ||
     appState.location.data?.city ||
@@ -754,6 +754,36 @@ export function Product() {
     selectedVariant
       ? selectedVariant.stock > 0 && selectedVariant.price !== null
       : product?.price !== null && (product?.stock ?? 0) > 0;
+
+  // Получаем ID текущего товара/варианта для корзины
+  const currentCartItemId = selectedVariant?.id || product?.variant_id || '';
+  
+  // Находим товар в корзине
+  const cartItem = useMemo(() => {
+    return appState.cart.find(item => item.productId === currentCartItemId);
+  }, [appState.cart, currentCartItemId]);
+  
+  // Количество товара в корзине
+  const cartQuantity = cartItem?.quantity || 0;
+  
+  // Максимальное количество (stock)
+  const maxStock = selectedVariant?.stock ?? product?.stock ?? 0;
+  
+  // Увеличить количество в корзине
+  const handleIncreaseQuantity = () => {
+    if (!currentCartItemId || cartQuantity >= maxStock) return;
+    updateCartItem(currentCartItemId, cartQuantity + 1);
+  };
+  
+  // Уменьшить количество в корзине
+  const handleDecreaseQuantity = () => {
+    if (!currentCartItemId) return;
+    if (cartQuantity <= 1) {
+      removeFromCart(currentCartItemId);
+    } else {
+      updateCartItem(currentCartItemId, cartQuantity - 1);
+    }
+  };
 
   const openQuickOrder = () => {
     if (!canBuy) return;
@@ -1175,14 +1205,39 @@ export function Product() {
                     >
                       {t("product.buttons.buyOneClick")}
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleAddToCart}
-                      disabled={!canBuy}
-                      className="flex-1 h-12 rounded-[18px] border border-[#d5ebe3] bg-white text-base font-semibold text-[#04734b] shadow-[inset_0_2px_6px_rgba(4,115,75,0.08)] transition hover:border-[#04734b] hover:text-[#003d32] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {t("product.buttons.addToCart")}
-                    </button>
+                    {cartQuantity > 0 ? (
+                      <div className="flex-1 h-12 rounded-[18px] border border-[#d5ebe3] bg-white flex items-center justify-between px-2">
+                        <button
+                          type="button"
+                          onClick={handleDecreaseQuantity}
+                          className="h-9 w-9 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-lg font-semibold text-[#04734b] transition"
+                        >
+                          −
+                        </button>
+                        <span className="text-base font-bold text-[#04734b] min-w-[40px] text-center">
+                          {cartQuantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleIncreaseQuantity}
+                          disabled={cartQuantity >= maxStock}
+                          className={`h-9 w-9 rounded-xl border border-gray-200 bg-white text-lg font-semibold text-[#04734b] transition ${
+                            cartQuantity >= maxStock ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          +
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleAddToCart}
+                        disabled={!canBuy}
+                        className="flex-1 h-12 rounded-[18px] border border-[#d5ebe3] bg-white text-base font-semibold text-[#04734b] shadow-[inset_0_2px_6px_rgba(4,115,75,0.08)] transition hover:border-[#04734b] hover:text-[#003d32] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {t("product.buttons.addToCart")}
+                      </button>
+                    )}
                   </div>
                   <p className="text-center text-xs font-medium text-slate-500">
                     {t("product.paymentInfo")}
@@ -1454,13 +1509,38 @@ export function Product() {
           >
             {t("product.buttons.buyOneClick")}
           </button>
-          <button
-            type="button"
-            onClick={handleAddToCart}
-            className="flex-1 rounded-2xl border border-white/40 bg-white/90 py-3 text-sm font-semibold text-[#04734b] shadow-md backdrop-blur-lg transition active:scale-[0.99]"
-          >
-            {t("product.buttons.addToCart")}
-          </button>
+          {cartQuantity > 0 ? (
+            <div className="flex-1 rounded-2xl border border-white/40 bg-white/90 shadow-md backdrop-blur-lg flex items-center justify-between px-3">
+              <button
+                type="button"
+                onClick={handleDecreaseQuantity}
+                className="h-9 w-9 rounded-xl bg-white/80 text-lg font-semibold text-[#04734b] transition active:scale-95"
+              >
+                −
+              </button>
+              <span className="text-sm font-bold text-[#04734b] min-w-[30px] text-center">
+                {cartQuantity}
+              </span>
+              <button
+                type="button"
+                onClick={handleIncreaseQuantity}
+                disabled={cartQuantity >= maxStock}
+                className={`h-9 w-9 rounded-xl bg-white/80 text-lg font-semibold text-[#04734b] transition ${
+                  cartQuantity >= maxStock ? 'opacity-50' : 'active:scale-95'
+                }`}
+              >
+                +
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              className="flex-1 rounded-2xl border border-white/40 bg-white/90 py-3 text-sm font-semibold text-[#04734b] shadow-md backdrop-blur-lg transition active:scale-[0.99]"
+            >
+              {t("product.buttons.addToCart")}
+            </button>
+          )}
         </div>
       )}
 

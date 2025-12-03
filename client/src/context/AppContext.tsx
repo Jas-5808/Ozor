@@ -306,7 +306,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }, 0);
   };
   const getCartItemCount = () => {
-    return state.cart.reduce((count, item) => count + item.quantity, 0);
+    // Возвращаем количество разных товаров в корзине
+    return state.cart.length;
   };
   const setLocation = (location: LocationData) => {
     dispatch({ type: 'SET_LOCATION', payload: location });
