@@ -18,6 +18,7 @@ const UpdateProfile = lazy(() => import('./pages/UpdateProfile').then(m => ({ de
 const Favorites = lazy(() => import('./pages/Favorites'));
 const Cart = lazy(() => import('./pages/Cart'));
 const CatalogPage = lazy(() => import('./pages/CatalogPage').then(m => ({ default: m.CatalogPage })));
+const CategoryPage = lazy(() => import('./pages/CategoryPage').then(m => ({ default: m.CategoryPage })));
 const TestAuth = lazy(() => import('./pages/TestAuth').then(m => ({ default: m.TestAuth })));
 
 // Admin pages (уже lazy)
@@ -167,6 +168,14 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageSkeleton />}>
             <CatalogPage />
+          </Suspense>
+        ) 
+      },
+      { 
+        path: "category/:id", 
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <CategoryPage />
           </Suspense>
         ) 
       },

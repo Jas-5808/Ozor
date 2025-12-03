@@ -98,13 +98,21 @@ export function CatalogPage() {
                 <div key={category.id} className={cn.mobileCatalogCategory}>
                   <div 
                     className={`${cn.mobileCatalogItem} ${hasSubcategories ? cn.mobileCatalogItemWithSub : ''}`}
-                    onClick={() => hasSubcategories ? toggleCategory(category.id) : undefined}
                   >
-                    <span>{category.name}</span>
+                    <Link 
+                      to={`/category/${category.id}`}
+                      className="flex-1 hover:text-[#04734b] transition"
+                    >
+                      {category.name}
+                    </Link>
                     {hasSubcategories && (
-                      <span className={`${cn.mobileCatalogArrow} ${isExpanded ? cn.mobileCatalogArrowExpanded : ''}`}>
+                      <button
+                        type="button"
+                        onClick={() => toggleCategory(category.id)}
+                        className={`${cn.mobileCatalogArrow} ${isExpanded ? cn.mobileCatalogArrowExpanded : ''} p-2 -mr-2`}
+                      >
                         ▼
-                      </span>
+                      </button>
                     )}
                   </div>
                   {hasSubcategories && isExpanded && (

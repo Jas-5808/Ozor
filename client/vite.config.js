@@ -19,13 +19,14 @@ export default defineConfig({
         target: "https://api.ozar.uz",
         changeOrigin: true,
         secure: true,
+        timeout: 30000, // 30 секунд таймаут
         // НЕ переписываем путь - оставляем как есть
         // Запрос /api/v1/auth/signin должен идти на https://api.ozar.uz/api/v1/auth/signin
-        configure: (proxy) => {
+        configure: (proxy, options) => {
           proxy.on("proxyReq", (proxyReq, req, res) => {
             console.log(`[Proxy] ${req.method} ${req.url} -> https://api.ozar.uz${req.url}`);
           });
-          proxy.on("proxyRes", (proxyRes) => {
+          proxy.on("proxyRes", (proxyRes, req, res) => {
             // Нормализуем CORS: оставляем только один допустимый Origin
             proxyRes.headers["access-control-allow-origin"] = "http://localhost:5174";
             proxyRes.headers["access-control-allow-methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH";
@@ -33,7 +34,38 @@ export default defineConfig({
             proxyRes.headers["access-control-allow-credentials"] = "true";
           });
           proxy.on("error", (err, req, res) => {
-            console.error("Proxy error:", err);
+            console.error("❌ Proxy error:", err.message);
+            console.error("   Code:", err.code);
+            console.error("   Address:", err.address);
+            console.error("   Port:", err.port);
+            console.error("   URL:", req.url);
+            
+            // Отправляем понятную ошибку клиенту
+            if (!res.headersSent) {
+              res.writeHead(502, {
+                "Content-Type": "application/json",
+                "access-control-allow-origin": "http://localhost:5174",
+              });
+              res.end(JSON.stringify({
+                error: "API Server Unavailable",
+                message: "Не удалось подключиться к серверу API. Проверьте доступность https://api.ozar.uz",
+                code: err.code,
+                details: process.env.NODE_ENV === "development" ? err.message : undefined,
+              }));
+            }
+          });
+          proxy.on("timeout", (req, res) => {
+            console.error("⏱️ Proxy timeout:", req.url);
+            if (!res.headersSent) {
+              res.writeHead(504, {
+                "Content-Type": "application/json",
+                "access-control-allow-origin": "http://localhost:5174",
+              });
+              res.end(JSON.stringify({
+                error: "Gateway Timeout",
+                message: "Превышено время ожидания ответа от API сервера",
+              }));
+            }
           });
         },
       },

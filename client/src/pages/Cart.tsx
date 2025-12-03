@@ -1,3 +1,4 @@
+import { useState } from "react";
 import cn from "./style.module.scss";
 import { useApp } from "../context/AppContext";
 import { formatPrice } from "../utils/helpers";
@@ -6,6 +7,7 @@ import { useTranslation } from "react-i18next";
 
 export function Cart() {
   const { t } = useTranslation();
+  const [showComingSoonModal, setShowComingSoonModal] = useState(false);
   useSEO({
     title: `${t("common.cart.title")} — OZAR`,
     robots: "noindex,nofollow",
@@ -177,12 +179,57 @@ export function Cart() {
                   <div className="text-slate-700 font-black">{t("common.cart.grandTotal")}</div>
                   <div className="text-[20px] font-black">{formatPrice(grandTotal)}</div>
                 </div>
-                <button className={`${cn.primary_btn} h-11`}>{t("common.cart.checkout")}</button>
+                <button 
+                  type="button"
+                  onClick={() => setShowComingSoonModal(true)}
+                  className="w-full h-11 rounded-2xl text-white font-semibold transition hover:brightness-110 active:scale-[0.98]"
+                  style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+                >
+                  {t("common.cart.checkout")}
+                </button>
               </div>
             </aside>
           </div>
         </div>
       </div>
+
+      {/* Модалка "Скоро заработает" */}
+      {showComingSoonModal && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setShowComingSoonModal(false)}
+        >
+          <div 
+            className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setShowComingSoonModal(false)}
+              className="absolute top-4 right-4 h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition"
+            >
+              ×
+            </button>
+            <div className="mb-4">
+              <div className="mx-auto h-20 w-20 rounded-full bg-gradient-to-br from-[#e6f4ef] to-[#d0ebe0] flex items-center justify-center">
+                <span className="text-4xl">🚀</span>
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Скоро заработает!</h3>
+            <p className="text-slate-500 text-sm mb-6">
+              Оформление заказа находится в разработке. Мы работаем над этим и скоро всё будет готово!
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowComingSoonModal(false)}
+              className="w-full h-12 rounded-2xl text-white font-semibold transition hover:brightness-110"
+              style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+            >
+              Понятно
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

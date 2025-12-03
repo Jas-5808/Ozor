@@ -473,9 +473,14 @@ export const resources = {
       catalog: {
         seoTitle: 'Каталог — OZAR',
         header: 'Каталог',
+        category: 'Категория',
         searchPlaceholder: 'Искать в каталоге...',
         loading: 'Загрузка категорий...',
         empty: 'Ничего не найдено',
+        noProducts: 'В этой категории пока нет товаров',
+        backToCatalog: 'Вернуться в каталог',
+        productsCount: '{{count}} товаров',
+        subcategories: 'Подкатегории',
         sidePanel: {
           close: 'Закрыть каталог',
         },
@@ -1376,9 +1381,14 @@ export const resources = {
       catalog: {
         seoTitle: 'Katalog — OZAR',
         header: 'Katalog',
-        searchPlaceholder: 'Katalog bo‘yicha qidirish...',
+        category: 'Kategoriya',
+        searchPlaceholder: "Katalog bo'yicha qidirish...",
         loading: 'Kategoriya yuklanmoqda...',
         empty: 'Hech narsa topilmadi',
+        noProducts: "Bu kategoriyada hozircha mahsulotlar yo'q",
+        backToCatalog: 'Katalogga qaytish',
+        productsCount: '{{count}} ta mahsulot',
+        subcategories: 'Pastki kategoriyalar',
         sidePanel: {
           close: 'Katalogni yopish',
         },

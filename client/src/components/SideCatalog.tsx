@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import cn from "./mainCss.module.scss";
 import { useCategories, getMainCategories, getSubcategories } from "../hooks/useCategories";
@@ -76,21 +77,30 @@ export default function SideCatalog({ open, onClose }: SideCatalogProps) {
                 <div key={category.id} className={cn.sideCatalog_category}>
                   <div 
                     className={`${cn.sideCatalog_item} ${hasSubcategories ? cn.sideCatalog_item_with_sub : ''}`}
-                    onClick={() => hasSubcategories ? toggleCategory(category.id) : undefined}
                   >
-                    <span>{category.name}</span>
+                    <Link 
+                      to={`/category/${category.id}`}
+                      className={cn.sideCatalog_link}
+                      onClick={onClose}
+                  >
+                      {category.name}
+                    </Link>
                     {hasSubcategories && (
-                      <span className={`${cn.sideCatalog_arrow} ${isExpanded ? cn.sideCatalog_arrow_expanded : ''}`}>
+                      <button
+                        type="button"
+                        onClick={() => toggleCategory(category.id)}
+                        className={`${cn.sideCatalog_arrow} ${isExpanded ? cn.sideCatalog_arrow_expanded : ''}`}
+                      >
                         ▼
-                      </span>
+                      </button>
                     )}
                   </div>
                   {hasSubcategories && isExpanded && (
                     <div className={cn.sideCatalog_subcategories}>
                       {subcategories.map((subcategory) => (
-                        <a 
+                        <Link 
                           key={subcategory.id} 
-                          href={`/category/${subcategory.id}`}
+                          to={`/category/${subcategory.id}`}
                           className={cn.sideCatalog_subcategory}
                           onClick={onClose}
                         >
@@ -98,7 +108,7 @@ export default function SideCatalog({ open, onClose }: SideCatalogProps) {
                           <span className={cn.sideCatalog_count}>
                             ({subcategory.products_count})
                           </span>
-                        </a>
+                        </Link>
                       ))}
                     </div>
                   )}

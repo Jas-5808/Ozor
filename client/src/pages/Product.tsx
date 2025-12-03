@@ -304,6 +304,8 @@ export function Product() {
   const [error, setError] = useState<string | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductDetail['variants'][0] | null>(null);
   const [selectedInstallment, setSelectedInstallment] = useState<number>(12);
+  const [selectedVendor, setSelectedVendor] = useState<number>(0);
+  const [showComingSoonModal, setShowComingSoonModal] = useState(false);
   const [recentlyViewed, setRecentlyViewed] = useState<ProductType[]>([]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -759,7 +761,7 @@ export function Product() {
   const currentCartItemId = selectedVariant?.id || product?.variant_id || '';
   
   // Находим товар в корзине
-  const cartItem = useMemo(() => {
+  const cartItem = React.useMemo(() => {
     return appState.cart.find(item => item.productId === currentCartItemId);
   }, [appState.cart, currentCartItemId]);
   
@@ -1157,24 +1159,37 @@ export function Product() {
                   <div className="grid gap-2">
                     {installmentVendors.map((item, idx) => {
                       const monthly = Math.round(item.price / Math.max(1, selectedInstallment)).toLocaleString("ru-RU");
-                      const isActive = idx === 0;
+                      const isActive = selectedVendor === idx;
                       return (
-                        <div
+                        <button
                           key={item.name}
-                          className={`flex items-center justify-between rounded-[18px] border px-3 py-2 text-xs font-semibold ${
-                            isActive ? "border-[#ef3124] bg-[#fff5f3]" : "border-slate-200 bg-white"
+                          type="button"
+                          onClick={() => setSelectedVendor(idx)}
+                          className={`relative flex items-center justify-between rounded-[18px] border-2 px-3 py-2 text-xs font-semibold transition-all duration-200 ${
+                            isActive 
+                              ? "border-[#04734b] bg-gradient-to-r from-[#e6f4ef] to-[#f0faf6] shadow-[0_0_0_3px_rgba(4,115,75,0.15)]" 
+                              : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
                           }`}
                         >
+                          {isActive && (
+                            <span className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-[#04734b] flex items-center justify-center">
+                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </span>
+                          )}
                           <div className="flex items-center gap-2">
-                            <span className="h-7 w-7 rounded-xl bg-slate-100 text-[11px] grid place-items-center text-slate-500">
+                            <span className={`h-7 w-7 rounded-xl text-[11px] grid place-items-center transition-colors ${
+                              isActive ? "bg-[#04734b] text-white" : "bg-slate-100 text-slate-500"
+                            }`}>
                               {item.name.slice(0, 1)}
                             </span>
-                            <span>{item.name}</span>
+                            <span className={isActive ? "text-[#04734b]" : ""}>{item.name}</span>
                           </div>
-                          <div className="text-[#04734b]">
+                          <div className={`font-bold ${isActive ? "text-[#04734b]" : "text-slate-600"}`}>
                             {t("product.installment.perMonth", { price: monthly })}
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -1184,7 +1199,8 @@ export function Product() {
                   </div>
                   <button
                     type="button"
-                    className="w-full h-11 rounded-[18px] text-white text-sm font-semibold shadow-[0_10px_20px_rgba(4,115,75,0.3)]"
+                    onClick={() => setShowComingSoonModal(true)}
+                    className="w-full h-11 rounded-[18px] text-white text-sm font-semibold shadow-[0_10px_20px_rgba(4,115,75,0.3)] transition hover:brightness-110 active:scale-[0.98]"
                     style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
                   >
                     {t("product.buttons.checkout")}
@@ -1251,24 +1267,37 @@ export function Product() {
                   <div className="grid gap-2">
                     {installmentVendors.map((item, idx) => {
                       const monthly = Math.round(item.price / Math.max(1, selectedInstallment)).toLocaleString("ru-RU");
-                      const isActive = idx === 0;
+                      const isActive = selectedVendor === idx;
                       return (
-                        <div
+                        <button
                           key={item.name}
-                          className={`flex items-center justify-between rounded-[18px] border px-4 py-3 text-sm font-semibold ${
-                            isActive ? "border-[#ef3124] bg-[#fff5f3]" : "border-slate-200 bg-white"
+                          type="button"
+                          onClick={() => setSelectedVendor(idx)}
+                          className={`relative flex items-center justify-between rounded-[18px] border-2 px-4 py-3 text-sm font-semibold transition-all duration-200 ${
+                            isActive 
+                              ? "border-[#04734b] bg-gradient-to-r from-[#e6f4ef] to-[#f0faf6] shadow-[0_0_0_4px_rgba(4,115,75,0.12)]" 
+                              : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
                           }`}
                         >
+                          {isActive && (
+                            <span className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-[#04734b] flex items-center justify-center shadow-lg">
+                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </span>
+                          )}
                           <div className="flex items-center gap-3">
-                            <span className="h-8 w-8 rounded-xl bg-slate-100 text-xs grid place-items-center text-slate-500">
+                            <span className={`h-8 w-8 rounded-xl text-xs grid place-items-center transition-colors ${
+                              isActive ? "bg-[#04734b] text-white" : "bg-slate-100 text-slate-500"
+                            }`}>
                               {item.name.slice(0, 1)}
                             </span>
-                            <span>{item.name}</span>
+                            <span className={isActive ? "text-[#04734b]" : ""}>{item.name}</span>
                           </div>
-                          <div className="text-[#04734b]">
+                          <div className={`font-bold ${isActive ? "text-[#04734b]" : "text-slate-600"}`}>
                             {t("product.installment.perMonth", { price: monthly })}
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -1276,7 +1305,12 @@ export function Product() {
                     <span>{t("product.installment.total", { count: selectedInstallment })}</span>
                     <strong className="text-slate-900">{formatPrice(currentPrice ?? 0)}</strong>
                   </div>
-                  <button className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110" style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}>
+                  <button 
+                    type="button"
+                    onClick={() => setShowComingSoonModal(true)}
+                    className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110 active:scale-[0.98]" 
+                    style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+                  >
                     {t("product.buttons.checkout")}
                   </button>
                 </div>
@@ -1541,6 +1575,44 @@ export function Product() {
               {t("product.buttons.addToCart")}
             </button>
           )}
+        </div>
+      )}
+
+      {/* Модалка "Скоро заработает" */}
+      {showComingSoonModal && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setShowComingSoonModal(false)}
+        >
+          <div 
+            className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center animate-[fadeInScale_0.2s_ease-out]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setShowComingSoonModal(false)}
+              className="absolute top-4 right-4 h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition"
+            >
+              ×
+            </button>
+            <div className="mb-4">
+              <div className="mx-auto h-20 w-20 rounded-full bg-gradient-to-br from-[#e6f4ef] to-[#d0ebe0] flex items-center justify-center">
+                <span className="text-4xl">🚀</span>
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Скоро заработает!</h3>
+            <p className="text-slate-500 text-sm mb-6">
+              Оформление рассрочки находится в разработке. Мы работаем над этим и скоро всё будет готово!
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowComingSoonModal(false)}
+              className="w-full h-12 rounded-2xl text-white font-semibold transition hover:brightness-110"
+              style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+            >
+              Понятно
+            </button>
+          </div>
         </div>
       )}
 
