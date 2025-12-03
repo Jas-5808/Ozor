@@ -44,10 +44,12 @@ export const ProfileMarket: React.FC<ProfileMarketProps> = ({
   }
 
   return (
-    <div className={cn.productsGrid}>
+    <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 lg:gap-5 items-stretch ${cn.marketGrid}`}>
       {products.map((product) => (
-        <div key={product.product_id} className={cn.productCardWrapper}>
-          <ProductCard product={product} />
+        <div key={product.product_id} className={`flex flex-col ${cn.marketCardWrapper}`}>
+          <div className={cn.marketCardInner}>
+            <ProductCard product={product} />
+          </div>
           <button
             onClick={() => onGenerate(product)}
             disabled={loadingProductId === product.product_id}

@@ -504,3 +504,112 @@
   align-items: center;
   justify-content: space-between;
 }
+
+/* Market grid wrapper */
+.marketGrid {
+  /* Базовые стили уже в Tailwind классах */
+}
+
+.marketCardWrapper {
+  /* Базовые стили */
+}
+
+.marketCardInner {
+  width: 100%;
+}
+
+/* Generate button for Market cards */
+.generateButton {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #2a7bd9;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 85, 191, 0.95),
+    rgba(0, 179, 255, 0.9)
+  );
+  color: #0b1a33;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.generateButton:hover:not(:disabled) {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 85, 191, 1),
+    rgba(0, 179, 255, 0.95)
+  );
+  transform: translateY(-1px);
+}
+
+.generateButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobile adjustments for Market cards */
+@media (max-width: 640px) {
+  .marketGrid {
+    gap: 4px !important;
+  }
+  
+  .marketCardWrapper {
+    min-width: 0;
+  }
+  
+  .marketCardInner {
+    width: 100%;
+    font-size: 0.75rem;
+  }
+  
+  /* Уменьшаем все элементы внутри карточки */
+  .marketCardInner * {
+    font-size: inherit;
+  }
+  
+  /* Уменьшаем изображения через aspect-ratio */
+  .marketCardInner > div > div > div[style*="aspect-ratio"] {
+    aspect-ratio: 1 / 1.25 !important;
+    margin-bottom: 4px !important;
+  }
+  
+  .marketCardInner img {
+    max-height: 75px !important;
+    object-fit: cover !important;
+  }
+  
+  /* Уменьшаем размеры текста */
+  .marketCardInner h3 {
+    font-size: 0.625rem !important;
+    line-height: 1.2 !important;
+  }
+  
+  /* Уменьшаем отступы */
+  .marketCardInner > div {
+    margin-bottom: 2px !important;
+  }
+  
+  /* Уменьшаем кнопку лайка */
+  .marketCardInner button {
+    width: 16px !important;
+    height: 16px !important;
+    top: 2px !important;
+    right: 2px !important;
+  }
+  
+  .marketCardInner button img {
+    width: 8px !important;
+    height: 8px !important;
+  }
+  
+  .generateButton {
+    padding: 3px 4px;
+    font-size: 0.5rem;
+    margin-top: 2px;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+}

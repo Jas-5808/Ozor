@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../hooks/useAuth";
-import { shopAPI } from "../services/api";
+import { shopAPI, paymentAPI } from "../services/api";
 import { useProducts } from "../hooks/useProducts";
 import cn from "./profile.module.scss";
 import { formatPrice, getProductImageUrl, getVariantMainImage } from "../utils/helpers";
+import { logger } from "../utils/logger";
 import { useFlows } from "../hooks/useFlows";
 import SkeletonGrid from "../components/SkeletonGrid";
 import useSEO from "../hooks/useSEO";
@@ -13,8 +14,8 @@ import { useProfileData } from "../hooks/useProfileData";
 import { useReferralActions } from "../hooks/useReferralActions";
 
 export function Profile() {
-  const navigate = useNavigate();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { profile, isAuthenticated, logout, fetchUserProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<
     "market" | "oqim" | "stats" | "payments"
@@ -25,8 +26,26 @@ export function Profile() {
     loading: productsLoading,
     error: productsError,
   } = useProducts();
-  const totalProducts = Array.isArray(products) ? products.length : 0;
   const { flows, removeFlow, clearFlows } = useFlows();
+  
+  // Состояния для раздела платежей
+  const [withdrawalAmount, setWithdrawalAmount] = useState<string>("");
+  const [cardNumber, setCardNumber] = useState<string>("");
+  const [cardholderName, setCardholderName] = useState<string>("");
+  const [withdrawalLoading, setWithdrawalLoading] = useState(false);
+  const [withdrawalError, setWithdrawalError] = useState<string | null>(null);
+  const [withdrawalSuccess, setWithdrawalSuccess] = useState(false);
+  const [withdrawals, setWithdrawals] = useState<Array<{
+    id: string;
+    amount: number;
+    card_number: string;
+    cardholder_name: string;
+    status: string;
+    created_at: string;
+    updated_at?: string;
+  }>>([]);
+  const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
+  const [withdrawalsError, setWithdrawalsError] = useState<string | null>(null);
   
   // Используем кастомные хуки для управления данными
   const profileData = useProfileData();
@@ -47,6 +66,95 @@ export function Profile() {
       fetchUserProfile?.();
     }
   }, [isAuthenticated, profile, fetchUserProfile]);
+
+  // Загрузка истории выводов
+  const loadWithdrawals = async () => {
+    try {
+      setWithdrawalsLoading(true);
+      setWithdrawalsError(null);
+      const response = await paymentAPI.getWithdrawals();
+      const data = (response as any)?.data?.data || (response as any)?.data || [];
+      setWithdrawals(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      setWithdrawalsError(error?.response?.data?.message || error?.message || t("profile.payments.loadError"));
+      logger.errorWithContext(error, { context: 'loadWithdrawals' });
+    } finally {
+      setWithdrawalsLoading(false);
+    }
+  };
+
+  // Загрузка истории при открытии вкладки платежей
+  useEffect(() => {
+    if (activeTab === "payments" && isAuthenticated) {
+      loadWithdrawals();
+    }
+  }, [activeTab, isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Создание вывода средств
+  const handleWithdrawal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setWithdrawalError(null);
+    setWithdrawalSuccess(false);
+
+    const amount = parseFloat(withdrawalAmount);
+    if (!amount || amount <= 0) {
+      setWithdrawalError(t("profile.payments.form.errors.invalidAmount"));
+      return;
+    }
+
+    if (userBalance !== null && amount > userBalance) {
+      setWithdrawalError(t("profile.payments.form.errors.insufficientBalance"));
+      return;
+    }
+
+    if (!cardNumber || cardNumber.trim().length < 16) {
+      setWithdrawalError(t("profile.payments.form.errors.invalidCard"));
+      return;
+    }
+
+    if (!cardholderName || cardholderName.trim().length < 2) {
+      setWithdrawalError(t("profile.payments.form.errors.invalidName"));
+      return;
+    }
+
+    try {
+      setWithdrawalLoading(true);
+      await paymentAPI.createWithdrawal({
+        amount,
+        card_number: cardNumber.replace(/\s/g, ""),
+        cardholder_name: cardholderName.trim(),
+      });
+      setWithdrawalSuccess(true);
+      setWithdrawalAmount("");
+      setCardNumber("");
+      setCardholderName("");
+      // Обновляем баланс и историю
+      await profileData.refreshBalance();
+      setTimeout(() => {
+        loadWithdrawals();
+        setWithdrawalSuccess(false);
+      }, 2000);
+    } catch (error: any) {
+      setWithdrawalError(error?.response?.data?.message || error?.message || t("profile.payments.form.errors.submitError"));
+      logger.errorWithContext(error, { context: 'handleWithdrawal' });
+    } finally {
+      setWithdrawalLoading(false);
+    }
+  };
+
+  // Форматирование номера карты
+  const formatCardNumber = (value: string) => {
+    const cleaned = value.replace(/\s/g, "");
+    const match = cleaned.match(/.{1,4}/g);
+    return match ? match.join(" ") : cleaned;
+  };
+
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCardNumber(e.target.value.replace(/\D/g, ""));
+    if (formatted.replace(/\s/g, "").length <= 16) {
+      setCardNumber(formatted);
+    }
+  };
 
   // Используем данные из хуков
   const {
@@ -84,31 +192,31 @@ export function Profile() {
 
   const heroHighlights = [
     {
-      labelKey: "profile.hero.highlights.balance.label",
+      label: t("profile.hero.highlights.balance.label"),
       value: formatPrice(userBalance ?? profile?.balance ?? 0, "UZS"),
-      helperKey: "profile.hero.highlights.balance.helper",
+      helper: t("profile.hero.highlights.balance.helper"),
     },
     {
-      labelKey: "profile.hero.highlights.flows.label",
+      label: t("profile.hero.highlights.flows.label"),
       value: ((apiFlows?.length || 0) + (flows?.length || 0)).toLocaleString("ru-RU"),
-      helperKey: "profile.hero.highlights.flows.helper",
+      helper: t("profile.hero.highlights.flows.helper"),
     },
     {
-      labelKey: "profile.hero.highlights.earnings.label",
+      label: t("profile.hero.highlights.earnings.label"),
       value: formatPrice(totals.earned, "UZS"),
-      helperKey: "profile.hero.highlights.earnings.helper",
+      helper: t("profile.hero.highlights.earnings.helper"),
     },
   ];
 
   const tabItems: Array<{
     id: typeof activeTab;
-    labelKey: string;
+    label: string;
     icon: string;
   }> = [
-    { id: "market", labelKey: "profile.tabs.market", icon: "🛍️" },
-    { id: "oqim", labelKey: "profile.tabs.flows", icon: "🔗" },
-    { id: "stats", labelKey: "profile.tabs.stats", icon: "📈" },
-    { id: "payments", labelKey: "profile.tabs.payments", icon: "💳" },
+    { id: "market", label: t("profile.tabs.market"), icon: "🛍️" },
+    { id: "oqim", label: t("profile.tabs.flows"), icon: "🔗" },
+    { id: "stats", label: t("profile.tabs.stats"), icon: "📈" },
+    { id: "payments", label: t("profile.tabs.payments"), icon: "💳" },
   ];
 
   const computedStats = useMemo(() => {
@@ -207,19 +315,19 @@ export function Profile() {
             <div className="grid w-full max-w-xl gap-3 sm:grid-cols-3">
               {heroHighlights.map((card) => (
                 <div
-                  key={card.labelKey}
+                  key={card.label}
                   className="rounded-2xl border border-white/25 bg-white/10 p-4 backdrop-blur-md shadow-[0_15px_40px_rgba(0,0,0,0.12)]"
                 >
-                  <p className="text-xs uppercase tracking-wide text-white/70">{t(card.labelKey)}</p>
+                  <p className="text-xs uppercase tracking-wide text-white/70">{card.label}</p>
                   <p className="mt-1 text-2xl font-black">{card.value}</p>
-                  <p className="text-xs text-white/75">{t(card.helperKey)}</p>
+                  <p className="text-xs text-white/75">{card.helper}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <div className="mt-8 rounded-3xl border border-emerald-100 bg-white/95 p-2 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+        <div className="mt-8 rounded-3xl border border-emerald-100 bg-white/95 p-2 shadow-[0_20px_60px_rgба(15,23,42,0.08)]">
           <div className="flex flex-wrap gap-2">
             {tabItems.map((tab) => {
               const isActive = activeTab === tab.id;
@@ -241,7 +349,7 @@ export function Profile() {
                   >
                     {tab.icon}
                   </span>
-                  <span className={isActive ? "text-emerald-700" : ""}>{t(tab.labelKey)}</span>
+                  <span className={isActive ? "text-emerald-700" : ""}>{tab.label}</span>
                 </button>
               );
             })}
@@ -249,7 +357,7 @@ export function Profile() {
         </div>
 
         {activeTab === "market" && (
-          <section className="mt-6 rounded-[30px] border border-white/80 bg-white p-4 sm:p-5 shadow-[0_25px_80px_rgba(15,23,42,0.05)]">
+          <section className="mt-6 rounded-[30px] border border-white/80 bg-white p-4 sm:p-5 shadow-[0_25px_80px_rgба(15,23,42,0.05)]">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.35em] text-[#015338]">{t("profile.market.badge")}</p>
@@ -257,7 +365,7 @@ export function Profile() {
                 <p className="text-sm text-slate-500">{t("profile.market.subtitle")}</p>
               </div>
               <span className="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-3 py-1 text-xs font-semibold text-slate-700 w-fit">
-                {t("profile.market.productCount", { count: totalProducts })}
+                {t("profile.market.productCount", { count: products.length })}
               </span>
             </div>
             {productsLoading && (
@@ -272,7 +380,7 @@ export function Profile() {
             )}
             {!productsLoading && !productsError && (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {(products ?? []).map((p: any, index: number) => {
+                {products.map((p: any, index: number) => {
                   const productId = p?.product_id || p?.id || p?.productId || "";
                   const referralValue = formatPrice(p.refferal_price || 0);
                   const priceValue = formatPrice(p.price || 0);
@@ -318,7 +426,7 @@ export function Profile() {
                   return (
                     <article
                       key={productId ? `${productId}-${p.variant_id || index}` : `market-card-${index}`}
-                      className="group relative flex h-full flex-col rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-4 shadow-[0_18px_35px_rgba(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_25px_50px_rgba(15,23,42,0.12)]"
+                      className="group relative flex h-full flex-col rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-4 shadow-[0_18px_35px_rgба(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_25px_50px_rgба(15,23,42,0.12)]"
                     >
                       <button
                         type="button"
@@ -348,9 +456,7 @@ export function Profile() {
                       <div className="mt-4 flex flex-1 flex-col gap-4">
                         <div>
                           <h4 className="text-base font-bold text-slate-900 line-clamp-2">{p.product_name}</h4>
-                          <p className="mt-1 text-xs uppercase tracking-wide text-slate-500">
-                            {t("profile.market.card.skuLabel")}: {p.variant_sku || "—"}
-                          </p>
+                          <p className="mt-1 text-xs uppercase tracking-wide text-slate-500">{t("profile.market.card.skuLabel")}: {p.variant_sku || "—"}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-slate-100/60 px-3 py-2">
                           <div className="flex flex-col">
@@ -465,8 +571,8 @@ export function Profile() {
                             <div className="inline-flex items-center gap-2 shrink-0">
                               <button
                                 className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50"
-                                title={t("common.actions.copy")}
-                                aria-label={t("common.actions.copy")}
+                                title={t("profile.flows.copy")}
+                                aria-label={t("profile.flows.copy")}
                                 onClick={() => shareLink && handleCopy(shareLink)}
                               >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -478,8 +584,8 @@ export function Profile() {
                                 className={`h-8 w-8 inline-flex items-center justify-center rounded-lg border ${
                                   deletingReferralId === r.id ? "opacity-50 cursor-not-allowed" : ""
                                 } border-red-200 hover:bg-red-50`}
-                                title={t("common.actions.delete")}
-                                aria-label={t("common.actions.delete")}
+                                title={t("profile.flows.delete")}
+                                aria-label={t("profile.flows.delete")}
                                 onClick={() => handleDeleteReferral(r.id)}
                                 disabled={deletingReferralId === r.id}
                               >
@@ -524,8 +630,8 @@ export function Profile() {
                           <div className="inline-flex items-center gap-2">
                             <button
                               className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50"
-                              title={t("common.actions.copy")}
-                              aria-label={t("common.actions.copy")}
+                              title={t("profile.flows.copy")}
+                              aria-label={t("profile.flows.copy")}
                               onClick={() => handleCopy(f.link)}
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -535,8 +641,8 @@ export function Profile() {
                             </button>
                             <button
                               className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-red-200 hover:bg-red-50"
-                              title={t("common.actions.delete")}
-                              aria-label={t("common.actions.delete")}
+                              title={t("profile.flows.delete")}
+                              aria-label={t("profile.flows.delete")}
                               onClick={() => removeFlow(f.id)}
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -558,7 +664,7 @@ export function Profile() {
                 {flows.length > 0 && (
                   <div className={`${cn.actions} sm:col-span-2 lg:col-span-3`}>
                     <button className={`${cn.button} ${cn.secondary} ${cn.compact}`} onClick={clearFlows}>
-                      {t("common.actions.clearAll")}
+                      {t("profile.flows.clear")}
                     </button>
                   </div>
                 )}
@@ -571,32 +677,22 @@ export function Profile() {
           <section className="mt-6 rounded-[30px] border border-white/80 bg-white p-5 sm:p-6 shadow-[0_25px_80px_rgba(15,23,42,0.05)]">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
               <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
-                <div className="text-xs tracking-wide uppercase text-emerald-900 font-bold">
-                  {t("profile.stats.cards.total.label")}
-                </div>
+                <div className="text-xs tracking-wide uppercase text-emerald-900 font-bold">{t("profile.stats.cards.total.label")}</div>
                 <div className="text-3xl font-black text-emerald-900 mt-1">{totals.total}</div>
                 <div className="text-xs text-emerald-800/80">{t("profile.stats.cards.total.helper")}</div>
               </div>
               <div className="rounded-2xl border border-amber-100 bg-amber-50/80 p-4">
-                <div className="text-xs tracking-wide uppercase text-amber-900 font-bold">
-                  {t("profile.stats.cards.hold.label")}
-                </div>
+                <div className="text-xs tracking-wide uppercase text-amber-900 font-bold">{t("profile.stats.cards.hold.label")}</div>
                 <div className="text-3xl font-black text-amber-900 mt-1">{totals.hold}</div>
                 <div className="text-xs text-amber-800/80">{t("profile.stats.cards.hold.helper")}</div>
               </div>
               <div className="rounded-2xl border border-sky-100 bg-sky-50/80 p-4">
-                <div className="text-xs tracking-wide uppercase text-sky-900 font-bold">
-                  {t("profile.stats.cards.paid.label")}
-                </div>
+                <div className="text-xs tracking-wide uppercase text-sky-900 font-bold">{t("profile.stats.cards.paid.label")}</div>
                 <div className="text-3xl font-black text-sky-900 mt-1">{totals.paid}</div>
-                <div className="text-xs text-sky-800/80">
-                  {t("profile.stats.cards.paid.helper")}
-                </div>
+                <div className="text-xs text-sky-800/80">{t("profile.stats.cards.paid.helper")}</div>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs tracking-wide uppercase text-slate-600 font-bold">
-                  {t("profile.stats.cards.balance.label")}
-                </div>
+                <div className="text-xs tracking-wide uppercase text-slate-600 font-bold">{t("profile.stats.cards.balance.label")}</div>
                 <div className="text-3xl font-black text-slate-900 mt-1">
                   {formatPrice(userBalance ?? profile?.balance ?? 0, "UZS")}
                 </div>
@@ -606,12 +702,8 @@ export function Profile() {
 
             <div className="rounded-2xl border border-gray-200 bg-white p-4">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-base font-extrabold text-slate-900">
-                  {t("profile.stats.table.title")}
-                </div>
-                <div className="text-xs text-slate-500">
-                  {t("profile.stats.table.subtitle")}
-                </div>
+                <div className="text-base font-extrabold text-slate-900">{t("profile.stats.table.title")}</div>
+                <div className="text-xs text-slate-500">{t("profile.stats.table.subtitle")}</div>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
@@ -651,9 +743,179 @@ export function Profile() {
         )}
 
         {activeTab === "payments" && (
-          <div className={`${cn.glass} ${cn.panel}`}>
-            <p>{t("profile.payments.comingSoon")}</p>
-          </div>
+          <section className="mt-6 rounded-[30px] border border-white/80 bg-white p-4 sm:p-5 shadow-[0_25px_80px_rgba(15,23,42,0.05)]">
+            <div className="mb-6">
+              <p className="text-xs uppercase tracking-[0.35em] text-[#015338]">{t("profile.payments.badge")}</p>
+              <h3 className="text-2xl font-black text-slate-900">{t("profile.payments.title")}</h3>
+              <p className="text-sm text-slate-500">{t("profile.payments.subtitle")}</p>
+            </div>
+
+            {/* Форма вывода средств */}
+            <div className="mb-8 rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
+              <h4 className="mb-4 text-lg font-bold text-slate-900">{t("profile.payments.form.title")}</h4>
+              
+              {withdrawalSuccess && (
+                <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+                  {t("profile.payments.form.success")}
+                </div>
+              )}
+
+              {withdrawalError && (
+                <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+                  {withdrawalError}
+                </div>
+              )}
+
+              <form onSubmit={handleWithdrawal} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">
+                      {t("profile.payments.form.amountLabel")}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={withdrawalAmount}
+                        onChange={(e) => setWithdrawalAmount(e.target.value)}
+                        placeholder={t("profile.payments.form.amountPlaceholder")}
+                        min="1"
+                        max={userBalance ?? undefined}
+                        step="0.01"
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                        required
+                      />
+                      {userBalance !== null && (
+                        <div className="mt-2 text-xs text-slate-500">
+                          {t("profile.payments.form.availableBalance")}: {formatPrice(userBalance, "UZS")}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">
+                      {t("profile.payments.form.cardNumberLabel")}
+                    </label>
+                    <input
+                      type="text"
+                      value={cardNumber}
+                      onChange={handleCardNumberChange}
+                      placeholder={t("profile.payments.form.cardNumberPlaceholder")}
+                      maxLength={19}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    {t("profile.payments.form.cardholderNameLabel")}
+                  </label>
+                  <input
+                    type="text"
+                    value={cardholderName}
+                    onChange={(e) => setCardholderName(e.target.value)}
+                    placeholder={t("profile.payments.form.cardholderNamePlaceholder")}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={withdrawalLoading || userBalance === null || userBalance === 0}
+                  className="w-full rounded-2xl bg-gradient-to-r from-[#064e3b] via-[#047857] to-[#22c55e] py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_22px_48px_rgba(6,78,59,0.45)] ring-1 ring-white/20 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {withdrawalLoading ? t("profile.payments.form.submitting") : t("profile.payments.form.submit")}
+                </button>
+              </form>
+            </div>
+
+            {/* Статистика выводов */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h4 className="text-base font-extrabold text-slate-900">{t("profile.payments.history.title")}</h4>
+                  <p className="text-xs text-slate-500">{t("profile.payments.history.subtitle")}</p>
+                </div>
+              </div>
+
+              {withdrawalsLoading && (
+                <div className="py-8 text-center">
+                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#04734b]"></div>
+                  <p className="mt-2 text-sm text-slate-500">{t("profile.payments.history.loading")}</p>
+                </div>
+              )}
+
+              {withdrawalsError && (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                  {withdrawalsError}
+                </div>
+              )}
+
+              {!withdrawalsLoading && !withdrawalsError && (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500">
+                        <th className="text-left py-3">{t("profile.payments.history.table.date")}</th>
+                        <th className="text-left py-3">{t("profile.payments.history.table.amount")}</th>
+                        <th className="text-left py-3">{t("profile.payments.history.table.cardNumber")}</th>
+                        <th className="text-left py-3">{t("profile.payments.history.table.cardholderName")}</th>
+                        <th className="text-left py-3">{t("profile.payments.history.table.status")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {withdrawals.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-slate-500">
+                            {t("profile.payments.history.empty")}
+                          </td>
+                        </tr>
+                      ) : (
+                        withdrawals.map((withdrawal) => (
+                          <tr key={withdrawal.id} className="border-b border-slate-100 hover:bg-slate-50">
+                            <td className="py-3 text-slate-600">
+                              {new Date(withdrawal.created_at).toLocaleString()}
+                            </td>
+                            <td className="py-3 font-semibold text-slate-900">
+                              {formatPrice(withdrawal.amount, "UZS")}
+                            </td>
+                            <td className="py-3 text-slate-600">
+                              **** {withdrawal.card_number.slice(-4)}
+                            </td>
+                            <td className="py-3 text-slate-600">{withdrawal.cardholder_name}</td>
+                            <td className="py-3">
+                              <span
+                                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+                                  withdrawal.status === "completed" || withdrawal.status === "paid"
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : withdrawal.status === "pending"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : withdrawal.status === "rejected" || withdrawal.status === "failed"
+                                    ? "bg-rose-100 text-rose-700"
+                                    : "bg-slate-100 text-slate-700"
+                                }`}
+                              >
+                                {withdrawal.status === "completed" || withdrawal.status === "paid"
+                                  ? t("profile.payments.history.status.completed")
+                                  : withdrawal.status === "pending"
+                                  ? t("profile.payments.history.status.pending")
+                                  : withdrawal.status === "rejected" || withdrawal.status === "failed"
+                                  ? t("profile.payments.history.status.rejected")
+                                  : withdrawal.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
         )}
 
         {dialog.open && (
@@ -703,7 +965,7 @@ export function Profile() {
             onClick={() => setCreateModal({ open: false, title: "", agree: false })}
           >
             <div
-              className="relative w-full max-w-md rounded-[32px] bg-white p-6 shadow-[0_35px_80px_rgba(15,23,42,0.25)]"
+              className="relative w-full max-w-md rounded-[32px] bg-white p-6 shadow-[0_35px_80px_rgба(15,23,42,0.25)]"
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -715,9 +977,7 @@ export function Profile() {
                 ×
               </button>
               <div className="mb-4 flex flex-col gap-1">
-                <p className="text-xs uppercase tracking-[0.4em] text-[#fb923c]">
-                  {t("profile.createModal.badge")}
-                </p>
+                <p className="text-xs uppercase tracking-[0.4em] text-[#fb923c]">{t("profile.createModal.badge")}</p>
                 <h4 className="text-xl font-black text-slate-900">{createModal.product?.product_name}</h4>
                 <p className="text-sm text-slate-500">
                   {t("profile.createModal.description")}
@@ -751,7 +1011,7 @@ export function Profile() {
                 )}
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <button
-                    className="flex-1 rounded-2xl bg-gradient-to-r from-[#f97316] to-[#fb923c] py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(249,115,22,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex-1 rounded-2xl bg-gradient-to-r from-[#f97316] to-[#fb923c] py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgба(249,115,22,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                     onClick={submitCreateReferral}
                     disabled={createLoading || !createModal.agree}
                   >
@@ -779,7 +1039,7 @@ export function Profile() {
                         className="inline-flex h-10 min-w-[48px] items-center justify-center rounded-2xl bg-gradient-to-r from-[#10b981] to-[#059669] px-3 text-xs font-bold uppercase text-white"
                         onClick={() => handleCopy(createModal.createdLink!)}
                       >
-                        {t("common.actions.copy")}
+                        Copy
                       </button>
                     </div>
                   </div>

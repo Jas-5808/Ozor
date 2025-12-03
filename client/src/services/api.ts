@@ -549,6 +549,10 @@ export const warehouseAPI = {
 export const paymentAPI = {
   getUserBalance: (): Promise<TypedAxiosResponse<{ balance: number }>> => 
     apiClient.get("/payment/get_user_balance"),
+  createWithdrawal: (payload: { amount: number; card_number: string; cardholder_name: string }): Promise<TypedAxiosResponse<{ id: string; status: string; created_at: string }>> =>
+    apiClient.post("/payment/withdrawal", payload),
+  getWithdrawals: (): Promise<TypedAxiosResponse<Array<{ id: string; amount: number; card_number: string; cardholder_name: string; status: string; created_at: string; updated_at?: string }>>> =>
+    apiClient.get("/payment/withdrawals"),
 };
 
 export default apiClient;
