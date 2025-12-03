@@ -60,10 +60,6 @@ export function Login() {
       setLoading(false);
     }
   };
-  const handleTelegramLogin = () => {
-    logger.info("Telegram login initiated");
-    // TODO: Implement Telegram OAuth
-  };
   return (
     <div className={cn.registration_wrapper}>
       <div className={cn.registration_container}>
@@ -148,19 +144,6 @@ export function Login() {
                 {loading ? t("auth.login.submitting") : t("auth.login.submit")}
               </button>
             </form>
-
-            <div className={cn.divider}><span>{t("auth.login.divider")}</span></div>
-
-            <div className={cn.socials}>
-              <button 
-                className={`${cn.social_btn} ${cn.telegram}`}
-                onClick={handleTelegramLogin}
-                disabled={loading}
-              >
-                <img src="/icons/telegram.png" alt={t("auth.login.telegramAlt")} />
-                {t("auth.login.telegramButton")}
-              </button>
-            </div>
 
             <div className={cn.auth_links}>
               <p>
