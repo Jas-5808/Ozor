@@ -11,6 +11,7 @@ interface CartItem {
     original_price?: number | null;
     image?: string | null;
     attributes?: Array<{ name: string; value: string }>;
+    stock?: number;
   };
 }
 interface LocationData {
@@ -76,19 +77,25 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
     case 'ADD_TO_CART': {
       const existingItem = state.cart.find(item => item.productId === action.payload.productId);
+      const stock = action.payload.product.stock;
       if (existingItem) {
+        const newQuantity = existingItem.quantity + action.payload.quantity;
+        // Ограничиваем количество по наличию на складе
+        const limitedQuantity = stock !== undefined ? Math.min(newQuantity, stock) : newQuantity;
         return {
           ...state,
           cart: state.cart.map(item =>
             item.productId === action.payload.productId
-              ? { ...item, quantity: item.quantity + action.payload.quantity }
+              ? { ...item, quantity: limitedQuantity }
               : item
           ),
         };
       }
+      // Ограничиваем начальное количество по наличию на складе
+      const limitedInitialQty = stock !== undefined ? Math.min(action.payload.quantity, stock) : action.payload.quantity;
       return {
         ...state,
-        cart: [...state.cart, action.payload],
+        cart: [...state.cart, { ...action.payload, quantity: limitedInitialQty }],
       };
     }
     case 'REMOVE_FROM_CART': {
@@ -100,11 +107,17 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'UPDATE_CART_ITEM': {
       return {
         ...state,
-        cart: state.cart.map(item =>
-          item.productId === action.payload.productId
-            ? { ...item, quantity: action.payload.quantity }
-            : item
-        ),
+        cart: state.cart.map(item => {
+          if (item.productId === action.payload.productId) {
+            const stock = item.product.stock;
+            // Ограничиваем количество по наличию на складе
+            const limitedQuantity = stock !== undefined 
+              ? Math.min(action.payload.quantity, stock) 
+              : action.payload.quantity;
+            return { ...item, quantity: limitedQuantity };
+          }
+          return item;
+        }),
       };
     }
     case 'CLEAR_CART': {
@@ -267,6 +280,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           original_price: product.original_price,
           image: product.image,
           attributes: product.attributes,
+          stock: product.stock,
         },
       },
     });

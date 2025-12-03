@@ -19,8 +19,12 @@ export function Cart() {
     const next = Math.max(1, currentQty - 1);
     updateCartItem(productId, next);
   };
-  const handleIncrease = (productId: string, currentQty: number) => {
-    updateCartItem(productId, currentQty + 1);
+  const handleIncrease = (productId: string, currentQty: number, stock?: number) => {
+    // Ограничиваем количество по наличию на складе
+    const maxQty = stock !== undefined ? stock : Infinity;
+    if (currentQty < maxQty) {
+      updateCartItem(productId, currentQty + 1);
+    }
   };
 
   if (!items || items.length === 0) {
@@ -88,13 +92,23 @@ export function Cart() {
                             </button>
                             <strong className="min-w-7 text-center">{item.quantity}</strong>
                             <button
-                              onClick={() => handleIncrease(item.productId, item.quantity)}
-                              className="h-9 w-9 rounded-xl border border-gray-300 bg-white hover:bg-gray-50"
+                              onClick={() => handleIncrease(item.productId, item.quantity, item.product.stock)}
+                              disabled={item.product.stock !== undefined && item.quantity >= item.product.stock}
+                              className={`h-9 w-9 rounded-xl border border-gray-300 bg-white ${
+                                item.product.stock !== undefined && item.quantity >= item.product.stock
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : 'hover:bg-gray-50'
+                              }`}
                             >
                               +
                             </button>
                           </div>
                         </div>
+                        {item.product.stock !== undefined && item.quantity >= item.product.stock && (
+                          <div className="text-xs text-orange-600 font-medium">
+                            ⚠️ Максимум на складе: {item.product.stock} шт.
+                          </div>
+                        )}
                         <div className="text-sm font-semibold text-[#04734b]">
                           {formatPrice(item.product.base_price)}
                         </div>

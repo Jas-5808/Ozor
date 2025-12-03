@@ -78,6 +78,11 @@ export interface CartItem {
     name: string;
     refferal_price: number;
     base_price: number;
+    referral_code?: string;
+    original_price?: number | null;
+    image?: string | null;
+    attributes?: Array<{ name: string; value: string }>;
+    stock?: number;
   };
 }
 export interface Order {

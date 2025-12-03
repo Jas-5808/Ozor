@@ -735,6 +735,7 @@ export function Product() {
       galleryImages[0] ||
       (product.main_image ? getProductImageUrl(product.main_image) : undefined);
     const cartPrice = currentPrice ?? product.price ?? 0;
+    const stockAmount = selectedVariant?.stock ?? product.stock ?? 0;
     const item = {
       id: (selectedVariant?.id || product.variant_id),
       name: product.product_name,
@@ -744,6 +745,7 @@ export function Product() {
       referral_code: referralCode || undefined,
       image: cartImage,
       attributes: selectedAttributesList.length ? selectedAttributesList : undefined,
+      stock: stockAmount,
     };
     addToCart(item, 1);
   };
