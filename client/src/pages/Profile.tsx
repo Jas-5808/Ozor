@@ -379,7 +379,7 @@ export function Profile() {
               </div>
             )}
             {!productsLoading && !productsError && (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-2 gap-1.5 sm:gap-4 xl:grid-cols-3">
                 {products.map((p: any, index: number) => {
                   const productId = p?.product_id || p?.id || p?.productId || "";
                   const referralValue = formatPrice(p.refferal_price || 0);
@@ -426,13 +426,12 @@ export function Profile() {
                   return (
                     <article
                       key={productId ? `${productId}-${p.variant_id || index}` : `market-card-${index}`}
-                      className="group relative flex h-full flex-col rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-4 shadow-[0_18px_35px_rgба(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_25px_50px_rgба(15,23,42,0.12)]"
+                      className="group relative flex h-full flex-col rounded-[10px] md:rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-1 md:p-4 shadow-[0_4px_8px_rgba(15,23,42,0.03)] md:shadow-[0_18px_35px_rgba(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_6px_12px_rgba(15,23,42,0.06)] md:hover:shadow-[0_25px_50px_rgba(15,23,42,0.12)]"
                     >
                       <button
                         type="button"
                         onClick={handleOpenProduct}
-                        className="relative overflow-hidden rounded-2xl bg-slate-100"
-                        style={{ minHeight: 180 }}
+                        className="relative overflow-hidden rounded-lg md:rounded-2xl bg-slate-100 aspect-[3/4] md:min-h-[180px] md:aspect-auto w-full"
                         disabled={isLoadingCard || !canOpenProduct}
                       >
                         <img
@@ -444,53 +443,53 @@ export function Profile() {
                             (e.currentTarget as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
                           }}
                         />
-                        <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-white/85 px-3 py-1 text-xs font-semibold text-slate-800">
+                        <span className="absolute left-1 top-1 md:left-3 md:top-3 inline-flex items-center rounded-full bg-white/85 px-1 py-0.5 md:px-3 md:py-1 text-[9px] md:text-xs font-semibold text-slate-800">
                           {categoryLabel}
                         </span>
                         {isLoadingCard && (
-                          <span className="absolute inset-0 grid place-items-center bg-white/70 text-xs font-semibold text-slate-600">
+                          <span className="absolute inset-0 grid place-items-center bg-white/70 text-[9px] md:text-xs font-semibold text-slate-600">
                             {t("profile.market.card.loading")}
                           </span>
                         )}
                       </button>
-                      <div className="mt-4 flex flex-1 flex-col gap-4">
+                      <div className="mt-1 md:mt-4 flex flex-1 flex-col gap-1 md:gap-4">
                         <div>
-                          <h4 className="text-base font-bold text-slate-900 line-clamp-2">{p.product_name}</h4>
-                          <p className="mt-1 text-xs uppercase tracking-wide text-slate-500">{t("profile.market.card.skuLabel")}: {p.variant_sku || "—"}</p>
+                          <h4 className="text-[11px] md:text-base font-bold text-slate-900 line-clamp-2 leading-tight">{p.product_name}</h4>
+                          <p className="mt-0.5 md:mt-1 text-[9px] md:text-xs uppercase tracking-wide text-slate-500">{t("profile.market.card.skuLabel")}: {p.variant_sku || "—"}</p>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-slate-100/60 px-3 py-2">
+                        <div className="flex flex-wrap items-center gap-1 md:gap-3 rounded-lg md:rounded-2xl bg-slate-100/60 px-1 py-0.5 md:px-3 md:py-2">
                           <div className="flex flex-col">
-                            <span className="text-xs text-slate-500">{t("profile.market.card.priceLabel")}</span>
-                            <span className="text-lg font-extrabold text-slate-900">{priceValue}</span>
+                            <span className="text-[9px] md:text-xs text-slate-500">{t("profile.market.card.priceLabel")}</span>
+                            <span className="text-xs md:text-lg font-extrabold text-slate-900 leading-tight">{priceValue}</span>
                           </div>
-                          <div className="h-8 w-px bg-slate-200" />
+                          <div className="h-5 md:h-8 w-px bg-slate-200" />
                           <div className="flex flex-col">
-                            <span className="text-xs text-slate-500">{t("profile.market.card.incomeLabel")}</span>
-                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#04734b]">
+                            <span className="text-[9px] md:text-xs text-slate-500">{t("profile.market.card.incomeLabel")}</span>
+                            <span className="inline-flex items-center gap-0.5 md:gap-2 text-[10px] md:text-sm font-semibold text-[#04734b] leading-tight">
                               {referralValue}
-                              <span className="rounded-full bg-[#e6f8ef] px-2 py-0.5 text-[11px] font-bold text-[#04734b]">
+                              <span className="rounded-full bg-[#e6f8ef] px-1 py-0.5 md:px-2 text-[8px] md:text-[11px] font-bold text-[#04734b]">
                                 +
                               </span>
                             </span>
                           </div>
                         </div>
-                        <div className="mt-auto space-y-3">
+                        <div className="mt-auto space-y-1 md:space-y-3">
                           <button
                             type="button"
-                            className="group relative h-12 w-full rounded-[18px] text-sm font-semibold uppercase tracking-wide text-white shadow-[0_22px_48px_rgba(6,78,59,0.45)] ring-1 ring-white/20 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                            className="group relative h-7 md:h-12 w-full rounded-[7px] md:rounded-[18px] text-[9px] md:text-sm font-semibold uppercase tracking-wide text-white shadow-[0_4px_10px_rgba(6,78,59,0.3)] md:shadow-[0_22px_48px_rgba(6,78,59,0.45)] ring-1 ring-white/20 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                             style={{ background: "linear-gradient(92.41deg, rgb(0, 61, 50), rgb(4, 115, 75))" }}
                             disabled={createLoading || isLoadingCard}
                             onClick={() => handleGenerate(p)}
                           >
-                            <span className="absolute inset-0 rounded-[18px] bg-white/15 opacity-0 transition group-hover:opacity-100" />
-                            <span className="relative inline-flex items-center justify-center gap-2">
-                              <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                            <span className="absolute inset-0 rounded-[7px] md:rounded-[18px] bg-white/15 opacity-0 transition group-hover:opacity-100" />
+                            <span className="relative inline-flex items-center justify-center gap-0.5 md:gap-2">
+                              <span className="h-0.5 w-0.5 md:h-1.5 md:w-1.5 rounded-full bg-white" />
                               {createLoading ? t("profile.market.card.creating") : t("profile.market.card.create")}
                             </span>
                           </button>
                           <button
                             type="button"
-                            className="h-12 w-full rounded-[18px] border border-slate-200 bg-white text-sm font-semibold text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.1)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="h-7 md:h-12 w-full rounded-[7px] md:rounded-[18px] border border-slate-200 bg-white text-[9px] md:text-sm font-semibold text-slate-800 shadow-[0_2px_6px_rgba(15,23,42,0.06)] md:shadow-[0_12px_30px_rgba(15,23,42,0.1)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                             onClick={handleOpenProduct}
                             disabled={isLoadingCard || !canOpenProduct}
                           >
