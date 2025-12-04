@@ -203,7 +203,7 @@ export function Profile() {
     },
     {
       label: t("profile.hero.highlights.earnings.label"),
-      value: formatPrice(totals.earned, "UZS"),
+      value: "—", // TODO: Подключить к API
       helper: t("profile.hero.highlights.earnings.helper"),
     },
   ];
