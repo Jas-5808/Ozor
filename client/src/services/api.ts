@@ -227,6 +227,11 @@ apiClient.interceptors.response.use(
 export const shopAPI = {
   getProducts: (params: Record<string, unknown> = {}): Promise<TypedAxiosResponse<ProductResponse[]>> => 
     apiClient.get("/shop/products", { params }),
+  searchProducts: (
+    query: string, 
+    params: { offset?: number; limit?: number } = {}
+  ): Promise<TypedAxiosResponse<ProductResponse[]>> => 
+    apiClient.get("/shop/products/search", { params: { q: query, ...params } }),
   getProductById: (id: string): Promise<TypedAxiosResponse<ProductResponse>> => 
     apiClient.get(`/shop/product/${id}`),
   getProductsByCategory: (
