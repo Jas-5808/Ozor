@@ -148,3 +148,16 @@ header select:focus {
   color: white !important;
   background-color: rgba(255, 255, 255, 0.1) !important;
 }
+
+/* Mobile header input override - убираем белый фон */
+input[type="text"][data-header-mobile="true"],
+input[type="search"][data-header-mobile="true"] {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+input[type="text"][data-header-mobile="true"]:focus,
+input[type="search"][data-header-mobile="true"]:focus {
+  background-color: transparent !important;
+  background: transparent !important;
+}

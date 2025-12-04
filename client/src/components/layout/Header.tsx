@@ -246,6 +246,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
                     placeholder={t("header.searchPlaceholder")}
                     className="flex-1 bg-gray-100 outline-none text-sm text-gray-900 placeholder:text-gray-400 border-0"
                     style={{ background: 'transparent' }}
+                    data-header-mobile="true"
                   />
                 </div>
               </form>
