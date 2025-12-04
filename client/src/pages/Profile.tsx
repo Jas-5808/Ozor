@@ -825,7 +825,8 @@ export function Profile() {
                 <button
                   type="submit"
                   disabled={withdrawalLoading || userBalance === null || userBalance === 0}
-                  className="w-full rounded-2xl bg-gradient-to-r from-[#064e3b] via-[#047857] to-[#22c55e] py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_22px_48px_rgba(6,78,59,0.45)] ring-1 ring-white/20 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full rounded-2xl py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_22px_48px_rgba(6,78,59,0.45)] ring-1 ring-white/20 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
                 >
                   {withdrawalLoading ? t("profile.payments.form.submitting") : t("profile.payments.form.submit")}
                 </button>
