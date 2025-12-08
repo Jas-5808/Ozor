@@ -673,7 +673,7 @@ export function Profile() {
                     return (
                       <article
                         key={productId ? `${productId}-${p.variant_id || index}` : `market-card-${index}`}
-                        className="group relative flex h-full flex-col rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-4 shadow-[0_18px_35px_rgба(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_25px_50px_rgба(15,23,42,0.12)]"
+                        className="group relative flex h-full min-h-[440px] flex-col rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-4 shadow-[0_18px_35px_rgба(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_25px_50px_rgба(15,23,42,0.12)]"
                       >
                         <button
                           type="button"
@@ -691,8 +691,8 @@ export function Profile() {
                               (e.currentTarget as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
                             }}
                           />
-                          <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-white/85 px-3 py-1 text-xs font-semibold text-slate-800">
-                            {categoryLabel}
+                          <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-white/85 px-3 py-1 text-xs font-semibold text-slate-800 line-clamp-1">
+                            {categoryLabel || "—"}
                           </span>
                           {isLoadingCard && (
                             <span className="absolute inset-0 grid place-items-center bg-white/70 text-xs font-semibold text-slate-600">
@@ -703,7 +703,9 @@ export function Profile() {
                         <div className="mt-4 flex flex-1 flex-col gap-4">
                           <div>
                             <h4 className="text-base font-bold text-slate-900 line-clamp-2">{p.product_name}</h4>
-                            <p className="mt-1 text-xs uppercase tracking-wide text-slate-500">{t("profile.market.card.skuLabel")}: {p.variant_sku || "—"}</p>
+                            <p className="mt-1 text-xs uppercase tracking-wide text-slate-500 truncate">
+                              {t("profile.market.card.skuLabel")}: {p.variant_sku || "—"}
+                            </p>
                           </div>
                           <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-slate-100/60 px-3 py-2">
                             <div className="flex flex-col">

@@ -57,54 +57,54 @@ export function CategoryPage() {
         setLoading(true);
         setError(null);
         
-        const isSubcategory = category ? category.parent_id !== null : false;
         const collectedProducts: any[] = [];
-        
-        if (isSubcategory) {
-          const response = await shopAPI.getProductsByCategory(id);
+        const categoryIdsSet = new Set<string>([id]);
+
+        // Добавляем все вложенные подкатегории, чтобы категория показывала товары дочерних уровней
+        subcategories.forEach(sub => {
+          categoryIdsSet.add(sub.id);
+        });
+
+        const categoryIds = Array.from(categoryIdsSet);
+
+        const MAX_CONCURRENT = 5;
+        const allResponses: any[] = [];
+
+        for (let i = 0; i < categoryIds.length; i += MAX_CONCURRENT) {
+          const batch = categoryIds.slice(i, i + MAX_CONCURRENT);
+          const productPromises = batch.map(categoryId =>
+            shopAPI.getProductsByCategory(categoryId).catch(err => {
+              console.warn(`Failed to fetch products for category ${categoryId}:`, err);
+              return { data: [] };
+            })
+          );
+
+          const responses = await Promise.all(productPromises);
           if (cancelled) return;
-          const data = response.data || [];
-          if (Array.isArray(data)) {
-            collectedProducts.push(...data);
-          }
-        } else {
-          const categoryIdsSet = new Set<string>([id]);
-          
-          subcategories.forEach(sub => {
-            categoryIdsSet.add(sub.id);
-          });
-          
-          const categoryIds = Array.from(categoryIdsSet);
-          
-          const MAX_CONCURRENT = 5;
-          const allResponses: any[] = [];
-          
-          for (let i = 0; i < categoryIds.length; i += MAX_CONCURRENT) {
-            const batch = categoryIds.slice(i, i + MAX_CONCURRENT);
-            const productPromises = batch.map(categoryId => 
-              shopAPI.getProductsByCategory(categoryId).catch(err => {
-                console.warn(`Failed to fetch products for category ${categoryId}:`, err);
-                return { data: [] };
-              })
-            );
-            
-            const responses = await Promise.all(productPromises);
-            if (cancelled) return;
-            
-            allResponses.push(...responses);
-          }
-          
-          allResponses.forEach(response => {
-            const items = response.data || [];
-            if (Array.isArray(items)) {
-              collectedProducts.push(...items);
-            }
-          });
+
+          allResponses.push(...responses);
         }
+
+        allResponses.forEach(response => {
+          const items = response.data || [];
+          if (Array.isArray(items)) {
+            collectedProducts.push(...items);
+          }
+        });
+
+        // Убираем дубликаты (одинаковый product_id + variant_id), чтобы не плодить карточки и не ломать пагинацию
+        const uniqueMap = new Map<string, any>();
+        for (const item of collectedProducts) {
+          const key = `${item?.product_id || item?.id || "unknown"}_${item?.variant_id || item?.variantId || ""}`;
+          if (!uniqueMap.has(key)) {
+            uniqueMap.set(key, item);
+          }
+        }
+        const uniqueProducts = Array.from(uniqueMap.values());
         
         if (cancelled) return;
         
-        const { primaryProducts: primary, variantProducts: variants } = splitProductsIntoPrimaryAndVariants(collectedProducts);
+        const { primaryProducts: primary, variantProducts: variants } = splitProductsIntoPrimaryAndVariants(uniqueProducts);
         
         if (!cancelled) {
           setPrimaryProducts(primary);
