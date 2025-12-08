@@ -818,76 +818,109 @@ export function Profile() {
                   return (
                     <div
                       key={r.id}
-                      className={`${cn.glass} ${cn.flowRow} p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
+                      className={`${cn.glass} ${cn.flowRow} p-3 sm:p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
                     >
-                      <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="flex flex-col">
-                            <div className="text-base font-extrabold text-slate-900">{linkTitle}</div>
+                      <div className="flex flex-col gap-3">
+                        {/* Верхняя часть: заголовок и код */}
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm sm:text-base font-extrabold text-slate-900 truncate" title={linkTitle}>
+                              {linkTitle}
+                            </div>
                             {productName && (
-                              <div className="text-xs text-slate-500 mt-0.5">{productName}</div>
+                              <div className="text-xs text-slate-500 mt-0.5 truncate" title={productName}>
+                                {productName}
+                              </div>
                             )}
                           </div>
-                          <span className="inline-flex h-6 items-center px-2 rounded-full text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50">
-                            {r.code}
-                          </span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="inline-flex h-6 items-center px-2 rounded-full text-[10px] sm:text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50 whitespace-nowrap">
+                              {r.code}
+                            </span>
+                            <span className="inline-flex h-6 items-center px-2 rounded-full text-[10px] sm:text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50 whitespace-nowrap">
+                              {formatPrice(r.product_referal_price || 0)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-[220px]">
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="flex-1 break-all rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600 cursor-pointer"
-                              title={shareLink}
+
+                        {/* Средняя часть: ссылка и кнопки */}
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                          <div 
+                            className="flex-1 min-w-0 group relative rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer hover:bg-slate-100 transition-colors"
+                            title={shareLink}
+                            onClick={() => shareLink && handleCopyFlowLink(shareLink, r.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <svg 
+                                className="w-4 h-4 text-slate-400 flex-shrink-0" 
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                              </svg>
+                              <span className="text-xs sm:text-sm text-slate-600 font-mono truncate flex-1 min-w-0">
+                                {shareLink ? (
+                                  <span className="block truncate" title={shareLink}>
+                                    <span className="hidden sm:inline lg:hidden">{shortenUrl(shareLink, 40)}</span>
+                                    <span className="hidden lg:inline">{shortenUrl(shareLink, 50)}</span>
+                                    <span className="sm:hidden">{shortenUrl(shareLink, 25)}</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 italic">{t("profile.flows.noLink") || "Ссылка не доступна"}</span>
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="inline-flex items-center gap-2 flex-shrink-0">
+                            <button
+                              className={`h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg border transition-colors ${
+                                isCopied 
+                                  ? "border-emerald-300 bg-emerald-50" 
+                                  : "border-slate-200 hover:bg-slate-50"
+                              }`}
+                              title={t("profile.flows.copy")}
+                              aria-label={t("profile.flows.copy")}
                               onClick={() => shareLink && handleCopyFlowLink(shareLink, r.id)}
                             >
-                              {shortenUrl(shareLink, 35)}
-                            </div>
-                            <div className="inline-flex items-center gap-2 shrink-0">
-                              <button
-                                className={`h-8 w-8 inline-flex items-center justify-center rounded-lg border transition-colors ${
-                                  isCopied 
-                                    ? "border-emerald-300 bg-emerald-50" 
-                                    : "border-slate-200 hover:bg-slate-50"
-                                }`}
-                                title={t("profile.flows.copy")}
-                                aria-label={t("profile.flows.copy")}
-                                onClick={() => shareLink && handleCopyFlowLink(shareLink, r.id)}
-                              >
-                                {isCopied ? (
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M20 6L9 17l-5-5" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                  </svg>
-                                ) : (
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <rect x="9" y="9" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2" />
-                                    <rect x="3" y="3" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2" />
-                                  </svg>
-                                )}
-                              </button>
-                              <button
-                                className={`h-8 w-8 inline-flex items-center justify-center rounded-lg border ${
-                                  deletingReferralId === r.id ? "opacity-50 cursor-not-allowed" : ""
-                                } border-red-200 hover:bg-red-50`}
-                                title={t("profile.flows.delete")}
-                                aria-label={t("profile.flows.delete")}
-                                onClick={() => handleDeleteReferral(r.id)}
-                                disabled={deletingReferralId === r.id}
-                              >
+                              {isCopied ? (
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                  <path d="M3 6h18" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" />
-                                  <path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#dc2626" strokeWidth="2" />
-                                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="#dc2626" strokeWidth="2" />
+                                  <path d="M20 6L9 17l-5-5" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                 </svg>
-                              </button>
-                            </div>
+                              ) : (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <rect x="9" y="9" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2" />
+                                  <rect x="3" y="3" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2" />
+                                </svg>
+                              )}
+                            </button>
+                            <button
+                              className={`h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg border ${
+                                deletingReferralId === r.id ? "opacity-50 cursor-not-allowed" : ""
+                              } border-red-200 hover:bg-red-50 transition-colors`}
+                              title={t("profile.flows.delete")}
+                              aria-label={t("profile.flows.delete")}
+                              onClick={() => handleDeleteReferral(r.id)}
+                              disabled={deletingReferralId === r.id}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 6h18" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" />
+                                <path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#dc2626" strokeWidth="2" />
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="#dc2626" strokeWidth="2" />
+                              </svg>
+                            </button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <div className="text-xs text-slate-500">
-                            {createdAt ? new Date(createdAt).toLocaleString() : "—"}
-                          </div>
-                          <span className="inline-flex h-6 items-center px-2 rounded-full text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50">
-                            {formatPrice(r.product_referal_price || 0)}
-                          </span>
+
+                        {/* Нижняя часть: дата */}
+                        <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
+                          <span>{createdAt ? new Date(createdAt).toLocaleString('ru-RU', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }) : "—"}</span>
                         </div>
                       </div>
                     </div>
@@ -899,50 +932,68 @@ export function Profile() {
                   return (
                     <div
                       key={f.id}
-                      className={`${cn.glass} ${cn.flowRow} p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
+                      className={`${cn.glass} ${cn.flowRow} p-3 sm:p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
                     >
-                      <div className="flex flex-wrap items-center gap-3">
-                        {/* Left: title + commission */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="flex flex-col">
-                            <div className="text-base font-extrabold text-slate-900">{f.productName}</div>
+                      <div className="flex flex-col gap-3">
+                        {/* Верхняя часть: название товара и комиссия */}
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm sm:text-base font-extrabold text-slate-900 truncate" title={f.productName}>
+                              {f.productName}
+                            </div>
                           </div>
-                          <span className="inline-flex h-6 items-center px-2 rounded-full text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50">+ {formatPrice(f.commission || 0)}</span>
+                          <span className="inline-flex h-6 items-center px-2 rounded-full text-[10px] sm:text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50 whitespace-nowrap flex-shrink-0">
+                            + {formatPrice(f.commission || 0)}
+                          </span>
                         </div>
-                        {/* Middle: link */}
-                        <div className="flex-1 min-w-[220px]">
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="flex-1 text-xs text-slate-600 break-all bg-slate-50 border border-slate-200 rounded-md px-2 py-1 cursor-pointer"
-                              title={f.link}
+
+                        {/* Средняя часть: ссылка и кнопки */}
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                          <div 
+                            className="flex-1 min-w-0 group relative rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer hover:bg-slate-100 transition-colors"
+                            title={f.link}
+                            onClick={() => handleCopyFlowLink(f.link, f.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <svg 
+                                className="w-4 h-4 text-slate-400 flex-shrink-0" 
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                              </svg>
+                              <span className="text-xs sm:text-sm text-slate-600 font-mono truncate flex-1 min-w-0" title={f.link}>
+                                <span className="hidden sm:inline lg:hidden">{shortenUrl(f.link, 40)}</span>
+                                <span className="hidden lg:inline">{shortenUrl(f.link, 50)}</span>
+                                <span className="sm:hidden">{shortenUrl(f.link, 25)}</span>
+                              </span>
+                            </div>
+                          </div>
+                          <div className="inline-flex items-center gap-2 flex-shrink-0">
+                            <button
+                              className={`h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg border transition-colors ${
+                                isCopied 
+                                  ? "border-emerald-300 bg-emerald-50" 
+                                  : "border-slate-200 hover:bg-slate-50"
+                              }`}
+                              title={t("profile.flows.copy")}
+                              aria-label={t("profile.flows.copy")}
                               onClick={() => handleCopyFlowLink(f.link, f.id)}
                             >
-                              {shortenUrl(f.link, 35)}
-                            </div>
-                            <div className="inline-flex items-center gap-2">
-                              <button
-                                className={`h-8 w-8 inline-flex items-center justify-center rounded-lg border transition-colors ${
-                                  isCopied 
-                                    ? "border-emerald-300 bg-emerald-50" 
-                                    : "border-slate-200 hover:bg-slate-50"
-                                }`}
-                                title={t("profile.flows.copy")}
-                                aria-label={t("profile.flows.copy")}
-                                onClick={() => handleCopyFlowLink(f.link, f.id)}
-                              >
-                                {isCopied ? (
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M20 6L9 17l-5-5" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                  </svg>
-                                ) : (
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <rect x="9" y="9" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
-                                    <rect x="3" y="3" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
-                                  </svg>
-                                )}
-                              </button>
+                              {isCopied ? (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M20 6L9 17l-5-5" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              ) : (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <rect x="9" y="9" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
+                                  <rect x="3" y="3" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
+                                </svg>
+                              )}
+                            </button>
                             <button
-                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-red-200 hover:bg-red-50"
+                              className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
                               title={t("profile.flows.delete")}
                               aria-label={t("profile.flows.delete")}
                               onClick={() => removeFlow(f.id)}
@@ -955,13 +1006,19 @@ export function Profile() {
                             </button>
                           </div>
                         </div>
-                      </div>
-                      {/* Right: date */}
-                      <div className="flex items-center gap-3 shrink-0">
-                        <div className="text-xs text-slate-500">{new Date(f.createdAt).toLocaleString()}</div>
+
+                        {/* Нижняя часть: дата */}
+                        <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
+                          <span>{new Date(f.createdAt).toLocaleString('ru-RU', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
                   );
                 })}
                 {flows.length > 0 && (
