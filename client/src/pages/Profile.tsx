@@ -350,7 +350,8 @@ export function Profile() {
       setSuggestionsLoading(true);
       try {
         const response = await shopAPI.searchProducts(debouncedSearchQuery.trim(), { offset: 0, limit: 5 });
-        const data = response.data || [];
+        const raw = (response as any)?.data;
+        const data: any[] = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
         
         const uniqueSuggestions: Array<{ product_name: string; product_id: string }> = [];
         const seenNames = new Set<string>();
@@ -518,9 +519,7 @@ export function Profile() {
                 <h3 className="text-2xl font-black text-slate-900">{t("profile.market.title")}</h3>
                 <p className="text-sm text-slate-500">{t("profile.market.subtitle")}</p>
               </div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-3 py-1 text-xs font-semibold text-slate-700 w-fit">
-                {t("profile.market.productCount", { count: filteredAndSortedProducts.length })}
-              </span>
+              
             </div>
             
             {/* Поиск и сортировка */}
@@ -626,7 +625,7 @@ export function Profile() {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
                     {displayedMarketProducts.map((p: any, index: number) => {
                     const productId = p?.product_id || p?.id || p?.productId || "";
                     const referralValue = formatPrice(p.refferal_price || 0);
@@ -673,13 +672,13 @@ export function Profile() {
                     return (
                       <article
                         key={productId ? `${productId}-${p.variant_id || index}` : `market-card-${index}`}
-                        className="group relative flex h-full min-h-[440px] flex-col rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-4 shadow-[0_18px_35px_rgба(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_25px_50px_rgба(15,23,42,0.12)]"
+                        className="group relative flex h-full min-h-[380px] sm:min-h-[440px] flex-col rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-4 shadow-[0_18px_35px_rgба(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_25px_50px_rgба(15,23,42,0.12)]"
                       >
                         <button
                           type="button"
                           onClick={handleOpenProduct}
                           className="relative overflow-hidden rounded-2xl bg-slate-100"
-                          style={{ minHeight: 180 }}
+                          style={{ minHeight: 170 }}
                           disabled={isLoadingCard || !canOpenProduct}
                         >
                           <img
@@ -707,7 +706,7 @@ export function Profile() {
                               {t("profile.market.card.skuLabel")}: {p.variant_sku || "—"}
                             </p>
                           </div>
-                          <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-slate-100/60 px-3 py-2">
+                          <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-slate-100/60  py-2">
                             <div className="flex flex-col">
                               <span className="text-xs text-slate-500">{t("profile.market.card.priceLabel")}</span>
                               <span className="text-lg font-extrabold text-slate-900">{priceValue}</span>
@@ -737,14 +736,14 @@ export function Profile() {
                                 {createLoading ? t("profile.market.card.creating") : t("profile.market.card.create")}
                               </span>
                             </button>
-                            <button
+                            {/* <button
                               type="button"
                               className="h-12 w-full rounded-[18px] border border-slate-200 bg-white text-sm font-semibold text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.1)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                               onClick={handleOpenProduct}
                               disabled={isLoadingCard || !canOpenProduct}
                             >
                               {t("profile.market.card.view")}
-                            </button>
+                            </button> */}
                           </div>
                         </div>
                       </article>
