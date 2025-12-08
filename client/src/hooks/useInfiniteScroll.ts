@@ -22,23 +22,43 @@ export const useInfiniteScroll = ({
 }: UseInfiniteScrollOptions) => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  
+  // Сохраняем последние значения в ref, чтобы избежать пересоздания observer
+  const hasMoreRef = useRef(hasMore);
+  const loadingRef = useRef(loading);
+  const onLoadMoreRef = useRef(onLoadMore);
+
+  // Обновляем ref при изменении значений
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+    loadingRef.current = loading;
+    onLoadMoreRef.current = onLoadMore;
+  }, [hasMore, loading, onLoadMore]);
 
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries;
-      if (target.isIntersecting && hasMore && !loading) {
-        onLoadMore();
+      if (target.isIntersecting && hasMoreRef.current && !loadingRef.current) {
+        onLoadMoreRef.current();
       }
     },
-    [hasMore, loading, onLoadMore]
+    [] // Пустой массив зависимостей, так как используем ref
   );
 
   useEffect(() => {
+    // Используем threshold как расстояние в пикселях через rootMargin
+    const margin = rootMargin || `${threshold}px`;
+    
     const options = {
       root,
-      rootMargin,
+      rootMargin: margin,
       threshold: 0.1,
     };
+
+    // Удаляем старый observer перед созданием нового
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
 
     observerRef.current = new IntersectionObserver(handleObserver, options);
 
@@ -50,11 +70,11 @@ export const useInfiniteScroll = ({
     }
 
     return () => {
-      if (currentSentinel && currentObserver) {
-        currentObserver.unobserve(currentSentinel);
+      if (currentObserver) {
+        currentObserver.disconnect();
       }
     };
-  }, [handleObserver, root, rootMargin]);
+  }, [handleObserver, root, rootMargin, threshold]);
 
   return sentinelRef;
 };

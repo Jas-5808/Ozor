@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import SideCatalog from "../SideCatalog";
 import LanguageSwitcher from "../LanguageSwitcher";
 import SearchBar from "../SearchBar";
+import MobileSearchBar from "../MobileSearchBar";
 import HeaderActions from "../HeaderActions";
 import { useApp } from "../../context/AppContext";
 import { useAuth } from "../../hooks/useAuth";
@@ -228,28 +229,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
           {/* Поисковая строка - скрываем на страницах профиля, корзины и избранных */}
           {!shouldHideSearchBarMobile && (
             <div className="flex items-center gap-2">
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const query = formData.get('search') as string;
-                if (query?.trim()) {
-                  navigate(`/search?q=${encodeURIComponent(query.trim())}`);
-                }
-              }} className="flex-1" role="search">
-                <div className="relative flex items-center h-11 bg-gray-100 rounded-lg px-3">
-                  <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <input
-                    type="text"
-                    name="search"
-                    placeholder={t("header.searchPlaceholder")}
-                    className="flex-1 bg-gray-100 outline-none text-sm text-gray-900 placeholder:text-gray-400 border-0"
-                    style={{ background: 'transparent' }}
-                    data-header-mobile="true"
-                  />
-                </div>
-              </form>
+              <MobileSearchBar />
               <Link
                 to="/favorites"
                 className="p-2 relative"

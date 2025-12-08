@@ -3,16 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { shopAPI } from "../services/api";
 import { useDebounce } from "../hooks/useDebounce";
-import { Product } from "../types";
-
-type Props = { className?: string };
 
 interface SearchSuggestion {
   product_name: string;
   product_id: string;
 }
 
-export default function SearchBar({ className = "" }: Props) {
+export default function MobileSearchBar() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
@@ -21,7 +18,6 @@ export default function SearchBar({ className = "" }: Props) {
   const { t } = useTranslation();
   const debouncedQuery = useDebounce(q, 300);
   const searchRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Закрытие подсказок при клике вне компонента
   useEffect(() => {
@@ -100,40 +96,30 @@ export default function SearchBar({ className = "" }: Props) {
   };
 
   return (
-    <div ref={searchRef} className={`hidden md:block relative ${className}`}>
-      <form
-        onSubmit={onSubmit}
-        role="search"
-        aria-label={t("common.actions.searchPlaceholder")}
-      >
-        <div className="p-2 flex w-full items-center h-12 rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur-xl overflow-visible pl-3 pr-2 md:pl-4 md:pr-3 relative">
-          <label htmlFor="site-search" className="sr-only">
-            {t("common.actions.searchPlaceholder")}
-          </label>
+    <div ref={searchRef} className="flex-1 relative">
+      <form onSubmit={onSubmit} className="flex-1" role="search">
+        <div className="relative flex items-center h-11 bg-gray-100 rounded-lg px-3">
+          <svg className="w-5 h-5 text-gray-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
           <input
-            ref={inputRef}
-            id="site-search"
             type="text"
+            name="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onFocus={handleInputFocus}
-            placeholder={t("common.actions.searchPlaceholder")}
-            className="w-full bg-transparent placeholder-white/70 text-white outline-none"
+            placeholder={t("header.searchPlaceholder")}
+            className="flex-1 bg-gray-100 outline-none text-sm text-gray-900 placeholder:text-gray-400 border-0"
+            style={{ background: 'transparent' }}
+            data-header-mobile="true"
             autoComplete="off"
           />
-          <button 
-            type="submit" 
-            className="h-12 hover:bg-white/10 rounded-xl flex-shrink-0" 
-            aria-label={t("common.actions.search")}
-          >
-            <img src="/icons/search.svg" alt="" className="size-5" />
-          </button>
         </div>
       </form>
 
       {/* Выпадающий список подсказок */}
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-lg border border-gray-200 max-h-80 overflow-y-auto z-50">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-gray-200 max-h-80 overflow-y-auto z-50">
           {loading && (
             <div className="p-4 text-center text-gray-500 text-sm">
               {t("common.loading") || "Загрузка..."}
@@ -164,5 +150,4 @@ export default function SearchBar({ className = "" }: Props) {
     </div>
   );
 }
-
 

@@ -16,6 +16,7 @@ const ProductsListComponent: React.FC = () => {
     onLoadMore: loadMore,
     threshold: 200,
   });
+  
   const handleToggleLike = useCallback((_productId: string) => {
     // Логика переключения лайка обрабатывается в AppContext
     // Этот callback оставлен для совместимости

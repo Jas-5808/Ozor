@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../hooks/useAuth";
 import { shopAPI, paymentAPI } from "../services/api";
@@ -13,6 +13,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useProfileData } from "../hooks/useProfileData";
 import { useReferralActions } from "../hooks/useReferralActions";
 import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
+import { useDebounce } from "../hooks/useDebounce";
 
 export function Profile() {
   const { t } = useTranslation();
@@ -26,6 +27,13 @@ export function Profile() {
   // Состояния для поиска и сортировки в Market
   const [marketSearchQuery, setMarketSearchQuery] = useState<string>("");
   const [marketSortBy, setMarketSortBy] = useState<string>("default");
+  
+  // Состояния для подсказок поиска
+  const [searchSuggestions, setSearchSuggestions] = useState<Array<{ product_name: string; product_id: string }>>([]);
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const debouncedSearchQuery = useDebounce(marketSearchQuery, 300);
+  const searchInputRef = useRef<HTMLDivElement>(null);
   const {
     products,
     loading: productsLoading,
@@ -316,6 +324,62 @@ export function Profile() {
     setMarketDisplayedCount(MARKET_ITEMS_PER_PAGE);
   }, [marketSearchQuery, marketSortBy]);
 
+  // Закрытие подсказок при клике вне компонента
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchInputRef.current && !searchInputRef.current.contains(event.target as Node)) {
+        setShowSearchSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Загрузка подсказок для поиска
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (debouncedSearchQuery.trim().length < 2) {
+        setSearchSuggestions([]);
+        setShowSearchSuggestions(false);
+        return;
+      }
+
+      setSuggestionsLoading(true);
+      try {
+        const response = await shopAPI.searchProducts(debouncedSearchQuery.trim(), { offset: 0, limit: 5 });
+        const data = response.data || [];
+        
+        const uniqueSuggestions: Array<{ product_name: string; product_id: string }> = [];
+        const seenNames = new Set<string>();
+        
+        data.forEach((item: any) => {
+          const productName = item.product_name || item.name || "";
+          if (productName && !seenNames.has(productName.toLowerCase())) {
+            seenNames.add(productName.toLowerCase());
+            uniqueSuggestions.push({
+              product_name: productName,
+              product_id: item.product_id || item.id || "",
+            });
+          }
+        });
+
+        setSearchSuggestions(uniqueSuggestions);
+        setShowSearchSuggestions(uniqueSuggestions.length > 0);
+      } catch (error) {
+        console.error("Error fetching search suggestions:", error);
+        setSearchSuggestions([]);
+        setShowSearchSuggestions(false);
+      } finally {
+        setSuggestionsLoading(false);
+      }
+    };
+
+    fetchSuggestions();
+  }, [debouncedSearchQuery]);
+
   // Хук для бесконечной прокрутки в Market
   const marketSentinelRef = useInfiniteScroll({
     hasMore: marketHasMore,
@@ -462,13 +526,19 @@ export function Profile() {
             {/* Поиск и сортировка */}
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex-1 max-w-md">
-                <div className="relative">
+                <div ref={searchInputRef} className="relative">
                   <input
                     type="text"
                     value={marketSearchQuery}
                     onChange={(e) => setMarketSearchQuery(e.target.value)}
+                    onFocus={() => {
+                      if (searchSuggestions.length > 0 && debouncedSearchQuery.trim().length >= 2) {
+                        setShowSearchSuggestions(true);
+                      }
+                    }}
                     placeholder={t("profile.market.search.placeholder")}
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pl-11 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                    autoComplete="off"
                   />
                   <svg
                     className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
@@ -483,6 +553,40 @@ export function Profile() {
                       d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                     />
                   </svg>
+                  
+                  {/* Выпадающий список подсказок */}
+                  {showSearchSuggestions && searchSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-lg border border-slate-200 max-h-80 overflow-y-auto z-50">
+                      {suggestionsLoading && (
+                        <div className="p-4 text-center text-slate-500 text-sm">
+                          {t("common.loading") || "Загрузка..."}
+                        </div>
+                      )}
+                      {!suggestionsLoading && searchSuggestions.map((suggestion, index) => (
+                        <button
+                          key={`${suggestion.product_id}-${index}`}
+                          type="button"
+                          onClick={() => {
+                            setMarketSearchQuery(suggestion.product_name);
+                            setShowSearchSuggestions(false);
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0 focus:bg-slate-50 focus:outline-none"
+                        >
+                          <div className="flex items-center gap-3">
+                            <svg 
+                              className="w-5 h-5 text-slate-400 flex-shrink-0" 
+                              fill="none" 
+                              stroke="currentColor" 
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <span className="text-slate-900 text-sm truncate">{suggestion.product_name}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
