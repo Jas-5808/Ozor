@@ -349,6 +349,20 @@ export const resources = {
           productCount: '{{count}} товаров',
           loading: 'Загружаем товары...',
           error: 'Ошибка: {{message}}',
+          search: {
+            placeholder: 'Поиск товаров...',
+            empty: 'Товары не найдены',
+          },
+          sort: {
+            label: 'Сортировка',
+            default: 'По умолчанию',
+            priceAsc: 'Цена: по возрастанию',
+            priceDesc: 'Цена: по убыванию',
+            incomeAsc: 'Выгода: по возрастанию',
+            incomeDesc: 'Выгода: по убыванию',
+            nameAsc: 'Название: А-Я',
+            nameDesc: 'Название: Я-А',
+          },
           card: {
             categoryFallback: 'Категория',
             skuLabel: 'SKU',
@@ -1311,6 +1325,20 @@ export const resources = {
           productCount: '{{count}} mahsulot',
           loading: 'Mahsulotlar yuklanmoqda...',
           error: "Xatolik: {{message}}",
+          search: {
+            placeholder: 'Mahsulotlarni qidirish...',
+            empty: 'Mahsulotlar topilmadi',
+          },
+          sort: {
+            label: 'Saralash',
+            default: 'Standart',
+            priceAsc: 'Narx: oshish bo\'yicha',
+            priceDesc: 'Narx: kamayish bo\'yicha',
+            incomeAsc: 'Daromad: oshish bo\'yicha',
+            incomeDesc: 'Daromad: kamayish bo\'yicha',
+            nameAsc: 'Nomi: A-Z',
+            nameDesc: 'Nomi: Z-A',
+          },
           card: {
             categoryFallback: 'Kategoriya',
             skuLabel: 'SKU',

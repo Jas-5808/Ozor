@@ -14,6 +14,7 @@ interface ReferralStats {
   hold: number;
   paid: number;
   earned: number;
+  product_referal_price: number;
 }
 
 interface ProfileDataReturn {
@@ -134,15 +135,19 @@ export function useProfileData(): ProfileDataReturn {
       const earned = commission > 0 
         ? commission * paid 
         : (typeof r?.total_earned === 'number' ? r.total_earned : 0);
+      const productReferalPrice = typeof r?.product_referal_price === 'number' 
+        ? r.product_referal_price 
+        : (commission || 0);
       
       return {
         id: r.id,
-        title: r.product_name || r.title || '',
-        code: r.link || r.code || '',
+        title: r.title || r.product_name || '',
+        code: r.code || r.link || '',
         total,
         hold,
         paid,
         earned,
+        product_referal_price: productReferalPrice,
       };
     });
   }, [apiFlows, productById]);

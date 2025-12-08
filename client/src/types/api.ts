@@ -188,11 +188,29 @@ export interface CreateOrderRequest {
  */
 export interface ReferralResponse {
   id: string;
+  title?: string;
+  code: string;
   product_id: string;
-  product_name: string;
-  link: string;
-  commission: number;
+  product_name?: string;
+  product_referal_price: number;
+  link?: string;
+  commission?: number;
   created_at: string;
+  total_earned?: number;
+  orders?: Array<{
+    order_id: string;
+    order_number: string;
+    status: string;
+    created_at: string;
+    items: Array<{
+      item_id: string;
+      product_name: string;
+      variant_sku: string;
+      quantity: number;
+      price: number;
+      status: string;
+    }>;
+  }>;
 }
 
 export interface CreateReferralRequest {

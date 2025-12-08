@@ -4,7 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { shopAPI, paymentAPI } from "../services/api";
 import { useProducts } from "../hooks/useProducts";
 import cn from "./profile.module.scss";
-import { formatPrice, getProductImageUrl, getVariantMainImage } from "../utils/helpers";
+import { formatPrice, getProductImageUrl, getVariantMainImage, shortenUrl } from "../utils/helpers";
 import { logger } from "../utils/logger";
 import { useFlows } from "../hooks/useFlows";
 import SkeletonGrid from "../components/SkeletonGrid";
@@ -12,6 +12,7 @@ import useSEO from "../hooks/useSEO";
 import { Link, useNavigate } from "react-router-dom";
 import { useProfileData } from "../hooks/useProfileData";
 import { useReferralActions } from "../hooks/useReferralActions";
+import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
 
 export function Profile() {
   const { t } = useTranslation();
@@ -21,6 +22,10 @@ export function Profile() {
     "market" | "oqim" | "stats" | "payments"
   >("market");
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
+  
+  // Состояния для поиска и сортировки в Market
+  const [marketSearchQuery, setMarketSearchQuery] = useState<string>("");
+  const [marketSortBy, setMarketSortBy] = useState<string>("default");
   const {
     products,
     loading: productsLoading,
@@ -46,6 +51,22 @@ export function Profile() {
   }>>([]);
   const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
   const [withdrawalsError, setWithdrawalsError] = useState<string | null>(null);
+  
+  // Состояние для отслеживания скопированных ссылок (для показа галочки)
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+  
+  // Функция копирования для раздела "Потоки" (без сообщения, с галочкой)
+  const handleCopyFlowLink = async (link: string, linkId: string) => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedLinkId(linkId);
+      setTimeout(() => {
+        setCopiedLinkId(null);
+      }, 1300);
+    } catch (error) {
+      logger.errorWithContext(error, { context: 'handleCopyFlowLink' });
+    }
+  };
   
   // Используем кастомные хуки для управления данными
   const profileData = useProfileData();
@@ -234,6 +255,75 @@ export function Profile() {
     }));
   }, [referralStats]);
 
+  // Состояние для пагинации в Market
+  const [marketDisplayedCount, setMarketDisplayedCount] = useState<number>(12);
+  const MARKET_ITEMS_PER_PAGE = 12;
+
+  // Фильтрация и сортировка продуктов для Market
+  const filteredAndSortedProducts = useMemo(() => {
+    // Фильтрация по поисковому запросу
+    const filtered = products.filter((p: any) => {
+      if (!marketSearchQuery.trim()) return true;
+      const query = marketSearchQuery.toLowerCase().trim();
+      const productName = (p.product_name || "").toLowerCase();
+      const categoryName = typeof p.category === "string" 
+        ? p.category.toLowerCase() 
+        : (p.category?.name || "").toLowerCase();
+      const sku = (p.variant_sku || "").toLowerCase();
+      return productName.includes(query) || categoryName.includes(query) || sku.includes(query);
+    });
+
+    // Сортировка
+    const sorted = [...filtered].sort((a: any, b: any) => {
+      switch (marketSortBy) {
+        case "priceAsc":
+          return (a.price || 0) - (b.price || 0);
+        case "priceDesc":
+          return (b.price || 0) - (a.price || 0);
+        case "incomeAsc":
+          return (a.refferal_price || 0) - (b.refferal_price || 0);
+        case "incomeDesc":
+          return (b.refferal_price || 0) - (a.refferal_price || 0);
+        case "nameAsc":
+          return (a.product_name || "").localeCompare(b.product_name || "", "ru");
+        case "nameDesc":
+          return (b.product_name || "").localeCompare(a.product_name || "", "ru");
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  }, [products, marketSearchQuery, marketSortBy]);
+
+  // Отображаемые продукты с пагинацией
+  const displayedMarketProducts = useMemo(() => {
+    return filteredAndSortedProducts.slice(0, marketDisplayedCount);
+  }, [filteredAndSortedProducts, marketDisplayedCount]);
+
+  // Есть ли еще продукты для загрузки в Market
+  const marketHasMore = marketDisplayedCount < filteredAndSortedProducts.length;
+
+  // Загрузить следующую порцию в Market
+  const loadMoreMarket = () => {
+    if (marketHasMore && !productsLoading) {
+      setMarketDisplayedCount(prev => Math.min(prev + MARKET_ITEMS_PER_PAGE, filteredAndSortedProducts.length));
+    }
+  };
+
+  // Сброс счетчика при изменении поиска или сортировки
+  useEffect(() => {
+    setMarketDisplayedCount(MARKET_ITEMS_PER_PAGE);
+  }, [marketSearchQuery, marketSortBy]);
+
+  // Хук для бесконечной прокрутки в Market
+  const marketSentinelRef = useInfiniteScroll({
+    hasMore: marketHasMore,
+    loading: productsLoading,
+    onLoadMore: loadMoreMarket,
+    threshold: 200,
+  });
+
   if (!isAuthenticated) {
     return (
       <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-5 md:px-6 py-6">
@@ -365,9 +455,56 @@ export function Profile() {
                 <p className="text-sm text-slate-500">{t("profile.market.subtitle")}</p>
               </div>
               <span className="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-3 py-1 text-xs font-semibold text-slate-700 w-fit">
-                {t("profile.market.productCount", { count: products.length })}
+                {t("profile.market.productCount", { count: filteredAndSortedProducts.length })}
               </span>
             </div>
+            
+            {/* Поиск и сортировка */}
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex-1 max-w-md">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={marketSearchQuery}
+                    onChange={(e) => setMarketSearchQuery(e.target.value)}
+                    placeholder={t("profile.market.search.placeholder")}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pl-11 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                  />
+                  <svg
+                    className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-semibold text-slate-700 whitespace-nowrap">
+                  {t("profile.market.sort.label")}:
+                </label>
+                <select
+                  value={marketSortBy}
+                  onChange={(e) => setMarketSortBy(e.target.value)}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20 cursor-pointer"
+                >
+                  <option value="default">{t("profile.market.sort.default")}</option>
+                  <option value="priceAsc">{t("profile.market.sort.priceAsc")}</option>
+                  <option value="priceDesc">{t("profile.market.sort.priceDesc")}</option>
+                  <option value="incomeAsc">{t("profile.market.sort.incomeAsc")}</option>
+                  <option value="incomeDesc">{t("profile.market.sort.incomeDesc")}</option>
+                  <option value="nameAsc">{t("profile.market.sort.nameAsc")}</option>
+                  <option value="nameDesc">{t("profile.market.sort.nameDesc")}</option>
+                </select>
+              </div>
+            </div>
+            
             {productsLoading && (
               <div className="rounded-2xl border border-dashed border-slate-200 p-6">
                 <SkeletonGrid count={8} columns={4} />
@@ -379,128 +516,145 @@ export function Profile() {
               </div>
             )}
             {!productsLoading && !productsError && (
-              <div className="grid grid-cols-2 gap-1.5 sm:gap-4 xl:grid-cols-3">
-                {products.map((p: any, index: number) => {
-                  const productId = p?.product_id || p?.id || p?.productId || "";
-                  const referralValue = formatPrice(p.refferal_price || 0);
-                  const priceValue = formatPrice(p.price || 0);
-                  const isLoadingCard = Boolean(productId) && loadingProductId === productId;
-                  const canOpenProduct = Boolean(productId);
-                  const categoryLabel =
-                    typeof p.category === "string"
-                      ? p.category
-                      : p.category?.name || t("profile.market.card.categoryFallback");
+              filteredAndSortedProducts.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+                  <p className="text-sm font-semibold text-slate-500">{t("profile.market.search.empty")}</p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {displayedMarketProducts.map((p: any, index: number) => {
+                    const productId = p?.product_id || p?.id || p?.productId || "";
+                    const referralValue = formatPrice(p.refferal_price || 0);
+                    const priceValue = formatPrice(p.price || 0);
+                    const isLoadingCard = Boolean(productId) && loadingProductId === productId;
+                    const canOpenProduct = Boolean(productId);
+                    const categoryLabel =
+                      typeof p.category === "string"
+                        ? p.category
+                        : p.category?.name || t("profile.market.card.categoryFallback");
 
-                  const handleOpenProduct = async () => {
-                    if (!canOpenProduct) return;
-                    if (isLoadingCard) return;
-                    try {
-                      setLoadingProductId(productId);
-                      const response = await shopAPI.getProductById(productId);
-                      const productData = response.data as any;
-                      const firstVariant = productData.variants?.[0];
-                      const productForState = {
-                        product_id: productId,
-                        product_name: productData.name || p.product_name,
-                        product_description: productData.description || p.product_description,
-                        category: productData.category || p.category,
-                        refferal_price: productData.refferal_price ?? p.refferal_price ?? 0,
-                        main_image: productData.main_image || p.main_image,
-                        variant_id: firstVariant?.id || p.variant_id,
-                        variant_sku: firstVariant?.sku || p.variant_sku,
-                        price: firstVariant?.price ?? p.price ?? 0,
-                        stock: firstVariant?.stock ?? p.stock ?? 0,
-                        variant_attributes: firstVariant?.attribute_values || [],
-                        variant_media: firstVariant?.media || [],
-                      };
-                      navigate(`/product/${productId}`, { state: { product: productForState } });
-                    } catch (error) {
-                      if (productId) {
-                        navigate(`/product/${productId}`);
+                    const handleOpenProduct = async () => {
+                      if (!canOpenProduct) return;
+                      if (isLoadingCard) return;
+                      try {
+                        setLoadingProductId(productId);
+                        const response = await shopAPI.getProductById(productId);
+                        const productData = response.data as any;
+                        const firstVariant = productData.variants?.[0];
+                        const productForState = {
+                          product_id: productId,
+                          product_name: productData.name || p.product_name,
+                          product_description: productData.description || p.product_description,
+                          category: productData.category || p.category,
+                          refferal_price: productData.refferal_price ?? p.refferal_price ?? 0,
+                          main_image: productData.main_image || p.main_image,
+                          variant_id: firstVariant?.id || p.variant_id,
+                          variant_sku: firstVariant?.sku || p.variant_sku,
+                          price: firstVariant?.price ?? p.price ?? 0,
+                          stock: firstVariant?.stock ?? p.stock ?? 0,
+                          variant_attributes: firstVariant?.attribute_values || [],
+                          variant_media: firstVariant?.media || [],
+                        };
+                        navigate(`/product/${productId}`, { state: { product: productForState } });
+                      } catch (error) {
+                        if (productId) {
+                          navigate(`/product/${productId}`);
+                        }
+                      } finally {
+                        setLoadingProductId(null);
                       }
-                    } finally {
-                      setLoadingProductId(null);
-                    }
-                  };
+                    };
 
-                  return (
-                    <article
-                      key={productId ? `${productId}-${p.variant_id || index}` : `market-card-${index}`}
-                      className="group relative flex h-full flex-col rounded-[10px] md:rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-1 md:p-4 shadow-[0_4px_8px_rgba(15,23,42,0.03)] md:shadow-[0_18px_35px_rgba(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_6px_12px_rgba(15,23,42,0.06)] md:hover:shadow-[0_25px_50px_rgba(15,23,42,0.12)]"
-                    >
-                      <button
-                        type="button"
-                        onClick={handleOpenProduct}
-                        className="relative overflow-hidden rounded-lg md:rounded-2xl bg-slate-100 aspect-[3/4] md:min-h-[180px] md:aspect-auto w-full"
-                        disabled={isLoadingCard || !canOpenProduct}
+                    return (
+                      <article
+                        key={productId ? `${productId}-${p.variant_id || index}` : `market-card-${index}`}
+                        className="group relative flex h-full flex-col rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-4 shadow-[0_18px_35px_rgба(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_25px_50px_rgба(15,23,42,0.12)]"
                       >
-                        <img
-                          src={getVariantMainImage(p.variant_media) || getProductImageUrl(p.main_image)}
-                          alt={p.product_name}
-                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                          loading="lazy"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
-                          }}
-                        />
-                        <span className="absolute left-1 top-1 md:left-3 md:top-3 inline-flex items-center rounded-full bg-white/85 px-1 py-0.5 md:px-3 md:py-1 text-[9px] md:text-xs font-semibold text-slate-800">
-                          {categoryLabel}
-                        </span>
-                        {isLoadingCard && (
-                          <span className="absolute inset-0 grid place-items-center bg-white/70 text-[9px] md:text-xs font-semibold text-slate-600">
-                            {t("profile.market.card.loading")}
+                        <button
+                          type="button"
+                          onClick={handleOpenProduct}
+                          className="relative overflow-hidden rounded-2xl bg-slate-100"
+                          style={{ minHeight: 180 }}
+                          disabled={isLoadingCard || !canOpenProduct}
+                        >
+                          <img
+                            src={getVariantMainImage(p.variant_media) || getProductImageUrl(p.main_image)}
+                            alt={p.product_name}
+                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                            loading="lazy"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
+                            }}
+                          />
+                          <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-white/85 px-3 py-1 text-xs font-semibold text-slate-800">
+                            {categoryLabel}
                           </span>
-                        )}
-                      </button>
-                      <div className="mt-1 md:mt-4 flex flex-1 flex-col gap-1 md:gap-4">
-                        <div>
-                          <h4 className="text-[11px] md:text-base font-bold text-slate-900 line-clamp-2 leading-tight">{p.product_name}</h4>
-                          <p className="mt-0.5 md:mt-1 text-[9px] md:text-xs uppercase tracking-wide text-slate-500">{t("profile.market.card.skuLabel")}: {p.variant_sku || "—"}</p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1 md:gap-3 rounded-lg md:rounded-2xl bg-slate-100/60 px-1 py-0.5 md:px-3 md:py-2">
-                          <div className="flex flex-col">
-                            <span className="text-[9px] md:text-xs text-slate-500">{t("profile.market.card.priceLabel")}</span>
-                            <span className="text-xs md:text-lg font-extrabold text-slate-900 leading-tight">{priceValue}</span>
+                          {isLoadingCard && (
+                            <span className="absolute inset-0 grid place-items-center bg-white/70 text-xs font-semibold text-slate-600">
+                              {t("profile.market.card.loading")}
+                            </span>
+                          )}
+                        </button>
+                        <div className="mt-4 flex flex-1 flex-col gap-4">
+                          <div>
+                            <h4 className="text-base font-bold text-slate-900 line-clamp-2">{p.product_name}</h4>
+                            <p className="mt-1 text-xs uppercase tracking-wide text-slate-500">{t("profile.market.card.skuLabel")}: {p.variant_sku || "—"}</p>
                           </div>
-                          <div className="h-5 md:h-8 w-px bg-slate-200" />
-                          <div className="flex flex-col">
-                            <span className="text-[9px] md:text-xs text-slate-500">{t("profile.market.card.incomeLabel")}</span>
-                            <span className="inline-flex items-center gap-0.5 md:gap-2 text-[10px] md:text-sm font-semibold text-[#04734b] leading-tight">
-                              {referralValue}
-                              <span className="rounded-full bg-[#e6f8ef] px-1 py-0.5 md:px-2 text-[8px] md:text-[11px] font-bold text-[#04734b]">
-                                +
+                          <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-slate-100/60 px-3 py-2">
+                            <div className="flex flex-col">
+                              <span className="text-xs text-slate-500">{t("profile.market.card.priceLabel")}</span>
+                              <span className="text-lg font-extrabold text-slate-900">{priceValue}</span>
+                            </div>
+                            <div className="h-8 w-px bg-slate-200" />
+                            <div className="flex flex-col">
+                              <span className="text-xs text-slate-500">{t("profile.market.card.incomeLabel")}</span>
+                              <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#04734b]">
+                                {referralValue}
+                                <span className="rounded-full bg-[#e6f8ef] px-2 py-0.5 text-[11px] font-bold text-[#04734b]">
+                                  +
+                                </span>
                               </span>
-                            </span>
+                            </div>
+                          </div>
+                          <div className="mt-auto space-y-3">
+                            <button
+                              type="button"
+                              className="group relative h-12 w-full rounded-[18px] text-sm font-semibold uppercase tracking-wide text-white shadow-[0_22px_48px_rgba(6,78,59,0.45)] ring-1 ring-white/20 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                              style={{ background: "linear-gradient(92.41deg, rgb(0, 61, 50), rgb(4, 115, 75))" }}
+                              disabled={createLoading || isLoadingCard}
+                              onClick={() => handleGenerate(p)}
+                            >
+                              <span className="absolute inset-0 rounded-[18px] bg-white/15 opacity-0 transition group-hover:opacity-100" />
+                              <span className="relative inline-flex items-center justify-center gap-2">
+                                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                                {createLoading ? t("profile.market.card.creating") : t("profile.market.card.create")}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              className="h-12 w-full rounded-[18px] border border-slate-200 bg-white text-sm font-semibold text-slate-800 shadow-[0_12px_30px_rgba(15,23,42,0.1)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                              onClick={handleOpenProduct}
+                              disabled={isLoadingCard || !canOpenProduct}
+                            >
+                              {t("profile.market.card.view")}
+                            </button>
                           </div>
                         </div>
-                        <div className="mt-auto space-y-1 md:space-y-3">
-                          <button
-                            type="button"
-                            className="group relative h-7 md:h-12 w-full rounded-[7px] md:rounded-[18px] text-[9px] md:text-sm font-semibold uppercase tracking-wide text-white shadow-[0_4px_10px_rgba(6,78,59,0.3)] md:shadow-[0_22px_48px_rgba(6,78,59,0.45)] ring-1 ring-white/20 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
-                            style={{ background: "linear-gradient(92.41deg, rgb(0, 61, 50), rgb(4, 115, 75))" }}
-                            disabled={createLoading || isLoadingCard}
-                            onClick={() => handleGenerate(p)}
-                          >
-                            <span className="absolute inset-0 rounded-[7px] md:rounded-[18px] bg-white/15 opacity-0 transition group-hover:opacity-100" />
-                            <span className="relative inline-flex items-center justify-center gap-0.5 md:gap-2">
-                              <span className="h-0.5 w-0.5 md:h-1.5 md:w-1.5 rounded-full bg-white" />
-                              {createLoading ? t("profile.market.card.creating") : t("profile.market.card.create")}
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            className="h-7 md:h-12 w-full rounded-[7px] md:rounded-[18px] border border-slate-200 bg-white text-[9px] md:text-sm font-semibold text-slate-800 shadow-[0_2px_6px_rgba(15,23,42,0.06)] md:shadow-[0_12px_30px_rgba(15,23,42,0.1)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-                            onClick={handleOpenProduct}
-                            disabled={isLoadingCard || !canOpenProduct}
-                          >
-                            {t("profile.market.card.view")}
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+                      </article>
+                    );
+                  })}
+                  </div>
+                  {/* Элемент-триггер для бесконечной прокрутки */}
+                  <div ref={marketSentinelRef} className="h-4 w-full" />
+                  {/* Индикатор загрузки при подгрузке */}
+                  {marketHasMore && (
+                    <div className="flex justify-center items-center py-8">
+                      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#04734b]"></div>
+                    </div>
+                  )}
+                </>
+              )
             )}
           </section>
         )}
@@ -550,6 +704,12 @@ export function Profile() {
                   const origin = typeof window !== "undefined" ? window.location.origin : "";
                   const shareLink = linkedFlow ? `${origin}/product/${linkedFlow.product_id}?ref=${r.code}` : "";
                   const createdAt = linkedFlow?.created_at || (linkedFlow as any)?.createdAt;
+                  // Получаем название товара из первого заказа или из linkedFlow
+                  const productName = linkedFlow?.orders?.[0]?.items?.[0]?.product_name 
+                    || linkedFlow?.product_name 
+                    || "";
+                  const linkTitle = r.title || r.code;
+                  const isCopied = copiedLinkId === r.id;
 
                   return (
                     <div
@@ -558,27 +718,46 @@ export function Profile() {
                     >
                       <div className="flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-2 shrink-0">
-                          <div className="text-base font-extrabold text-slate-900">{r.title || r.code}</div>
+                          <div className="flex flex-col">
+                            <div className="text-base font-extrabold text-slate-900">{linkTitle}</div>
+                            {productName && (
+                              <div className="text-xs text-slate-500 mt-0.5">{productName}</div>
+                            )}
+                          </div>
                           <span className="inline-flex h-6 items-center px-2 rounded-full text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50">
                             {r.code}
                           </span>
                         </div>
                         <div className="flex-1 min-w-[220px]">
                           <div className="flex items-center gap-2">
-                            <div className="flex-1 break-all rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600">
-                              {shareLink}
+                            <div 
+                              className="flex-1 break-all rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600 cursor-pointer"
+                              title={shareLink}
+                              onClick={() => shareLink && handleCopyFlowLink(shareLink, r.id)}
+                            >
+                              {shortenUrl(shareLink, 35)}
                             </div>
                             <div className="inline-flex items-center gap-2 shrink-0">
                               <button
-                                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50"
+                                className={`h-8 w-8 inline-flex items-center justify-center rounded-lg border transition-colors ${
+                                  isCopied 
+                                    ? "border-emerald-300 bg-emerald-50" 
+                                    : "border-slate-200 hover:bg-slate-50"
+                                }`}
                                 title={t("profile.flows.copy")}
                                 aria-label={t("profile.flows.copy")}
-                                onClick={() => shareLink && handleCopy(shareLink)}
+                                onClick={() => shareLink && handleCopyFlowLink(shareLink, r.id)}
                               >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                  <rect x="9" y="9" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2" />
-                                  <rect x="3" y="3" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2" />
-                                </svg>
+                                {isCopied ? (
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M20 6L9 17l-5-5" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                ) : (
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="9" y="9" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2" />
+                                    <rect x="3" y="3" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2" />
+                                  </svg>
+                                )}
                               </button>
                               <button
                                 className={`h-8 w-8 inline-flex items-center justify-center rounded-lg border ${
@@ -603,42 +782,61 @@ export function Profile() {
                             {createdAt ? new Date(createdAt).toLocaleString() : "—"}
                           </div>
                           <span className="inline-flex h-6 items-center px-2 rounded-full text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50">
-                            {formatPrice(r.earned || 0)}
+                            {formatPrice(r.product_referal_price || 0)}
                           </span>
                         </div>
                       </div>
                     </div>
                   );
                 })}
-                {flows.map((f) => (
-                  <div
-                    key={f.id}
-                    className={`${cn.glass} ${cn.flowRow} p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
-                  >
-                    <div className="flex flex-wrap items-center gap-3">
-                      {/* Left: title + commission */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="text-base font-extrabold text-slate-900">{f.productName}</div>
-                        <span className="inline-flex h-6 items-center px-2 rounded-full text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50">+ {formatPrice(f.commission || 0)}</span>
-                      </div>
-                      {/* Middle: link */}
-                      <div className="flex-1 min-w-[220px]">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 text-xs text-slate-600 break-all bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
-                            {f.link}
+                {flows.map((f) => {
+                  const isCopied = copiedLinkId === f.id;
+                  
+                  return (
+                    <div
+                      key={f.id}
+                      className={`${cn.glass} ${cn.flowRow} p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
+                    >
+                      <div className="flex flex-wrap items-center gap-3">
+                        {/* Left: title + commission */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex flex-col">
+                            <div className="text-base font-extrabold text-slate-900">{f.productName}</div>
                           </div>
-                          <div className="inline-flex items-center gap-2">
-                            <button
-                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50"
-                              title={t("profile.flows.copy")}
-                              aria-label={t("profile.flows.copy")}
-                              onClick={() => handleCopy(f.link)}
+                          <span className="inline-flex h-6 items-center px-2 rounded-full text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50">+ {formatPrice(f.commission || 0)}</span>
+                        </div>
+                        {/* Middle: link */}
+                        <div className="flex-1 min-w-[220px]">
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="flex-1 text-xs text-slate-600 break-all bg-slate-50 border border-slate-200 rounded-md px-2 py-1 cursor-pointer"
+                              title={f.link}
+                              onClick={() => handleCopyFlowLink(f.link, f.id)}
                             >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <rect x="9" y="9" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
-                                <rect x="3" y="3" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
-                              </svg>
-                            </button>
+                              {shortenUrl(f.link, 35)}
+                            </div>
+                            <div className="inline-flex items-center gap-2">
+                              <button
+                                className={`h-8 w-8 inline-flex items-center justify-center rounded-lg border transition-colors ${
+                                  isCopied 
+                                    ? "border-emerald-300 bg-emerald-50" 
+                                    : "border-slate-200 hover:bg-slate-50"
+                                }`}
+                                title={t("profile.flows.copy")}
+                                aria-label={t("profile.flows.copy")}
+                                onClick={() => handleCopyFlowLink(f.link, f.id)}
+                              >
+                                {isCopied ? (
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M20 6L9 17l-5-5" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                ) : (
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="9" y="9" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
+                                    <rect x="3" y="3" width="12" height="12" rx="2" stroke="#334155" strokeWidth="2"/>
+                                  </svg>
+                                )}
+                              </button>
                             <button
                               className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-red-200 hover:bg-red-50"
                               title={t("profile.flows.delete")}
@@ -660,7 +858,8 @@ export function Profile() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 {flows.length > 0 && (
                   <div className={`${cn.actions} sm:col-span-2 lg:col-span-3`}>
                     <button className={`${cn.button} ${cn.secondary} ${cn.compact}`} onClick={clearFlows}>
@@ -1034,8 +1233,13 @@ export function Profile() {
                     <div className="flex items-center gap-2">
                       <input
                         readOnly
-                        value={createModal.createdLink}
-                        className="flex-1 rounded-2xl border border-emerald-200 bg-white px-3 py-2 text-sm text-emerald-800 focus:outline-none"
+                        value={shortenUrl(createModal.createdLink, 40)}
+                        title={createModal.createdLink}
+                        className="flex-1 rounded-2xl border border-emerald-200 bg-white px-3 py-2 text-sm text-emerald-800 focus:outline-none cursor-pointer"
+                        onClick={(e) => {
+                          e.currentTarget.select();
+                          handleCopy(createModal.createdLink!);
+                        }}
                       />
                       <button
                         className="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-[#015338] shadow-[0_16px_30px_rgba(255,255,255,0.35)] transition hover:translate-y-0.5"

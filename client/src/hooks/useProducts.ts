@@ -1,13 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import i18n from "../i18n";
 import { shopAPI } from "../api";
 import { Product } from "../types";
 import { logger } from "../utils/logger";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
+
+const ITEMS_PER_PAGE = 20; // Количество товаров на страницу
+
 export const useProducts = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [displayedCount, setDisplayedCount] = useState<number>(ITEMS_PER_PAGE);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  
   const fetchProducts = async () => {
     try {
       setLoading(true);
@@ -17,7 +22,8 @@ export const useProducts = () => {
       const filteredProducts = response.data.filter(
         (product) => product.price && product.price > 0
       );
-      setProducts(filteredProducts);
+      setAllProducts(filteredProducts);
+      setDisplayedCount(ITEMS_PER_PAGE); // Сбрасываем счетчик при новой загрузке
     } catch (error) {
       const appError = handleApiError(error);
       const errorMessage = getUserFriendlyMessage(appError) || i18n.t("common.errors.productsLoad");
@@ -27,19 +33,39 @@ export const useProducts = () => {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     let cancelled = false;
     fetchProducts().finally(()=>{ if (cancelled) return; });
     return ()=>{ cancelled = true; };
   }, []);
+
+  // Отображаемые продукты (пагинация на клиенте)
+  const products = useMemo(() => {
+    return allProducts.slice(0, displayedCount);
+  }, [allProducts, displayedCount]);
+
+  // Есть ли еще продукты для загрузки
+  const hasMore = displayedCount < allProducts.length;
+
+  // Загрузить следующую порцию
+  const loadMore = () => {
+    if (hasMore && !loading) {
+      setDisplayedCount(prev => Math.min(prev + ITEMS_PER_PAGE, allProducts.length));
+    }
+  };
+
   const refetch = () => {
     fetchProducts();
   };
+
   return {
     products,
     loading,
     error,
     refetch,
+    hasMore,
+    loadMore,
   };
 };
 export const useProductById = (productId: string | undefined) => {

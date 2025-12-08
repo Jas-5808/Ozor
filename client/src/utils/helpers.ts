@@ -115,3 +115,21 @@ export const getVariantMainImage = (variant_media?: { file: string; is_main?: bo
   const main = variant_media.find((m) => m.is_main) || variant_media[0];
   return main?.file ? getProductImageUrl(main.file) : null;
 };
+
+// Сокращение URL для отображения
+export const shortenUrl = (url: string, maxLength: number = 50): string => {
+  if (!url || url.length <= maxLength) return url;
+  try {
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname;
+    const path = urlObj.pathname + urlObj.search;
+    if (domain.length + path.length <= maxLength) return url;
+    const shortPath = path.length > maxLength - domain.length - 10
+      ? path.substring(0, maxLength - domain.length - 10) + '...'
+      : path;
+    return `${domain}${shortPath}`;
+  } catch {
+    // Если не валидный URL, просто обрезаем
+    return url.substring(0, maxLength) + '...';
+  }
+};
