@@ -22,12 +22,7 @@
     <!-- Оптимизированная загрузка шрифтов - только нужные веса с font-display: swap -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Preload критических ресурсов -->
-    <link rel="preload" as="style" href="/src/index.css" />
-    <link rel="preload" as="script" href="/src/main.jsx" />
-    
-    <!-- Preload первого изображения слайдера для улучшения LCP -->
-    <link rel="preload" as="image" href="https://images.uzum.uz/d33ptvl2llnd6jumh5lg/main_page_banner.jpg" fetchpriority="high" />
+    <!-- Основные ресурсы подтянет Vite (modulepreload/ESM). Дополнительный preload убран, чтобы избежать ворнингов. -->
 
   </head>
   <body>

@@ -626,7 +626,7 @@ export function Profile() {
                 </div>
               ) : (
                 <>
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
                     {displayedMarketProducts.map((p: any, index: number) => {
                     const productId = p?.product_id || p?.id || p?.productId || "";
                     const referralValue = formatPrice(p.refferal_price || 0);

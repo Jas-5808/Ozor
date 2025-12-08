@@ -1,19 +1,25 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { shopAPI } from "../services/api";
-import { useCategoryById, useCategories, getSubcategories } from "../hooks/useCategories";
+import { useCategoryById, useCategories, getAllSubcategories } from "../hooks/useCategories";
 import { Product } from "../types";
 import ProductCard from "../components/ui/ProductCard";
 import useSEO from "../hooks/useSEO";
 import SkeletonGrid from "../components/SkeletonGrid";
+import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
+import { buildDisplayProducts, splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
+
+const PAGE_SIZE = 20;
 
 export function CategoryPage() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
-  const { category, loading: categoryLoading } = useCategoryById(id);
+  const { category, loading: categoryLoading, error: categoryError } = useCategoryById(id);
   const { categories } = useCategories();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [primaryProducts, setPrimaryProducts] = useState<Product[]>([]);
+  const [variantProducts, setVariantProducts] = useState<Product[]>([]);
+  const [displayedCount, setDisplayedCount] = useState<number>(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,180 +29,129 @@ export function CategoryPage() {
     canonical: typeof window !== "undefined" ? window.location.href : undefined,
   });
 
-  // Получаем подкатегории для текущей категории
-  const subcategories = id ? getSubcategories(categories, id) : [];
+  // Получаем подкатегории для текущей категории - мемоизировано
+  const subcategories = useMemo(() => {
+    return id ? getAllSubcategories(categories, id) : [];
+  }, [id, categories]);
+  
+  // Создаем стабильный ключ для подкатегорий (для зависимостей useEffect)
+  const subcategoriesKey = useMemo(() => {
+    return subcategories.map(s => s.id).sort().join(',');
+  }, [subcategories]);
 
   useEffect(() => {
+    let cancelled = false;
+    
     const fetchProducts = async () => {
-      if (!id || !category) return;
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+      
+      if (categoryLoading && !category) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (cancelled) return;
+      }
       
       try {
         setLoading(true);
         setError(null);
         
-        // Определяем, является ли текущая категория подкатегорией
-        const isSubcategory = category.parent_id !== null;
-        const parentCategoryId = category.parent_id;
+        const isSubcategory = category ? category.parent_id !== null : false;
+        const collectedProducts: any[] = [];
         
-        // Получаем продукты выбранной категории
-        const currentCategoryResponse = await shopAPI.getProductsByCategory(id);
-        
-        // Если это подкатегория, получаем еще продукты родительской категории
-        let parentCategoryResponse = null;
-        if (isSubcategory && parentCategoryId) {
-          try {
-            parentCategoryResponse = await shopAPI.getProductsByCategory(parentCategoryId);
-          } catch (err) {
-            console.warn("Failed to fetch parent category products:", err);
-          }
-        }
-        
-        // Получаем остальные продукты (без фильтра по категории)
-        const allOtherProductsResponse = await shopAPI.getProducts();
-        
-        // Функция трансформации
-        const transformProduct = (item: any): Product => ({
-          product_id: item.product_id || item.id,
-          product_name: item.product_name || item.name,
-          product_description: item.product_description || item.description || "",
-          category: item.category,
-          refferal_price: item.refferal_price || 0,
-          main_image: item.main_image || "",
-          variant_id: item.variant_id || "",
-          variant_sku: item.variant_sku || item.sku || "",
-          price: item.price || item.base_price || 0,
-          stock: item.stock || 0,
-          variant_attributes: item.variant_attributes || [],
-          variant_media: item.variant_media || [],
-        });
-        
-        // Трансформируем все продукты
-        const currentCategoryProducts = (currentCategoryResponse.data || []).map(transformProduct);
-        const parentCategoryProducts = parentCategoryResponse 
-          ? (parentCategoryResponse.data || []).map(transformProduct)
-          : [];
-        const allOtherProducts = (allOtherProductsResponse.data || []).map(transformProduct);
-        
-        // Фильтруем остальные продукты (исключаем текущую и родительскую категории)
-        const otherCategoryProducts = allOtherProducts.filter(product => {
-          const productCategoryId = product.category?.id || '';
-          return productCategoryId !== id && 
-                 (!isSubcategory || productCategoryId !== parentCategoryId);
-        });
-        
-        // Группируем все продукты по product_id для обработки вариантов
-        const allProducts = [
-          ...currentCategoryProducts,
-          ...parentCategoryProducts,
-          ...otherCategoryProducts,
-        ];
-        
-        const productsByProductId = new Map<string, Product[]>();
-        allProducts.forEach(product => {
-          const key = product.product_id;
-          if (!productsByProductId.has(key)) {
-            productsByProductId.set(key, []);
-          }
-          productsByProductId.get(key)!.push(product);
-        });
-        
-        // Сортируем варианты внутри каждой группы: сначала с stock > 0, потом остальные
-        productsByProductId.forEach((variants) => {
-          variants.sort((a, b) => {
-            if (a.stock > 0 && b.stock === 0) return -1;
-            if (a.stock === 0 && b.stock > 0) return 1;
-            return b.stock - a.stock;
-          });
-        });
-        
-        // Разделяем на группы по категориям (используя первый вариант каждого продукта)
-        const currentGroup: Product[] = [];
-        const parentGroup: Product[] = [];
-        const otherGroup: Product[] = [];
-        const processedProductIds = new Set<string>();
-        
-        // Сначала обрабатываем продукты текущей категории
-        currentCategoryProducts.forEach(product => {
-          const productId = product.product_id;
-          if (!processedProductIds.has(productId)) {
-            const variants = productsByProductId.get(productId) || [product];
-            currentGroup.push(variants[0]);
-            processedProductIds.add(productId);
-          }
-        });
-        
-        // Затем продукты родительской категории (если это подкатегория)
         if (isSubcategory) {
-          parentCategoryProducts.forEach(product => {
-            const productId = product.product_id;
-            if (!processedProductIds.has(productId)) {
-              const variants = productsByProductId.get(productId) || [product];
-              parentGroup.push(variants[0]);
-              processedProductIds.add(productId);
+          const response = await shopAPI.getProductsByCategory(id);
+          if (cancelled) return;
+          const data = response.data || [];
+          if (Array.isArray(data)) {
+            collectedProducts.push(...data);
+          }
+        } else {
+          const categoryIdsSet = new Set<string>([id]);
+          
+          subcategories.forEach(sub => {
+            categoryIdsSet.add(sub.id);
+          });
+          
+          const categoryIds = Array.from(categoryIdsSet);
+          
+          const MAX_CONCURRENT = 5;
+          const allResponses: any[] = [];
+          
+          for (let i = 0; i < categoryIds.length; i += MAX_CONCURRENT) {
+            const batch = categoryIds.slice(i, i + MAX_CONCURRENT);
+            const productPromises = batch.map(categoryId => 
+              shopAPI.getProductsByCategory(categoryId).catch(err => {
+                console.warn(`Failed to fetch products for category ${categoryId}:`, err);
+                return { data: [] };
+              })
+            );
+            
+            const responses = await Promise.all(productPromises);
+            if (cancelled) return;
+            
+            allResponses.push(...responses);
+          }
+          
+          allResponses.forEach(response => {
+            const items = response.data || [];
+            if (Array.isArray(items)) {
+              collectedProducts.push(...items);
             }
           });
         }
         
-        // Остальные продукты
-        otherCategoryProducts.forEach(product => {
-          const productId = product.product_id;
-          if (!processedProductIds.has(productId)) {
-            const variants = productsByProductId.get(productId) || [product];
-            otherGroup.push(variants[0]);
-            processedProductIds.add(productId);
-          }
-        });
+        if (cancelled) return;
         
-        // Сортируем внутри каждой группы: сначала с stock > 0, потом остальные
-        const sortByStock = (a: Product, b: Product) => {
-          if (a.stock > 0 && b.stock === 0) return -1;
-          if (a.stock === 0 && b.stock > 0) return 1;
-          return b.stock - a.stock;
-        };
+        const { primaryProducts: primary, variantProducts: variants } = splitProductsIntoPrimaryAndVariants(collectedProducts);
         
-        currentGroup.sort(sortByStock);
-        parentGroup.sort(sortByStock);
-        otherGroup.sort(sortByStock);
-        
-        // Объединяем в правильном порядке
-        const sortedProducts = [
-          ...currentGroup,
-          ...parentGroup,
-          ...otherGroup,
-        ];
-        
-        // Добавляем альтернативные варианты для продуктов, у которых основной вариант закончился
-        const finalProducts: Product[] = [];
-        
-        sortedProducts.forEach(mainProduct => {
-          const productId = mainProduct.product_id;
-          
-          // Добавляем основной вариант
-          finalProducts.push(mainProduct);
-          
-          // Если основной вариант закончился (stock === 0), добавляем альтернативные варианты
-          if (mainProduct.stock === 0) {
-            const allVariants = productsByProductId.get(productId) || [];
-            // Добавляем остальные варианты (начиная со второго)
-            for (let i = 1; i < allVariants.length; i++) {
-              finalProducts.push(allVariants[i]);
-            }
-          }
-        });
-        
-        setProducts(finalProducts);
+        if (!cancelled) {
+          setPrimaryProducts(primary);
+          setVariantProducts(variants);
+          setDisplayedCount(PAGE_SIZE);
+        }
       } catch (err) {
-        console.error("Error fetching products:", err);
-        setError(t("common.errors.productsLoad"));
+        if (!cancelled) {
+          console.error("Error fetching products:", err);
+          setError(t("common.errors.productsLoad"));
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
-    if (category) {
-      fetchProducts();
+    fetchProducts();
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [id, category?.id, category?.parent_id, categoryLoading, subcategoriesKey, t]);
+
+  const totalProductsCount = useMemo(() => primaryProducts.length + variantProducts.length, [primaryProducts.length, variantProducts.length]);
+
+  const displayedProducts = useMemo(() => {
+    return buildDisplayProducts(primaryProducts, variantProducts, displayedCount);
+  }, [primaryProducts, variantProducts, displayedCount]);
+
+  const hasMore = useMemo(() => {
+    return displayedCount < totalProductsCount;
+  }, [displayedCount, totalProductsCount]);
+
+  const loadMore = useCallback(() => {
+    if (hasMore && !loading) {
+      setDisplayedCount(prev => Math.min(prev + PAGE_SIZE, totalProductsCount));
     }
-  }, [id, category, t]);
+  }, [hasMore, loading, totalProductsCount]);
+
+  const sentinelRef = useInfiniteScroll({
+    hasMore,
+    loading,
+    onLoadMore: loadMore,
+    threshold: 200,
+  });
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -248,6 +203,11 @@ export function CategoryPage() {
             {t("catalog.productsCount", { count: category.products_count })}
           </p>
         )}
+        {categoryError && !categoryLoading && (
+          <p className="text-amber-600 text-sm mt-2">
+            {t("common.warnings.categoryLoadFailed") || "Не удалось загрузить информацию о категории, но товары отображаются"}
+          </p>
+        )}
       </div>
 
       {/* Подкатегории */}
@@ -285,7 +245,7 @@ export function CategoryPage() {
             {t("common.actions.retry")}
           </button>
         </div>
-      ) : products.length === 0 ? (
+      ) : totalProductsCount === 0 ? (
         <div className="text-center py-12">
           <div className="text-5xl mb-4">📦</div>
           <p className="text-slate-500 text-lg">{t("catalog.noProducts")}</p>
@@ -297,14 +257,22 @@ export function CategoryPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {products.map((product) => (
-            <ProductCard 
-              key={`${product.product_id}_${product.variant_id || ''}`} 
-              product={product} 
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {displayedProducts.map((product) => (
+              <ProductCard 
+                key={`${product.product_id}_${product.variant_id || ''}`} 
+                product={product} 
+              />
+            ))}
+          </div>
+          <div ref={sentinelRef} className="h-4 w-full" />
+          {hasMore && (
+            <div className="flex justify-center items-center py-8">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#04734b]"></div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
