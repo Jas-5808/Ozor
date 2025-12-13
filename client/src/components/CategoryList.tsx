@@ -13,6 +13,9 @@ export const CategoryList: React.FC<CategoryListProps> = ({
 }) => {
   const { categories, loading, error } = useCategories();
   const mainCategories = getMainCategories(categories);
+  const sortedMainCategories = [...mainCategories].sort((a, b) =>
+    a.name.localeCompare(b.name, "ru")
+  );
   const handleCategoryClick = (categoryId: string) => {
     if (onCategorySelect) {
       onCategorySelect(categoryId);
@@ -51,7 +54,7 @@ export const CategoryList: React.FC<CategoryListProps> = ({
     <div className="bg-white py-4">
       <div className="container">
         <ul className="flex flex-wrap gap-2">
-          {mainCategories.slice(0, 5).map((category) => (
+          {sortedMainCategories.map((category) => (
             <li
               key={category.id}
               className={`px-4 py-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 ${

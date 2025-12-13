@@ -8,9 +8,24 @@ import ProductCard from "../components/ui/ProductCard";
 import useSEO from "../hooks/useSEO";
 import SkeletonGrid from "../components/SkeletonGrid";
 import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
-import { buildDisplayProducts, splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
+import { buildDisplayProducts, splitProductsIntoPrimaryAndVariants, transformProductFromApi } from "../utils/productUtils";
 
 const PAGE_SIZE = 20;
+
+const adaptProductsFromCategory = (items: any[], categoryCtx?: { id?: string; name?: string }) => {
+  return (items || []).map((item) => {
+    const product = transformProductFromApi(item);
+    const categoryId = item?.category_id || categoryCtx?.id || product.category?.id || "";
+    const categoryName = item?.category_name || categoryCtx?.name || product.category?.name || "";
+    return {
+      ...product,
+      category: {
+        id: categoryId,
+        name: categoryName,
+      },
+    };
+  });
+};
 
 export function CategoryPage() {
   const { id } = useParams<{ id: string }>();
@@ -52,7 +67,21 @@ export function CategoryPage() {
         await new Promise(resolve => setTimeout(resolve, 500));
         if (cancelled) return;
       }
+
+      // 1) Если API /shop/category/{id} уже вернул товары, используем их (требование заказчика)
+      if (category?.products && Array.isArray(category.products)) {
+        const mapped = adaptProductsFromCategory(category.products as any[], { id: category.id, name: category.name });
+        const { primaryProducts: primary, variantProducts: variants } = splitProductsIntoPrimaryAndVariants(mapped);
+        if (!cancelled) {
+          setPrimaryProducts(primary);
+          setVariantProducts(variants);
+          setDisplayedCount(PAGE_SIZE);
+          setLoading(false);
+        }
+        return;
+      }
       
+      // 2) Фоллбек: старый механизм загрузки товаров по категории и её подкатегориям
       try {
         setLoading(true);
         setError(null);

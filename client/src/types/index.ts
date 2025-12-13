@@ -62,6 +62,8 @@ export interface Category {
   parent_name: string | null;
   subcategories_count: number;
   products_count: number;
+  subcategories?: Array<{ id: string; name: string }>;
+  products?: unknown[];
 }
 export interface User {
   id: string;

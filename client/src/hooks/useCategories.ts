@@ -4,6 +4,24 @@ import { shopAPI } from "../api";
 import { Category } from "../types";
 import { logger } from "../utils/logger";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
+
+const normalizeCategories = (payload: unknown): Category[] => {
+  if (Array.isArray(payload)) return payload;
+  const data = (payload as any)?.data;
+  if (Array.isArray(data)) return data;
+  logger.warn?.("Неверный формат ответа для категорий", { payload });
+  return [];
+};
+
+const normalizeCategory = (payload: unknown): Category | null => {
+  if (!payload) return null;
+  const candidate = (payload as any)?.data ?? payload;
+  if (candidate && typeof candidate === "object") {
+    return candidate as Category;
+  }
+  logger.warn?.("Неверный формат ответа для категории", { payload });
+  return null;
+};
 export const useCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -13,7 +31,8 @@ export const useCategories = () => {
       setLoading(true);
       setError(null);
       const response = await shopAPI.getCategories();
-      setCategories(response.data);
+      const normalized = normalizeCategories(response.data);
+      setCategories(normalized);
     } catch (error) {
       const appError = handleApiError(error);
       const errorMessage = getUserFriendlyMessage(appError) || i18n.t("common.errors.categoriesLoad");
@@ -51,7 +70,8 @@ export const useCategoryById = (categoryId: string | undefined) => {
       setLoading(true);
       setError(null);
       const response = await shopAPI.getCategoryById(categoryId);
-      setCategory(response.data);
+      const normalized = normalizeCategory(response.data);
+      setCategory(normalized);
     } catch (error) {
       const appError = handleApiError(error);
       const errorMessage = getUserFriendlyMessage(appError) || i18n.t("common.errors.categoryLoad");
@@ -89,13 +109,13 @@ export const getSubcategories = (
   categories: Category[],
   parentId: string | null
 ) => {
-  if (!parentId) return [];
+  if (!parentId || !Array.isArray(categories)) return [];
   return categories.filter((category) => category.parent_id === parentId);
 };
 
 // Рекурсивно собираем все вложенные подкатегории
 export const getAllSubcategories = (categories: Category[], parentId: string | null) => {
-  if (!parentId) return [];
+  if (!parentId || !Array.isArray(categories)) return [];
 
   const result: Category[] = [];
   const stack = categories.filter((category) => category.parent_id === parentId);
