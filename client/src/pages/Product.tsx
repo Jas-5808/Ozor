@@ -1045,39 +1045,54 @@ export function Product() {
             <section className={`${cn.product_gallery} ${galleryImages.length <= 1 ? cn.gallery_no_thumbs : ''}`}>
               {/* Показываем миниатюры только если есть больше одного изображения */}
               {galleryImages.length > 1 && (
-                <div className={cn.gallery_thumbs}>
-                  {(thumbCanScrollUp || thumbCanScrollDown) && (
+                <div className="relative flex w-[140px] flex-col gap-2.5 max-h-[680px] overflow-hidden px-2.5 py-11">
+                  { (thumbCanScrollUp || thumbCanScrollDown) && (
                     <button
                       type="button"
                       aria-label={t("product.lightbox.prev")}
-                      className={`${cn.thumb_nav} ${cn.up} ${!thumbCanScrollUp ? cn.disabled : ''}`}
+                      className={`absolute top-2 left-1/2 -translate-x-1/2 w-11 h-11 rounded-[16px] border border-slate-200 bg-white/90 backdrop-blur-sm shadow-md grid place-items-center text-slate-800 transition ${
+                        !thumbCanScrollUp ? "opacity-40 cursor-not-allowed" : "hover:shadow-lg"
+                      }`}
                       onClick={() => scrollThumbs(-160)}
                       disabled={!thumbCanScrollUp}
                     >
                       ↑
                     </button>
                   )}
-                  <div className={cn.thumbs_scroller} ref={thumbsScrollRef}>
+                  <div
+                    className="flex flex-col gap-2.5 max-h-full overflow-y-auto overscroll-contain scroll-smooth pr-2 touch-pan-y"
+                    ref={thumbsScrollRef}
+                  >
                     {galleryImages.map((img, i) => (
                       <button
                         id={`thumb-${i}`}
                         key={i}
-                        className={`${cn.thumb} ${i === lightboxIndex ? 'active' : ''}`}
+                        className={`w-[104px] h-full rounded-[16px] border-2 bg-white shadow-sm grid place-items-center transition relative ${
+                          i === lightboxIndex
+                            ? "border-blue-500 shadow-lg"
+                            : "border-slate-200 hover:-translate-y-0.5 hover:shadow-md"
+                        }`}
                         type="button"
                         aria-label={t("product.lightbox.preview", { index: i + 1 })}
                         onClick={() => {
                           setLightboxIndex(i);
                         }}
                       >
-                        <img src={img} alt="" />
+                        <img
+                          src={img}
+                          alt=""
+                          className="w-full h-full object-cover rounded-[12px]"
+                        />
                       </button>
                     ))}
                   </div>
-                  {(thumbCanScrollUp || thumbCanScrollDown) && (
+                  { (thumbCanScrollUp || thumbCanScrollDown) && (
                     <button
                       type="button"
                       aria-label={t("product.lightbox.next")}
-                      className={`${cn.thumb_nav} ${cn.down} ${!thumbCanScrollDown ? cn.disabled : ''}`}
+                      className={`absolute bottom-2 left-1/2 -translate-x-1/2 w-11 h-11 rounded-[16px] border border-slate-200 bg-white/90 backdrop-blur-sm shadow-md grid place-items-center text-slate-800 transition ${
+                        !thumbCanScrollDown ? "opacity-40 cursor-not-allowed" : "hover:shadow-lg"
+                      }`}
                       onClick={() => scrollThumbs(160)}
                       disabled={!thumbCanScrollDown}
                     >
