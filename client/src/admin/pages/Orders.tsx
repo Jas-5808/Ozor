@@ -523,7 +523,7 @@ export default function Orders() {
               {ccLoading && Array.from({length: Math.min(ccLimit, 8)}).map((_, i)=> (
                 <tr key={`cc-sk-${i}`}>
                   <td colSpan={9}>
-                    <div style={{display:'grid', gridTemplateColumns:'140px 200px 160px 180px 100px 120px 140px 240px 320px', gap:12}}>
+                    <div style={{display:'grid', gridTemplateColumns:'140px 200px 160px 180px 100px 120px 140px 240px 140px', gap:12}}>
                       {Array.from({length:9}).map((__, j)=> (
                         <div key={j} style={{height:16, background:'#e5e7eb', borderRadius:8}} />
                       ))}
@@ -600,32 +600,32 @@ export default function Orders() {
                     </div>
                   </td>
                   <td>
-                    <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8, minWidth:320}}>
+                    <div style={{display:'flex', gap:8, alignItems:'center', justifyContent:'center'}}>
                       <button
                         className={s.btn}
+                        title="Qabul qilish"
                         style={{
-                          height:36, 
-                          borderRadius:12,
+                          width:40,
+                          height:40, 
+                          borderRadius:10,
                           background:'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                           color:'#fff', 
-                          fontWeight:700,
                           border:'none',
-                          boxShadow:'0 4px 12px rgba(16, 185, 129, 0.3)',
+                          boxShadow:'0 2px 8px rgba(16, 185, 129, 0.3)',
                           transition:'all 0.2s ease',
                           cursor:'pointer',
                           display:'inline-flex',
                           alignItems:'center',
                           justifyContent:'center',
-                          gap:6,
-                          padding:'0 16px'
+                          padding:0
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-2px)';
-                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+                          e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                          e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.3)';
                         }}
                         onClick={async ()=>{
                           try {
@@ -646,16 +646,35 @@ export default function Orders() {
                           }
                         }}
                       >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
-                        Qabul qilish
                       </button>
                       <button
                         className={s.btn}
+                        title="Rad etish"
                         style={{
-                          height:36, borderRadius:12,
-                          background:'linear-gradient(135deg,#ef4444,#f97316)', color:'#fff', fontWeight:800
+                          width:40,
+                          height:40,
+                          borderRadius:10,
+                          background:'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                          color:'#fff',
+                          border:'none',
+                          boxShadow:'0 2px 8px rgba(239, 68, 68, 0.3)',
+                          transition:'all 0.2s ease',
+                          cursor:'pointer',
+                          display:'inline-flex',
+                          alignItems:'center',
+                          justifyContent:'center',
+                          padding:0
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.4)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(239, 68, 68, 0.3)';
                         }}
                         onClick={async ()=>{
                           try {
@@ -675,12 +694,36 @@ export default function Orders() {
                             setTimeout(()=> setNotice(null), 3000);
                           }
                         }}
-                      >Rad etish</button>
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
                       <button
                         className={s.btn}
+                        title="Kechiktirish"
                         style={{
-                          height:36, borderRadius:12,
-                          background:'linear-gradient(135deg,#f59e0b,#fbbf24)', color:'#fff', fontWeight:800
+                          width:40,
+                          height:40,
+                          borderRadius:10,
+                          background:'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                          color:'#fff',
+                          border:'none',
+                          boxShadow:'0 2px 8px rgba(245, 158, 11, 0.3)',
+                          transition:'all 0.2s ease',
+                          cursor:'pointer',
+                          display:'inline-flex',
+                          alignItems:'center',
+                          justifyContent:'center',
+                          padding:0
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.4)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(245, 158, 11, 0.3)';
                         }}
                         onClick={async ()=>{
                           try {
@@ -707,7 +750,12 @@ export default function Orders() {
                             setTimeout(()=> setNotice(null), 3000);
                           }
                         }}
-                      >Kechiktirish</button>
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                      </button>
                     </div>
                   </td>
                 </tr>
