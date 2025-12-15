@@ -556,8 +556,37 @@ export const paymentAPI = {
     apiClient.get("/payment/get_user_balance"),
   createWithdrawal: (payload: { amount: number; card_number: string; cardholder_name: string }): Promise<TypedAxiosResponse<{ id: string; status: string; created_at: string }>> =>
     apiClient.post("/payment/withdrawal", payload),
+  createStatement: (payload: { amount: number; card_number: string; card_holder_name: string; description?: string }): Promise<TypedAxiosResponse<{
+    id: string;
+    user_id: string;
+    card_holder_name: string;
+    card_number: string;
+    amount: number;
+    type: string;
+    description?: string;
+    image?: string | null;
+    created_at: string;
+    updated_at: string;
+  }>> => apiClient.post("/payment/statements", payload),
   getWithdrawals: (): Promise<TypedAxiosResponse<Array<{ id: string; amount: number; card_number: string; cardholder_name: string; status: string; created_at: string; updated_at?: string }>>> =>
     apiClient.get("/payment/withdrawals"),
+  getStatements: (params: { status?: string; offset?: number; limit?: number } = {}): Promise<TypedAxiosResponse<{
+    items: Array<{
+      id: string;
+      user_id: string;
+      card_holder_name: string;
+      card_number: string;
+      amount: number;
+      type: string;
+      description?: string;
+      image?: string | null;
+      created_at: string;
+      updated_at: string;
+    }>;
+    total: number;
+    offset: number;
+    limit: number;
+  }>> => apiClient.get("/payment/statements/my", { params }),
 };
 
 export default apiClient;

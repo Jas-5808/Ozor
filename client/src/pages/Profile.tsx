@@ -48,6 +48,31 @@ export function Profile() {
   const [withdrawalLoading, setWithdrawalLoading] = useState(false);
   const [withdrawalError, setWithdrawalError] = useState<string | null>(null);
   const [withdrawalSuccess, setWithdrawalSuccess] = useState(false);
+  // Платежные поручения (statements)
+  const [statementAmount, setStatementAmount] = useState<string>("");
+  const [statementCardNumber, setStatementCardNumber] = useState<string>("");
+  const [statementCardHolder, setStatementCardHolder] = useState<string>("");
+  const [statementDescription, setStatementDescription] = useState<string>("");
+  const [statementLoading, setStatementLoading] = useState(false);
+  const [statementError, setStatementError] = useState<string | null>(null);
+  const [statementSuccess, setStatementSuccess] = useState(false);
+  const [statements, setStatements] = useState<Array<{
+    id: string;
+    card_holder_name: string;
+    card_number: string;
+    amount: number;
+    type: string;
+    description?: string;
+    created_at: string;
+  }>>([]);
+  const [statementsLoading, setStatementsLoading] = useState(false);
+  const [statementsError, setStatementsError] = useState<string | null>(null);
+  const [statementsStatus, setStatementsStatus] = useState<string>("");
+  const [statementsPagination, setStatementsPagination] = useState<{ offset: number; limit: number; total: number }>({
+    offset: 0,
+    limit: 10,
+    total: 0,
+  });
   const [withdrawals, setWithdrawals] = useState<Array<{
     id: string;
     amount: number;
@@ -116,6 +141,7 @@ export function Profile() {
   useEffect(() => {
     if (activeTab === "payments" && isAuthenticated) {
       loadWithdrawals();
+      loadStatements({ offset: 0, limit: statementsPagination.limit });
     }
   }, [activeTab, isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -168,6 +194,76 @@ export function Profile() {
       logger.errorWithContext(error, { context: 'handleWithdrawal' });
     } finally {
       setWithdrawalLoading(false);
+    }
+  };
+
+  // Создание платежного поручения (statement)
+  const handleCreateStatement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatementError(null);
+    setStatementSuccess(false);
+
+    const amount = parseFloat(statementAmount);
+    if (!amount || amount <= 0) {
+      setStatementError(t("profile.payments.form.errors.invalidAmount"));
+      return;
+    }
+    if (!statementCardNumber || statementCardNumber.replace(/\s/g, "").length < 16) {
+      setStatementError(t("profile.payments.form.errors.invalidCard"));
+      return;
+    }
+    if (!statementCardHolder || statementCardHolder.trim().length < 2) {
+      setStatementError(t("profile.payments.form.errors.invalidName"));
+      return;
+    }
+
+    try {
+      setStatementLoading(true);
+      await paymentAPI.createStatement({
+        amount,
+        card_number: statementCardNumber.replace(/\s/g, ""),
+        card_holder_name: statementCardHolder.trim(),
+        description: statementDescription || undefined,
+      });
+      setStatementSuccess(true);
+      setStatementAmount("");
+      setStatementCardNumber("");
+      setStatementCardHolder("");
+      setStatementDescription("");
+    } catch (error: any) {
+      setStatementError(
+        error?.response?.data?.message ||
+        error?.message ||
+        t("profile.payments.form.errors.submitError")
+      );
+      logger.errorWithContext(error, { context: 'createStatement' });
+    } finally {
+      setStatementLoading(false);
+    }
+  };
+
+  // Загрузка statements
+  const loadStatements = async (opts?: { status?: string; offset?: number; limit?: number }) => {
+    try {
+      setStatementsLoading(true);
+      setStatementsError(null);
+      const status = opts?.status ?? statementsStatus;
+      const offset = opts?.offset ?? statementsPagination.offset;
+      const limit = opts?.limit ?? statementsPagination.limit;
+      const response = await paymentAPI.getStatements({ status, offset, limit });
+      const data = (response as any)?.data;
+      const items = data?.items || data?.data?.items || [];
+      const total = data?.total ?? items.length;
+      setStatements(Array.isArray(items) ? items : []);
+      setStatementsPagination({ offset, limit, total });
+      if (opts?.status !== undefined) {
+        setStatementsStatus(status);
+      }
+    } catch (error: any) {
+      setStatementsError(error?.response?.data?.message || error?.message || t("profile.payments.history.loadError"));
+      logger.errorWithContext(error, { context: 'loadStatements' });
+    } finally {
+      setStatementsLoading(false);
     }
   };
 
@@ -1277,6 +1373,101 @@ export function Profile() {
                 </div>
               )}
             </div>
+
+            {/* История платежных поручений */}
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-base font-extrabold text-slate-900">История поручений</h4>
+                  <p className="text-xs text-slate-500">Последние заявки на платежи</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={statementsStatus}
+                    onChange={(e) => loadStatements({ status: e.target.value, offset: 0 })}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                  >
+                    <option value="">Все</option>
+                    <option value="pending">Ожидает</option>
+                    <option value="paid">Оплачено</option>
+                    <option value="completed">Выполнено</option>
+                    <option value="failed">Ошибка</option>
+                    <option value="rejected">Отклонено</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => loadStatements({ offset: 0 })}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300"
+                  >
+                    Обновить
+                  </button>
+                </div>
+              </div>
+
+              {statementsLoading && (
+                <div className="py-6 text-center">
+                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#04734b]"></div>
+                  <p className="mt-2 text-sm text-slate-500">Загружаем поручения...</p>
+                </div>
+              )}
+
+              {statementsError && (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                  {statementsError}
+                </div>
+              )}
+
+              {!statementsLoading && !statementsError && (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500">
+                        <th className="text-left py-3 px-2">Дата</th>
+                        <th className="text-left py-3 px-2">Сумма</th>
+                        <th className="text-left py-3 px-2">Карта</th>
+                        <th className="text-left py-3 px-2">Держатель</th>
+                        <th className="text-left py-3 px-2">Статус</th>
+                        <th className="text-left py-3 px-2">Описание</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {statements.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center text-slate-500">
+                            Нет поручений
+                          </td>
+                        </tr>
+                      ) : (
+                        statements.map((s) => (
+                          <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
+                            <td className="py-3 px-2 text-slate-600">{new Date(s.created_at).toLocaleString()}</td>
+                            <td className="py-3 px-2 font-semibold text-slate-900">{formatPrice(s.amount, "UZS")}</td>
+                            <td className="py-3 px-2 text-slate-600">**** {s.card_number.slice(-4)}</td>
+                            <td className="py-3 px-2 text-slate-600">{s.card_holder_name}</td>
+                            <td className="py-3 px-2">
+                              <span
+                                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+                                  s.type === "completed" || s.type === "paid"
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : s.type === "pending"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : s.type === "rejected" || s.type === "failed"
+                                    ? "bg-rose-100 text-rose-700"
+                                    : "bg-slate-100 text-slate-700"
+                                }`}
+                              >
+                                {s.type}
+                              </span>
+                            </td>
+                            <td className="py-3 px-2 text-slate-600">{s.description || "-"}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </section>
         )}
 
@@ -1315,6 +1506,84 @@ export function Profile() {
                   {t("profile.dialog.close")}
                 </button>
               </div>
+            </div>
+
+            {/* Платежные поручения (statements) */}
+            <div className="mt-8 rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-6 shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
+              <h4 className="mb-4 text-lg font-bold text-slate-900">Платежное поручение</h4>
+
+              {statementSuccess && (
+                <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+                  Заявка отправлена
+                </div>
+              )}
+
+              {statementError && (
+                <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+                  {statementError}
+                </div>
+              )}
+
+              <form onSubmit={handleCreateStatement} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">Сумма, UZS</label>
+                    <input
+                      type="number"
+                      value={statementAmount}
+                      onChange={(e) => setStatementAmount(e.target.value)}
+                      min="1"
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">Номер карты</label>
+                    <input
+                      type="text"
+                      value={statementCardNumber}
+                      onChange={(e) => setStatementCardNumber(e.target.value)}
+                      maxLength={19}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                      placeholder="8600 1234 1234 1234"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">Держатель карты</label>
+                    <input
+                      type="text"
+                      value={statementCardHolder}
+                      onChange={(e) => setStatementCardHolder(e.target.value)}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                      placeholder="Имя на карте"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">Описание (необязательно)</label>
+                    <input
+                      type="text"
+                      value={statementDescription}
+                      onChange={(e) => setStatementDescription(e.target.value)}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                      placeholder="Комментарий"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={statementLoading}
+                  className="w-full rounded-2xl py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_22px_48px_rgba(6,78,59,0.45)] ring-1 ring-white/20 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+                >
+                  {statementLoading ? "Отправляем..." : "Отправить поручение"}
+                </button>
+              </form>
             </div>
           </div>
         )}
