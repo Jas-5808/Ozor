@@ -1352,150 +1352,134 @@ export function Product() {
                     
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                        Область
+                        Город / Область
                       </label>
                       <select
                         value={quickOrderRegion}
                         onChange={(e) => {
-                          setQuickOrderRegion(e.target.value);
-                          setQuickOrderCity(""); // Сбрасываем город при смене области
+                          const selectedValue = e.target.value;
+                          setQuickOrderRegion(selectedValue);
+                          setQuickOrderCity(""); // Сбрасываем город при смене
                         }}
                         className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
                       >
-                        <option value="">Выберите область</option>
+                        <option value="">Выберите город или область</option>
+                        {/* Все области и города-центры областей */}
                         <option value="tashkent">Toshkent</option>
                         <option value="tashkent_region">Toshkent viloyati</option>
                         <option value="samarkand">Samarqand viloyati</option>
+                        <option value="samarkand_city">Samarqand</option>
                         <option value="bukhara">Buxoro viloyati</option>
+                        <option value="bukhara_city">Buxoro</option>
                         <option value="andijan">Andijon viloyati</option>
+                        <option value="andijan_city">Andijon</option>
                         <option value="fergana">Farg'ona viloyati</option>
+                        <option value="fergana_city">Farg'ona</option>
                         <option value="namangan">Namangan viloyati</option>
+                        <option value="namangan_city">Namangan</option>
                         <option value="navoiy">Navoiy viloyati</option>
+                        <option value="navoiy_city">Navoiy</option>
                         <option value="kashkadarya">Qashqadaryo viloyati</option>
+                        <option value="karshi">Qarshi</option>
                         <option value="surkhandarya">Surxondaryo viloyati</option>
+                        <option value="termez">Termiz</option>
                         <option value="sirdarya">Sirdaryo viloyati</option>
+                        <option value="gulistan">Guliston</option>
                         <option value="jizzakh">Jizzax viloyati</option>
+                        <option value="jizzakh_city">Jizzax</option>
                         <option value="khorezm">Xorazm viloyati</option>
+                        <option value="urgench">Urganch</option>
                         <option value="karakalpakstan">Qoraqalpog'iston Respublikasi</option>
+                        <option value="nukus">Nukus</option>
                       </select>
                     </div>
                     
-                    {quickOrderRegion && (
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                          Город
-                        </label>
-                        <select
-                          value={quickOrderCity}
-                          onChange={(e) => setQuickOrderCity(e.target.value)}
-                          className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
-                        >
-                          <option value="">Выберите город</option>
-                          {quickOrderRegion === 'tashkent' && (
-                            <option value="tashkent">Toshkent</option>
-                          )}
-                          {quickOrderRegion === 'tashkent_region' && (
-                            <>
-                              <option value="angren">Angren</option>
-                              <option value="bekabad">Bekobod</option>
-                              <option value="chirchik">Chirchiq</option>
-                              <option value="gazalkent">Gazalkent</option>
-                              <option value="parkent">Parkent</option>
-                            </>
-                          )}
-                          {quickOrderRegion === 'samarkand' && (
-                            <>
-                              <option value="samarkand_city">Samarqand</option>
-                              <option value="kattakurgan">Kattaqo'rg'on</option>
-                              <option value="urgut">Urgut</option>
-                            </>
-                          )}
-                          {quickOrderRegion === 'bukhara' && (
-                            <>
-                              <option value="bukhara_city">Buxoro</option>
-                              <option value="kagan">Kagan</option>
-                              <option value="gijduvan">G'ijduvon</option>
-                            </>
-                          )}
-                          {quickOrderRegion === 'andijan' && (
-                            <>
-                              <option value="andijan_city">Andijon</option>
-                              <option value="asaka">Asaka</option>
-                              <option value="khanabad">Xonobod</option>
-                            </>
-                          )}
-                          {quickOrderRegion === 'fergana' && (
-                            <>
-                              <option value="fergana_city">Farg'ona</option>
-                              <option value="kokand">Qo'qon</option>
-                              <option value="margilan">Marg'ilon</option>
-                              <option value="quva">Quva</option>
-                              <option value="rishtan">Rishton</option>
-                            </>
-                          )}
-                          {quickOrderRegion === 'namangan' && (
-                            <>
-                              <option value="namangan_city">Namangan</option>
-                              <option value="chust">Chust</option>
-                              <option value="pap">Pop</option>
-                            </>
-                          )}
-                          {quickOrderRegion === 'navoiy' && (
-                            <>
-                              <option value="navoiy_city">Navoiy</option>
-                              <option value="zarafshan">Zarafshon</option>
-                              <option value="nurata">Nurota</option>
-                            </>
-                          )}
-                          {quickOrderRegion === 'kashkadarya' && (
-                            <>
-                              <option value="karshi">Qarshi</option>
-                              <option value="shakhrisabz">Shahrisabz</option>
-                              <option value="kitab">Kitob</option>
-                            </>
-                          )}
-                          {quickOrderRegion === 'surkhandarya' && (
-                            <>
-                              <option value="termez">Termiz</option>
-                              <option value="denau">Denov</option>
-                              <option value="shurchi">Shurchi</option>
-                            </>
-                          )}
-                          {quickOrderRegion === 'sirdarya' && (
-                            <>
-                              <option value="gulistan">Guliston</option>
-                              <option value="yangiyer">Yangiyer</option>
-                              <option value="shirin">Shirin</option>
-                            </>
-                          )}
-                          {quickOrderRegion === 'jizzakh' && (
-                            <>
-                              <option value="jizzakh_city">Jizzax</option>
-                              <option value="dustlik">Do'stlik</option>
-                            </>
-                          )}
-                          {quickOrderRegion === 'khorezm' && (
-                            <>
-                              <option value="urgench">Urganch</option>
-                              <option value="khiva">Xiva</option>
-                              <option value="pitnak">Pitnak</option>
-                            </>
-                          )}
-                          {quickOrderRegion === 'karakalpakstan' && (
-                            <>
-                              <option value="nukus">Nukus</option>
-                              <option value="muynak">Mo'ynoq</option>
-                            </>
-                          )}
-                        </select>
-                      </div>
-                    )}
+                    {quickOrderRegion && (() => {
+                      const selectedLocation = uzbekistanLocations.find(loc => loc.id === quickOrderRegion);
+                      const isRegion = selectedLocation?.type === 'region';
+                      const isCityWithoutRegion = selectedLocation?.type === 'city' && !selectedLocation?.parentId;
+                      
+                      // Показываем второй селект только если выбрана область (не город)
+                      if (!isRegion || isCityWithoutRegion) {
+                        return null;
+                      }
+                      
+                      const cities = getCitiesByRegion(quickOrderRegion);
+                      
+                      // Маппинг русских названий на узбекские
+                      const cityNameMap: Record<string, string> = {
+                        'Андижан': 'Andijon',
+                        'Бухара': 'Buxoro',
+                        'Джизак': 'Jizzax',
+                        'Фергана': 'Farg\'ona',
+                        'Наманган': 'Namangan',
+                        'Навои': 'Navoiy',
+                        'Самарканд': 'Samarqand',
+                        'Ангрен': 'Angren',
+                        'Бекабад': 'Bekobod',
+                        'Чирчик': 'Chirchiq',
+                        'Газалкент': 'Gazalkent',
+                        'Паркент': 'Parkent',
+                        'Каттакурган': 'Kattaqo\'rg\'on',
+                        'Ургут': 'Urgut',
+                        'Каган': 'Kagan',
+                        'Гиждуван': 'G\'ijduvon',
+                        'Асака': 'Asaka',
+                        'Ханабад': 'Xonobod',
+                        'Коканд': 'Qo\'qon',
+                        'Маргилан': 'Marg\'ilon',
+                        'Кува': 'Quva',
+                        'Риштан': 'Rishton',
+                        'Чуст': 'Chust',
+                        'Пап': 'Pop',
+                        'Зарафшан': 'Zarafshon',
+                        'Нурата': 'Nurota',
+                        'Шахрисабз': 'Shahrisabz',
+                        'Китаб': 'Kitob',
+                        'Денау': 'Denov',
+                        'Шурчи': 'Shurchi',
+                        'Янгиер': 'Yangiyer',
+                        'Ширин': 'Shirin',
+                        'Дустлик': 'Do\'stlik',
+                        'Ургенч': 'Urganch',
+                        'Хива': 'Xiva',
+                        'Питнак': 'Pitnak',
+                        'Нукус': 'Nukus',
+                        'Муйнак': 'Mo\'ynoq',
+                      };
+                      
+                      return (
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                            Город
+                          </label>
+                          <select
+                            value={quickOrderCity}
+                            onChange={(e) => setQuickOrderCity(e.target.value)}
+                            className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                          >
+                            <option value="">Выберите город</option>
+                            {cities.map((city) => (
+                              <option key={city.id} value={city.id}>
+                                {cityNameMap[city.name] || city.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })()}
                   </div>
                   
                   <button 
                     type="button"
                     onClick={() => setShowComingSoonModal(true)}
-                    disabled={!name || !phone || !quickOrderRegion || !quickOrderCity}
+                    disabled={(() => {
+                      if (!name || !phone || !quickOrderRegion) return true;
+                      const selectedLocation = uzbekistanLocations.find(loc => loc.id === quickOrderRegion);
+                      const isRegion = selectedLocation?.type === 'region';
+                      // Если выбрана область, нужен город. Если выбран город, город не нужен
+                      return isRegion ? !quickOrderCity : false;
+                    })()}
                     className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed" 
                     style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
                   >
