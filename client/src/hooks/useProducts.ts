@@ -100,8 +100,28 @@ export const useProducts = () => {
 
   // Есть ли еще продукты для загрузки - мемоизировано
   const hasMore = useMemo(() => {
-    return displayedCount < (primaryProducts.length + variantProducts.length);
+    const total = primaryProducts.length + variantProducts.length;
+    const value = displayedCount < total;
+    console.log("[useProducts] hasMore calc", {
+      displayedCount,
+      total,
+      primary: primaryProducts.length,
+      variants: variantProducts.length,
+      value
+    });
+    return value;
   }, [displayedCount, primaryProducts.length, variantProducts.length]);
+
+  useEffect(() => {
+    console.log("[useProducts] state", {
+      displayedCount,
+      products: primaryProducts.length + variantProducts.length,
+      primary: primaryProducts.length,
+      variants: variantProducts.length,
+      hasMore,
+      loading,
+    });
+  }, [displayedCount, primaryProducts.length, variantProducts.length, hasMore, loading]);
 
   // Загрузить следующую порцию - мемоизировано
   const loadMore = useCallback(() => {

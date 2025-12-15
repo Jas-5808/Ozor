@@ -1,4 +1,5 @@
 import React, { memo, useMemo, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { useProducts } from "../hooks/useProducts";
 import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
 import ProductCard from "./ui/ProductCard";
@@ -9,13 +10,70 @@ import { useTranslation } from "react-i18next";
 const ProductsListComponent: React.FC = () => {
   const { t } = useTranslation();
   const { products, loading, error, refetch, hasMore, loadMore } = useProducts();
+  const LOG_PREFIX = "[ProductsList]";
+  const autoLoadOnceRef = useRef(false);
   
-  const sentinelRef = useInfiniteScroll({
+  const { ref: sentinelRef, getNode: getSentinelNode } = useInfiniteScroll({
     hasMore,
     loading,
     onLoadMore: loadMore,
     threshold: 200,
+    rootMargin: "400px 0px",
   });
+
+  // Дополнительная подстраховка: если после рендера контента мало,
+  // автозапрашиваем следующую порцию (один раз).
+  useEffect(() => {
+    if (loading || !hasMore) return;
+    if (autoLoadOnceRef.current) return;
+    const tryLoad = () => {
+      const sentinelEl = getSentinelNode();
+      if (!sentinelEl) return;
+      const rect = sentinelEl.getBoundingClientRect();
+      if (rect.top <= window.innerHeight + 150) {
+        autoLoadOnceRef.current = true;
+        console.log(`${LOG_PREFIX} auto-load after mount (few items)`, { products: products.length, rectTop: rect.top });
+        loadMore();
+        return true;
+      }
+      return false;
+    };
+
+    const timer = setTimeout(tryLoad, 150);
+    return () => clearTimeout(timer);
+  }, [products.length, hasMore, loading, loadMore, sentinelRef]);
+
+  // Подстраховка: реагируем на близость к низу экрана (300px)
+  useEffect(() => {
+    const checkSentinel = () => {
+      if (loading || !hasMore) return;
+      const sentinelEl = getSentinelNode();
+      if (!sentinelEl) return;
+      const rect = sentinelEl.getBoundingClientRect();
+      if (rect.top <= window.innerHeight + 300) {
+        console.log(`${LOG_PREFIX} scroll proximity -> loadMore`, { rectTop: rect.top, vh: window.innerHeight });
+        loadMore();
+      }
+    };
+    const onScroll = () => requestAnimationFrame(checkSentinel);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    // первичная проверка
+    checkSentinel();
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [hasMore, loading, loadMore, sentinelRef]);
+
+  useEffect(() => {
+    console.log(`${LOG_PREFIX} state`, {
+      products: products.length,
+      loading,
+      hasMore,
+    });
+  }, [products.length, loading, hasMore]);
+
   
   const handleToggleLike = useCallback((_productId: string) => {
     // Логика переключения лайка обрабатывается в AppContext
@@ -77,11 +135,25 @@ const ProductsListComponent: React.FC = () => {
         {productCards}
       </div>
       {/* Элемент-триггер для бесконечной прокрутки */}
-      <div ref={sentinelRef} className="h-4 w-full" />
+      <div ref={sentinelRef} className="h-10 w-full" />
       {/* Индикатор загрузки при подгрузке */}
       {hasMore && (
         <div className="flex justify-center items-center py-8">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#04734b]"></div>
+        </div>
+      )}
+      {/* Фолбэк-кнопка на случай если observer не сработает */}
+      {hasMore && !loading && (
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={() => {
+              console.log(`${LOG_PREFIX} manual button click -> loadMore`);
+              loadMore();
+            }}
+            className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:border-emerald-500 hover:text-emerald-700 transition"
+          >
+            {t("common.actions.loadMore") || "Загрузить ещё"}
+          </button>
         </div>
       )}
     </>
