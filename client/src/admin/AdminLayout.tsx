@@ -144,6 +144,7 @@ export default function AdminLayout() {
   const { t } = useTranslation();
   const { profile, logout } = useAuth();
   const [activeFilter, setActiveFilter] = useState('all');
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window === 'undefined') {
       return 'light';
@@ -174,23 +175,31 @@ export default function AdminLayout() {
   const AddIcon = ACTION_ICON_MAP.add;
 
   return (
-    <div className={`${s.root} ${isDarkTheme ? s.rootDark : ''}`}>
-      <aside className={s.sidebar}>
+    <div className={`${s.root} ${isDarkTheme ? s.rootDark : ''} ${isSidebarExpanded ? s.rootExpanded : s.rootCollapsed}`}>
+      <aside 
+        className={`${s.sidebar} ${isSidebarExpanded ? s.sidebarExpanded : s.sidebarCollapsed}`}
+        onMouseEnter={() => setIsSidebarExpanded(true)}
+        onMouseLeave={() => setIsSidebarExpanded(false)}
+      >
         <div className={s.sidebarHeader}>
             <div className={s.brand}>
               <span className={s.logo}>OZ</span>
+              {isSidebarExpanded && (
+                <div>
+                  <p>{t('admin.brand.title')}</p>
+                  <small>{t('admin.brand.subtitle')}</small>
+                </div>
+              )}
+            </div>
+          {isSidebarExpanded && (
+            <div className={s.userCard}>
+              <div className={s.avatar}>{(profile?.first_name || 'A').slice(0, 1)}</div>
               <div>
-                <p>{t('admin.brand.title')}</p>
-                <small>{t('admin.brand.subtitle')}</small>
+                  <p className={s.userName}>{profile?.first_name || 'Admin'}</p>
+                  <small>{t(`admin.roles.${normalizedRole}`, normalizedRole)}</small>
               </div>
             </div>
-          <div className={s.userCard}>
-            <div className={s.avatar}>{(profile?.first_name || 'A').slice(0, 1)}</div>
-            <div>
-                <p className={s.userName}>{profile?.first_name || 'Admin'}</p>
-                <small>{t(`admin.roles.${normalizedRole}`, normalizedRole)}</small>
-            </div>
-          </div>
+          )}
         </div>
         <nav className={s.nav}>
           {navigation.map((item) => {
@@ -203,28 +212,31 @@ export default function AdminLayout() {
                 className={({ isActive }) =>
                   isActive ? `${s.navLink} ${s.navLinkActive}` : s.navLink
                 }
+                title={!isSidebarExpanded ? t(item.labelKey) : undefined}
               >
                 <span className={s.navIcon}>
                   <Icon />
                 </span>
-                {t(item.labelKey)}
+                {isSidebarExpanded && <span>{t(item.labelKey)}</span>}
               </NavLink>
             );
           })}
         </nav>
-        <div className={s.sidebarFooter}>
-          <div className={s.sidebarStat}>
-              <p>{t('admin.sidebar.processing')}</p>
-              <strong>{t('admin.sidebar.processingCount', { count: 12 })}</strong>
-            </div>
+        {isSidebarExpanded && (
+          <div className={s.sidebarFooter}>
             <div className={s.sidebarStat}>
-              <p>{t('admin.sidebar.newProducts')}</p>
-              <strong>{t('admin.sidebar.newProductsCount', { count: 8 })}</strong>
+                <p>{t('admin.sidebar.processing')}</p>
+                <strong>{t('admin.sidebar.processingCount', { count: 12 })}</strong>
+              </div>
+              <div className={s.sidebarStat}>
+                <p>{t('admin.sidebar.newProducts')}</p>
+                <strong>{t('admin.sidebar.newProductsCount', { count: 8 })}</strong>
+              </div>
+              <button className={s.logout} onClick={logout}>
+                {t('admin.sidebar.logout')}
+              </button>
             </div>
-            <button className={s.logout} onClick={logout}>
-              {t('admin.sidebar.logout')}
-            </button>
-          </div>
+        )}
       </aside>
 
       <div className={s.body}>

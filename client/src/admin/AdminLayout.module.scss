@@ -4,6 +4,15 @@
   min-height: 100vh;
   background: #f3f6fb;
   color: #0f172a;
+  transition: grid-template-columns 0.3s ease;
+}
+
+.rootCollapsed {
+  grid-template-columns: 80px 1fr;
+}
+
+.rootExpanded {
+  grid-template-columns: 260px 1fr;
 }
 
 .rootDark {
@@ -132,6 +141,19 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+
+.sidebarCollapsed {
+  padding: 24px 12px;
+  align-items: center;
+}
+
+.sidebarExpanded {
+  padding: 24px 18px;
 }
 
 .sidebarHeader {
@@ -148,6 +170,24 @@
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.1);
   color: #ecfdf5;
+  transition: all 0.3s ease;
+  justify-content: center;
+}
+
+.brand > div {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  transition: opacity 0.3s ease, width 0.3s ease;
+}
+
+.sidebarExpanded .brand {
+  justify-content: flex-start;
+}
+
+.sidebarExpanded .brand > div {
+  opacity: 1;
+  width: auto;
 }
 
 .logo {
@@ -167,6 +207,15 @@
   padding: 12px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.08);
+  transition: all 0.3s ease;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+}
+
+.sidebarExpanded .userCard {
+  opacity: 1;
+  max-height: 100px;
 }
 
 .avatar {
@@ -199,7 +248,26 @@
   border-radius: 12px;
   color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, justify-content 0.3s ease;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.navLink > span:not(.navIcon) {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  transition: opacity 0.3s ease, width 0.3s ease;
+}
+
+.sidebarExpanded .navLink {
+  justify-content: flex-start;
+}
+
+.sidebarExpanded .navLink > span:not(.navIcon) {
+  opacity: 1;
+  width: auto;
 }
 
 .navLink:hover {
@@ -221,6 +289,7 @@
   justify-content: center;
   background: rgba(15, 23, 42, 0.45);
   color: #ffffff;
+  flex-shrink: 0;
 }
 
 .sidebarFooter {
@@ -228,6 +297,15 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  transition: all 0.3s ease;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+}
+
+.sidebarExpanded .sidebarFooter {
+  opacity: 1;
+  max-height: 500px;
 }
 
 .sidebarStat {
