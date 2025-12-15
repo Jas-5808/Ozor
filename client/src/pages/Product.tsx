@@ -6,7 +6,7 @@ import cn from "./style.module.scss";
 import { formatPrice, getProductImageUrl, storage } from "../utils/helpers";
 import { Product as ProductType, ProductDetail } from "../types";
 import { shopAPI } from "../services/api";
-import { uzbekistanLocations } from "../data/uzbekistanLocations";
+import { uzbekistanLocations, getRegions, getCitiesByRegion } from "../data/uzbekistanLocations";
 import { useApp } from "../context/AppContext";
 import ProductCard from "../components/ui/ProductCard";
 import PhoneInput from "../components/forms/PhoneInput";
@@ -319,6 +319,8 @@ export function Product() {
   const [quickOrderLoading, setQuickOrderLoading] = useState(false);
   const [quickOrderError, setQuickOrderError] = useState<string | null>(null);
   const [quickOrderFeedback, setQuickOrderFeedback] = useState<string | null>(null);
+  const [quickOrderRegion, setQuickOrderRegion] = useState<string>("");
+  const [quickOrderCity, setQuickOrderCity] = useState<string>("");
   const productRef = useRef<HTMLDivElement>(null);
   const installmentSteps = [3, 6, 9, 12, 15, 18, 24, 33];
   const INSTALLMENT_TRACK_PADDING = 28;
@@ -1259,6 +1261,7 @@ export function Product() {
                     {t("product.paymentInfo")}
                   </p>
                 </div>
+                {/* Блок рассрочки - закомментирован
                 <div className="mt-4 rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.08)] px-5 py-4 space-y-4">
                   <div className="flex items-center justify-between text-sm font-semibold text-slate-900">
                     <span>{t("product.installment.forMonths", { count: selectedInstallment })}</span>
@@ -1312,6 +1315,191 @@ export function Product() {
                     style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
                   >
                     {t("product.buttons.checkout")}
+                  </button>
+                </div>
+                */}
+                
+                {/* Форма "Купить в 1 клик" */}
+                <div className="mt-4 rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.08)] px-5 py-4 space-y-4">
+                  <div className="flex items-center justify-between text-sm font-semibold text-slate-900 mb-2">
+                    <span>Купить в 1 клик</span>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                        {t("product.quickOrder.nameLabel")}
+                      </label>
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder={t("product.quickOrder.namePlaceholder")}
+                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                        {t("product.quickOrder.phoneLabel")}
+                      </label>
+                      <PhoneInput
+                        value={phone}
+                        onChange={setPhone}
+                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                        Область
+                      </label>
+                      <select
+                        value={quickOrderRegion}
+                        onChange={(e) => {
+                          setQuickOrderRegion(e.target.value);
+                          setQuickOrderCity(""); // Сбрасываем город при смене области
+                        }}
+                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                      >
+                        <option value="">Выберите область</option>
+                        <option value="tashkent">Toshkent</option>
+                        <option value="tashkent_region">Toshkent viloyati</option>
+                        <option value="samarkand">Samarqand viloyati</option>
+                        <option value="bukhara">Buxoro viloyati</option>
+                        <option value="andijan">Andijon viloyati</option>
+                        <option value="fergana">Farg'ona viloyati</option>
+                        <option value="namangan">Namangan viloyati</option>
+                        <option value="navoiy">Navoiy viloyati</option>
+                        <option value="kashkadarya">Qashqadaryo viloyati</option>
+                        <option value="surkhandarya">Surxondaryo viloyati</option>
+                        <option value="sirdarya">Sirdaryo viloyati</option>
+                        <option value="jizzakh">Jizzax viloyati</option>
+                        <option value="khorezm">Xorazm viloyati</option>
+                        <option value="karakalpakstan">Qoraqalpog'iston Respublikasi</option>
+                      </select>
+                    </div>
+                    
+                    {quickOrderRegion && (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                          Город
+                        </label>
+                        <select
+                          value={quickOrderCity}
+                          onChange={(e) => setQuickOrderCity(e.target.value)}
+                          className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                        >
+                          <option value="">Выберите город</option>
+                          {quickOrderRegion === 'tashkent' && (
+                            <option value="tashkent">Toshkent</option>
+                          )}
+                          {quickOrderRegion === 'tashkent_region' && (
+                            <>
+                              <option value="angren">Angren</option>
+                              <option value="bekabad">Bekobod</option>
+                              <option value="chirchik">Chirchiq</option>
+                              <option value="gazalkent">Gazalkent</option>
+                              <option value="parkent">Parkent</option>
+                            </>
+                          )}
+                          {quickOrderRegion === 'samarkand' && (
+                            <>
+                              <option value="samarkand_city">Samarqand</option>
+                              <option value="kattakurgan">Kattaqo'rg'on</option>
+                              <option value="urgut">Urgut</option>
+                            </>
+                          )}
+                          {quickOrderRegion === 'bukhara' && (
+                            <>
+                              <option value="bukhara_city">Buxoro</option>
+                              <option value="kagan">Kagan</option>
+                              <option value="gijduvan">G'ijduvon</option>
+                            </>
+                          )}
+                          {quickOrderRegion === 'andijan' && (
+                            <>
+                              <option value="andijan_city">Andijon</option>
+                              <option value="asaka">Asaka</option>
+                              <option value="khanabad">Xonobod</option>
+                            </>
+                          )}
+                          {quickOrderRegion === 'fergana' && (
+                            <>
+                              <option value="fergana_city">Farg'ona</option>
+                              <option value="kokand">Qo'qon</option>
+                              <option value="margilan">Marg'ilon</option>
+                              <option value="quva">Quva</option>
+                              <option value="rishtan">Rishton</option>
+                            </>
+                          )}
+                          {quickOrderRegion === 'namangan' && (
+                            <>
+                              <option value="namangan_city">Namangan</option>
+                              <option value="chust">Chust</option>
+                              <option value="pap">Pop</option>
+                            </>
+                          )}
+                          {quickOrderRegion === 'navoiy' && (
+                            <>
+                              <option value="navoiy_city">Navoiy</option>
+                              <option value="zarafshan">Zarafshon</option>
+                              <option value="nurata">Nurota</option>
+                            </>
+                          )}
+                          {quickOrderRegion === 'kashkadarya' && (
+                            <>
+                              <option value="karshi">Qarshi</option>
+                              <option value="shakhrisabz">Shahrisabz</option>
+                              <option value="kitab">Kitob</option>
+                            </>
+                          )}
+                          {quickOrderRegion === 'surkhandarya' && (
+                            <>
+                              <option value="termez">Termiz</option>
+                              <option value="denau">Denov</option>
+                              <option value="shurchi">Shurchi</option>
+                            </>
+                          )}
+                          {quickOrderRegion === 'sirdarya' && (
+                            <>
+                              <option value="gulistan">Guliston</option>
+                              <option value="yangiyer">Yangiyer</option>
+                              <option value="shirin">Shirin</option>
+                            </>
+                          )}
+                          {quickOrderRegion === 'jizzakh' && (
+                            <>
+                              <option value="jizzakh_city">Jizzax</option>
+                              <option value="dustlik">Do'stlik</option>
+                            </>
+                          )}
+                          {quickOrderRegion === 'khorezm' && (
+                            <>
+                              <option value="urgench">Urganch</option>
+                              <option value="khiva">Xiva</option>
+                              <option value="pitnak">Pitnak</option>
+                            </>
+                          )}
+                          {quickOrderRegion === 'karakalpakstan' && (
+                            <>
+                              <option value="nukus">Nukus</option>
+                              <option value="muynak">Mo'ynoq</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <button 
+                    type="button"
+                    onClick={() => setShowComingSoonModal(true)}
+                    disabled={!name || !phone || !quickOrderRegion || !quickOrderCity}
+                    className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed" 
+                    style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+                  >
+                    {t("product.quickOrder.submit")}
                   </button>
                 </div>
               </div>
