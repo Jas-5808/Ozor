@@ -145,6 +145,8 @@ export default function AdminLayout() {
   const { profile, logout } = useAuth();
   const [activeFilter, setActiveFilter] = useState('all');
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window === 'undefined') {
       return 'light';
@@ -166,6 +168,20 @@ export default function AdminLayout() {
     }
   }, [theme]);
 
+  // Определение мобильного устройства
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth >= 768) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const isDarkTheme = theme === 'dark';
   const toggleTheme = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
 
@@ -174,24 +190,57 @@ export default function AdminLayout() {
   const BellIcon = ACTION_ICON_MAP.notifications;
   const AddIcon = ACTION_ICON_MAP.add;
 
+  const BurgerIcon = () => (
+    <svg {...iconProps} width={24} height={24}>
+      <path d="M3 12h18M3 6h18M3 18h18" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  );
+
+  const handleSidebarMouseEnter = () => {
+    if (!isMobile) {
+      setIsSidebarExpanded(true);
+    }
+  };
+
+  const handleSidebarMouseLeave = () => {
+    if (!isMobile) {
+      setIsSidebarExpanded(false);
+    }
+  };
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+    if (!isMobileMenuOpen) {
+      setIsSidebarExpanded(true);
+    }
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+    setIsSidebarExpanded(false);
+  };
+
   return (
-    <div className={`${s.root} ${isDarkTheme ? s.rootDark : ''} ${isSidebarExpanded ? s.rootExpanded : s.rootCollapsed}`}>
+    <div className={`${s.root} ${isDarkTheme ? s.rootDark : ''} ${isSidebarExpanded ? s.rootExpanded : s.rootCollapsed} ${isMobileMenuOpen ? s.mobileMenuOpen : ''}`}>
+      {isMobile && isMobileMenuOpen && (
+        <div className={s.overlay} onClick={closeMobileMenu} />
+      )}
       <aside 
-        className={`${s.sidebar} ${isSidebarExpanded ? s.sidebarExpanded : s.sidebarCollapsed}`}
-        onMouseEnter={() => setIsSidebarExpanded(true)}
-        onMouseLeave={() => setIsSidebarExpanded(false)}
+        className={`${s.sidebar} ${isSidebarExpanded ? s.sidebarExpanded : s.sidebarCollapsed} ${isMobileMenuOpen ? s.sidebarMobileOpen : ''}`}
+        onMouseEnter={handleSidebarMouseEnter}
+        onMouseLeave={handleSidebarMouseLeave}
       >
         <div className={s.sidebarHeader}>
             <div className={s.brand}>
               <span className={s.logo}>OZ</span>
-              {isSidebarExpanded && (
+              {(isSidebarExpanded || isMobile) && (
                 <div>
                   <p>{t('admin.brand.title')}</p>
                   <small>{t('admin.brand.subtitle')}</small>
                 </div>
               )}
             </div>
-          {isSidebarExpanded && (
+          {(isSidebarExpanded || isMobile) && (
             <div className={s.userCard}>
               <div className={s.avatar}>{(profile?.first_name || 'A').slice(0, 1)}</div>
               <div>
@@ -213,16 +262,21 @@ export default function AdminLayout() {
                   isActive ? `${s.navLink} ${s.navLinkActive}` : s.navLink
                 }
                 title={!isSidebarExpanded ? t(item.labelKey) : undefined}
+                onClick={() => {
+                  if (isMobile) {
+                    closeMobileMenu();
+                  }
+                }}
               >
                 <span className={s.navIcon}>
                   <Icon />
                 </span>
-                {isSidebarExpanded && <span>{t(item.labelKey)}</span>}
+                {(isSidebarExpanded || isMobile) && <span>{t(item.labelKey)}</span>}
               </NavLink>
             );
           })}
         </nav>
-        {isSidebarExpanded && (
+        {(isSidebarExpanded || isMobile) && (
           <div className={s.sidebarFooter}>
             <div className={s.sidebarStat}>
                 <p>{t('admin.sidebar.processing')}</p>
@@ -241,6 +295,15 @@ export default function AdminLayout() {
 
       <div className={s.body}>
         <header className={s.toolbar}>
+          {isMobile && (
+            <button 
+              className={s.burgerButton}
+              onClick={toggleMobileMenu}
+              aria-label="Toggle menu"
+            >
+              <BurgerIcon />
+            </button>
+          )}
           <div className={s.search}>
             <SearchIcon />
             <input type="search" placeholder={t('admin.toolbar.searchPlaceholder')} />

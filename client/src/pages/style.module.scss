@@ -307,6 +307,458 @@
   }
 }
 
+/* ====== КОРЗИНА ====== */
+.cartGrid {
+  @media (max-width: 390px) {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+  
+  @media (max-width: 300px) {
+    gap: 8px;
+  }
+}
+
+.cartHeader {
+  @media (max-width: 390px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  
+  @media (max-width: 300px) {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+}
+
+.cartTitle {
+  @media (max-width: 390px) {
+    font-size: 18px !important;
+    padding: 10px 0 !important;
+  }
+  
+  @media (max-width: 300px) {
+    font-size: 16px !important;
+    padding: 8px 0 !important;
+  }
+}
+
+.cartItem {
+  @media (max-width: 390px) {
+    flex-direction: column;
+    gap: 14px;
+    padding: 14px !important;
+    border-radius: 14px !important;
+  }
+  
+  @media (max-width: 300px) {
+    gap: 12px;
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+}
+
+.cartItemImage {
+  @media (max-width: 390px) {
+    width: 100% !important;
+    height: 140px !important;
+    max-width: 100%;
+  }
+  
+  @media (max-width: 300px) {
+    height: 120px !important;
+  }
+}
+
+.cartItemContent {
+  @media (max-width: 390px) {
+    width: 100%;
+    gap: 10px;
+  }
+  
+  @media (max-width: 300px) {
+    gap: 8px;
+  }
+}
+
+.cartItemHeader {
+  @media (max-width: 390px) {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  @media (max-width: 300px) {
+    gap: 8px;
+  }
+}
+
+.cartItemName {
+  @media (max-width: 390px) {
+    font-size: 13px !important;
+    padding-right: 0 !important;
+    width: 100%;
+  }
+  
+  @media (max-width: 300px) {
+    font-size: 12px !important;
+  }
+}
+
+.cartQuantity {
+  @media (max-width: 390px) {
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  
+  @media (max-width: 300px) {
+    gap: 8px;
+  }
+}
+
+.quantityBtn {
+  @media (max-width: 390px) {
+    height: 34px !important;
+    width: 34px !important;
+    font-size: 18px;
+  }
+  
+  @media (max-width: 300px) {
+    height: 32px !important;
+    width: 32px !important;
+  }
+}
+
+.cartSidebar {
+  @media (max-width: 390px) {
+    position: static !important;
+  }
+}
+
+.cartSummary {
+  @media (max-width: 390px) {
+    position: static !important;
+    padding: 14px !important;
+    gap: 10px !important;
+    border-radius: 14px !important;
+  }
+  
+  @media (max-width: 300px) {
+    padding: 12px !important;
+    gap: 8px !important;
+    border-radius: 12px !important;
+  }
+}
+
+.summaryRow {
+  @media (max-width: 390px) {
+    font-size: 13px;
+  }
+  
+  @media (max-width: 300px) {
+    font-size: 12px;
+  }
+}
+
+.summaryLabel {
+  @media (max-width: 390px) {
+    font-size: 12px !important;
+  }
+  
+  @media (max-width: 300px) {
+    font-size: 11px !important;
+  }
+}
+
+.summaryValue {
+  @media (max-width: 390px) {
+    font-size: 14px !important;
+  }
+  
+  @media (max-width: 300px) {
+    font-size: 13px !important;
+  }
+}
+
+.summaryTotal {
+  @media (max-width: 390px) {
+    padding-top: 10px !important;
+  }
+  
+  @media (max-width: 300px) {
+    padding-top: 8px !important;
+  }
+}
+
+.summaryTotalLabel {
+  @media (max-width: 390px) {
+    font-size: 14px !important;
+  }
+  
+  @media (max-width: 300px) {
+    font-size: 13px !important;
+  }
+}
+
+.summaryTotalValue {
+  @media (max-width: 390px) {
+    font-size: 18px !important;
+  }
+  
+  @media (max-width: 300px) {
+    font-size: 16px !important;
+  }
+}
+
+.checkoutBtn {
+  @media (max-width: 390px) {
+    height: 42px !important;
+    font-size: 14px !important;
+    border-radius: 14px !important;
+    padding: 0 14px;
+  }
+  
+  @media (max-width: 300px) {
+    height: 40px !important;
+    font-size: 13px !important;
+    border-radius: 12px !important;
+    padding: 0 12px;
+  }
+}
+
+.stockWarning {
+  @media (max-width: 390px) {
+    font-size: 11px !important;
+    line-height: 1.4;
+  }
+  
+  @media (max-width: 300px) {
+    font-size: 10px !important;
+    line-height: 1.3;
+  }
+}
+
+.cartPrice {
+  @media (max-width: 390px) {
+    font-size: 14px !important;
+  }
+  
+  @media (max-width: 300px) {
+    font-size: 13px !important;
+  }
+}
+
+.originalPrice {
+  @media (max-width: 390px) {
+    font-size: 11px !important;
+  }
+  
+  @media (max-width: 300px) {
+    font-size: 10px !important;
+  }
+}
+
+.cartAttributes {
+  @media (max-width: 390px) {
+    font-size: 10px !important;
+    gap: 6px !important;
+    
+    span {
+      padding: 5px 8px !important;
+      border-radius: 10px !important;
+    }
+  }
+  
+  @media (max-width: 300px) {
+    font-size: 9px !important;
+    gap: 4px !important;
+    
+    span {
+      padding: 4px 6px !important;
+      border-radius: 8px !important;
+    }
+  }
+}
+
+.cartItemActions {
+  @media (max-width: 390px) {
+    justify-content: center !important;
+    margin-top: 10px;
+  }
+  
+  @media (max-width: 300px) {
+    margin-top: 8px;
+  }
+}
+
+.removeBtn {
+  @media (max-width: 390px) {
+    padding: 7px !important;
+    
+    svg {
+      width: 15px !important;
+      height: 15px !important;
+    }
+  }
+  
+  @media (max-width: 300px) {
+    padding: 6px !important;
+    
+    svg {
+      width: 14px !important;
+      height: 14px !important;
+    }
+  }
+}
+
+/* Дополнительные стили для очень маленьких экранов */
+@media (max-width: 390px) {
+  .main {
+    padding: 16px 0 !important;
+  }
+  
+  .main_content {
+    padding: 0 10px;
+  }
+  
+  /* Пустая корзина */
+  .grid.gap-3.p-6 {
+    padding: 14px !important;
+    gap: 10px !important;
+    
+    h2 {
+      font-size: 18px !important;
+      padding: 10px 0 !important;
+    }
+    
+    div {
+      padding: 20px 0 !important;
+      font-size: 13px !important;
+    }
+  }
+  
+  /* Модальное окно */
+  .fixed.inset-0 {
+    padding: 10px !important;
+  }
+  
+  .max-w-sm {
+    max-width: 100% !important;
+    padding: 18px !important;
+    border-radius: 18px !important;
+    
+    h3 {
+      font-size: 18px !important;
+      margin-bottom: 10px !important;
+    }
+    
+    p {
+      font-size: 12px !important;
+      margin-bottom: 14px !important;
+    }
+    
+    button {
+      height: 38px !important;
+      font-size: 13px !important;
+      border-radius: 14px !important;
+    }
+  }
+  
+  /* Иконка в модалке */
+  .h-20.w-20 {
+    height: 70px !important;
+    width: 70px !important;
+    
+    span {
+      font-size: 36px !important;
+    }
+  }
+  
+  /* Кнопка закрытия модалки */
+  .absolute.top-4.right-4 {
+    top: 10px !important;
+    right: 10px !important;
+    height: 30px !important;
+    width: 30px !important;
+    font-size: 20px !important;
+  }
+}
+
+@media (max-width: 300px) {
+  .main {
+    padding: 12px 0 !important;
+  }
+  
+  .main_content {
+    padding: 0 6px;
+  }
+  
+  /* Пустая корзина */
+  .grid.gap-3.p-6 {
+    padding: 12px !important;
+    gap: 8px !important;
+    
+    h2 {
+      font-size: 16px !important;
+      padding: 8px 0 !important;
+    }
+    
+    div {
+      padding: 16px 0 !important;
+      font-size: 12px !important;
+    }
+  }
+  
+  /* Модальное окно */
+  .fixed.inset-0 {
+    padding: 8px !important;
+  }
+  
+  .max-w-sm {
+    max-width: 100% !important;
+    padding: 16px !important;
+    border-radius: 16px !important;
+    
+    h3 {
+      font-size: 16px !important;
+      margin-bottom: 8px !important;
+    }
+    
+    p {
+      font-size: 11px !important;
+      margin-bottom: 12px !important;
+    }
+    
+    button {
+      height: 36px !important;
+      font-size: 12px !important;
+      border-radius: 12px !important;
+    }
+  }
+  
+  /* Иконка в модалке */
+  .h-20.w-20 {
+    height: 60px !important;
+    width: 60px !important;
+    
+    span {
+      font-size: 32px !important;
+    }
+  }
+  
+  /* Кнопка закрытия модалки */
+  .absolute.top-4.right-4 {
+    top: 8px !important;
+    right: 8px !important;
+    height: 28px !important;
+    width: 28px !important;
+    font-size: 18px !important;
+  }
+}
+
    }
  }
 

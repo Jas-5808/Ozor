@@ -428,97 +428,166 @@ export default function Orders() {
           {t('admin.ordersPage.loading')}
         </div>
       )}
-      <div style={{overflowX:'auto'}}>
-      <table className={s.table}>
-        <thead>
-          <tr style={{background:'#f8fafc', position:'sticky', top:0, zIndex:1}}>
-            <th>{t('admin.ordersPage.table.customer')}</th>
-            <th>{t('admin.ordersPage.table.status')}</th>
-            <th>{t('admin.ordersPage.table.city')}</th>
-            <th>{t('admin.ordersPage.table.time')}</th>
-            <th>{t('admin.ordersPage.table.action')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading && Array.from({length: Math.min(ordersLimit, 10)}).map((_, i)=> (
-            <tr key={`sk-${i}`}>
-              <td colSpan={5}>
-                <div style={{display:'grid', gridTemplateColumns:'1fr 120px 140px 160px 140px', gap:12}}>
-                  {Array.from({length:5}).map((__, j)=> (
-                    <div key={j} style={{height:16, background:'#e5e7eb', borderRadius:8}} />
-                  ))}
-                </div>
-              </td>
+      {/* Desktop Table View */}
+      <div className={s.tableWrapper} style={{overflowX:'auto'}}>
+        <table className={s.table}>
+          <thead>
+            <tr style={{background:'#f8fafc', position:'sticky', top:0, zIndex:1}}>
+              <th>{t('admin.ordersPage.table.customer')}</th>
+              <th>{t('admin.ordersPage.table.status')}</th>
+              <th>{t('admin.ordersPage.table.city')}</th>
+              <th>{t('admin.ordersPage.table.time')}</th>
+              <th>{t('admin.ordersPage.table.action')}</th>
             </tr>
-          ))}
-          {!loading && pagedOrders.map(o => (
-            <tr key={o.id}>
-              <td>{o.customer}</td>
-              <td>{renderStatusBadge(o.status)}</td>
-              <td>{o.location || '-'}</td>
-              <td style={{textAlign:'center', color: timeColor(o.created_at), fontVariantNumeric: 'tabular-nums'}}>
+          </thead>
+          <tbody>
+            {loading && Array.from({length: Math.min(ordersLimit, 10)}).map((_, i)=> (
+              <tr key={`sk-${i}`}>
+                <td colSpan={5}>
+                  <div style={{display:'grid', gridTemplateColumns:'1fr 120px 140px 160px 140px', gap:12}}>
+                    {Array.from({length:5}).map((__, j)=> (
+                      <div key={j} style={{height:16, background:'#e5e7eb', borderRadius:8}} />
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {!loading && pagedOrders.map(o => (
+              <tr key={o.id}>
+                <td>{o.customer}</td>
+                <td>{renderStatusBadge(o.status)}</td>
+                <td>{o.location || '-'}</td>
+                <td style={{textAlign:'center', color: timeColor(o.created_at), fontVariantNumeric: 'tabular-nums'}}>
+                  {formatDateTime(o.created_at)}
+                </td>
+                <td style={{textAlign:'center'}}>
+                  {isSale && (o.status === 'pending' || !o.status) && (
+                    <button
+                      className={`${s.btn}`}
+                      style={{
+                        height:32, 
+                        padding:'0 16px', 
+                        borderRadius:12,
+                        background:'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color:'#fff', 
+                        border:'none', 
+                        boxShadow:'0 4px 12px rgba(16, 185, 129, 0.3)',
+                        display:'inline-flex', 
+                        alignItems:'center', 
+                        justifyContent:'center',
+                        gap:8, 
+                        fontWeight:700,
+                        transition:'all 0.2s ease',
+                        cursor:'pointer'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                      }}
+                      onClick={async ()=>{
+                        try {
+                          await shopAPI.takeOrderCallCenter(o.id);
+                          setNotice({ type: 'success', message: t('admin.ordersPage.cc.takeSuccess') });
+                          setTimeout(()=> setNotice(null), 2000);
+                          // Обновить вторую таблицу после успешного действия
+                          await loadCcOrders();
+                          // Также обновить первую таблицу
+                          const res = await shopAPI.getAllOrders();
+                          const data = Array.isArray(res.data) ? res.data : (res.data?.results || []);
+                          const normalized: Order[] = normalizeOrders(data);
+                          setItems(normalized);
+                        } catch (e:any) {
+                          const msg = e?.response?.data?.detail || e?.message || t('common.forms.error');
+                          setNotice({ type:'error', message: msg });
+                          setTimeout(()=> setNotice(null), 3000);
+                        }
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      {t('admin.ordersPage.cc.take')}
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      
+      {/* Mobile Card View */}
+      <div className={s.mobileCards}>
+        {loading && Array.from({length: Math.min(ordersLimit, 5)}).map((_, i)=> (
+          <div key={`mobile-sk-${i}`} className={s.orderCardMobile}>
+            <div style={{height:60, background:'#e5e7eb', borderRadius:12}} />
+          </div>
+        ))}
+        {!loading && pagedOrders.map(o => (
+          <div key={o.id} className={s.orderCardMobile}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14, fontWeight:700, marginBottom:4}}>{o.customer}</div>
+                <div style={{fontSize:11, color:'#64748b'}}>{o.location || '-'}</div>
+              </div>
+              {renderStatusBadge(o.status)}
+            </div>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+              <div style={{fontSize:11, color: timeColor(o.created_at), fontVariantNumeric: 'tabular-nums'}}>
                 {formatDateTime(o.created_at)}
-              </td>
-              <td style={{textAlign:'center'}}>
-                {isSale && (o.status === 'pending' || !o.status) && (
-                  <button
-                    className={`${s.btn}`}
-                    style={{
-                      height:32, 
-                      padding:'0 16px', 
-                      borderRadius:12,
-                      background:'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color:'#fff', 
-                      border:'none', 
-                      boxShadow:'0 4px 12px rgba(16, 185, 129, 0.3)',
-                      display:'inline-flex', 
-                      alignItems:'center', 
-                      justifyContent:'center',
-                      gap:8, 
-                      fontWeight:700,
-                      transition:'all 0.2s ease',
-                      cursor:'pointer'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-                    }}
-                    onClick={async ()=>{
-                      try {
-                        await shopAPI.takeOrderCallCenter(o.id);
-                        setNotice({ type: 'success', message: t('admin.ordersPage.cc.takeSuccess') });
-                        setTimeout(()=> setNotice(null), 2000);
-                        // Обновить вторую таблицу после успешного действия
-                        await loadCcOrders();
-                        // Также обновить первую таблицу
-                        const res = await shopAPI.getAllOrders();
-                        const data = Array.isArray(res.data) ? res.data : (res.data?.results || []);
-                        const normalized: Order[] = normalizeOrders(data);
-                        setItems(normalized);
-                      } catch (e:any) {
-                        const msg = e?.response?.data?.detail || e?.message || t('common.forms.error');
-                        setNotice({ type:'error', message: msg });
-                        setTimeout(()=> setNotice(null), 3000);
-                      }
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    {t('admin.ordersPage.cc.take')}
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              </div>
+            </div>
+            {isSale && (o.status === 'pending' || !o.status) && (
+              <button
+                className={`${s.btn}`}
+                style={{
+                  width:'100%',
+                  height:36, 
+                  padding:'0 12px', 
+                  borderRadius:10,
+                  background:'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color:'#fff', 
+                  border:'none', 
+                  boxShadow:'0 2px 8px rgba(16, 185, 129, 0.3)',
+                  display:'inline-flex', 
+                  alignItems:'center', 
+                  justifyContent:'center',
+                  gap:6, 
+                  fontWeight:600,
+                  fontSize:13,
+                  cursor:'pointer'
+                }}
+                onClick={async ()=>{
+                  try {
+                    await shopAPI.takeOrderCallCenter(o.id);
+                    setNotice({ type: 'success', message: t('admin.ordersPage.cc.takeSuccess') });
+                    setTimeout(()=> setNotice(null), 2000);
+                    await loadCcOrders();
+                    const res = await shopAPI.getAllOrders();
+                    const data = Array.isArray(res.data) ? res.data : (res.data?.results || []);
+                    const normalized: Order[] = normalizeOrders(data);
+                    setItems(normalized);
+                  } catch (e:any) {
+                    const msg = e?.response?.data?.detail || e?.message || t('common.forms.error');
+                    setNotice({ type:'error', message: msg });
+                    setTimeout(()=> setNotice(null), 3000);
+                  }
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                {t('admin.ordersPage.cc.take')}
+              </button>
+            )}
+          </div>
+        ))}
       </div>
       {!loading && (
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8}}>
@@ -619,7 +688,7 @@ export default function Orders() {
               {t('admin.ordersPage.loading')}
             </div>
           )}
-          <div style={{overflowX:'auto'}}>
+          <div className={s.tableWrapper} style={{overflowX:'auto'}}>
           <table className={s.table}>
             <thead>
               <tr style={{background:'#f8fafc', position:'sticky', top:0, zIndex:1}}>
