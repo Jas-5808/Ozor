@@ -372,9 +372,7 @@ export default function Orders() {
       <table className={s.table}>
         <thead>
           <tr style={{background:'#f8fafc', position:'sticky', top:0, zIndex:1}}>
-            <th>{t('admin.ordersPage.table.order')}</th>
             <th>{t('admin.ordersPage.table.customer')}</th>
-            <th>{t('admin.ordersPage.table.total')}</th>
             <th>{t('admin.ordersPage.table.status')}</th>
             <th>{t('admin.ordersPage.table.city')}</th>
             <th>{t('admin.ordersPage.table.time')}</th>
@@ -384,9 +382,9 @@ export default function Orders() {
         <tbody>
           {loading && Array.from({length: Math.min(ordersLimit, 10)}).map((_, i)=> (
             <tr key={`sk-${i}`}>
-              <td colSpan={7}>
-                <div style={{display:'grid', gridTemplateColumns:'160px 1fr 80px 120px 140px 160px 140px', gap:12}}>
-                  {Array.from({length:7}).map((__, j)=> (
+              <td colSpan={5}>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 120px 140px 160px 140px', gap:12}}>
+                  {Array.from({length:5}).map((__, j)=> (
                     <div key={j} style={{height:16, background:'#e5e7eb', borderRadius:8}} />
                   ))}
                 </div>
@@ -395,28 +393,7 @@ export default function Orders() {
           ))}
           {!loading && pagedOrders.map(o => (
             <tr key={o.id}>
-              <td>
-                <div style={{display:'inline-flex', alignItems:'center', gap:8}}>
-                  <span style={{fontWeight:700}}>{o.order_number || '—'}</span>
-                  <button
-                    className={`${s.btn} ${s.muted}`}
-                    title={t('admin.ordersPage.copyId.title')}
-                    onClick={async ()=>{
-                      try {
-                        await navigator.clipboard.writeText(o.id);
-                        setCopiedId(o.id);
-                        setTimeout(()=> setCopiedId(null), 1500);
-                      } catch {}
-                    }}
-                    style={{height:28, padding:'0 8px'}}
-                    aria-label={t('admin.ordersPage.copyId.aria')}
-                  >
-                    {copiedId === o.id ? t('admin.ordersPage.copyId.copied') : t('admin.ordersPage.copyId.idle')}
-                  </button>
-                </div>
-              </td>
               <td>{o.customer}</td>
-              <td>{o.total.toLocaleString()}</td>
               <td>{renderStatusBadge(o.status)}</td>
               <td>{o.location || '-'}</td>
               <td style={{textAlign:'center', color: timeColor(o.created_at), fontVariantNumeric: 'tabular-nums'}}>
@@ -427,10 +404,30 @@ export default function Orders() {
                   <button
                     className={`${s.btn}`}
                     style={{
-                      height:28, padding:'0 12px', borderRadius:10,
-                      background:'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
-                      color:'#fff', border:'none', boxShadow:'0 4px 14px rgba(37,99,235,0.25)',
-                      display:'inline-flex', alignItems:'center', gap:6, fontWeight:700
+                      height:32, 
+                      padding:'0 16px', 
+                      borderRadius:12,
+                      background:'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color:'#fff', 
+                      border:'none', 
+                      boxShadow:'0 4px 12px rgba(16, 185, 129, 0.3)',
+                      display:'inline-flex', 
+                      alignItems:'center', 
+                      justifyContent:'center',
+                      gap:8, 
+                      fontWeight:700,
+                      transition:'all 0.2s ease',
+                      cursor:'pointer'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
                     }}
                     onClick={async ()=>{
                       try {
@@ -444,8 +441,8 @@ export default function Orders() {
                       }
                     }}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.08 4.18 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                     {t('admin.ordersPage.cc.take')}
                   </button>
@@ -606,8 +603,28 @@ export default function Orders() {
                       <button
                         className={s.btn}
                         style={{
-                          height:36, borderRadius:12,
-                          background:'linear-gradient(135deg,#16a34a,#22c55e)', color:'#fff', fontWeight:800
+                          height:36, 
+                          borderRadius:12,
+                          background:'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          color:'#fff', 
+                          fontWeight:700,
+                          border:'none',
+                          boxShadow:'0 4px 12px rgba(16, 185, 129, 0.3)',
+                          transition:'all 0.2s ease',
+                          cursor:'pointer',
+                          display:'inline-flex',
+                          alignItems:'center',
+                          justifyContent:'center',
+                          gap:6,
+                          padding:'0 16px'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
                         }}
                         onClick={async ()=>{
                           try {
@@ -627,7 +644,12 @@ export default function Orders() {
                             setTimeout(()=> setNotice(null), 3000);
                           }
                         }}
-                      >Qabul qilish</button>
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Qabul qilish
+                      </button>
                       <button
                         className={s.btn}
                         style={{

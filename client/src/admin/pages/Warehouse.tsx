@@ -63,6 +63,17 @@ export default function Warehouse() {
     [t]
   );
 
+  const STATUS_LABELS = useMemo(
+    () => ({
+      accepted: t('admin.warehouse.status.accepted', { defaultValue: 'Принят' }),
+      packing: t('admin.warehouse.status.packing', { defaultValue: 'Упаковка' }),
+      ready_to_ship: t('admin.warehouse.status.ready', { defaultValue: 'Готов к отправке' }),
+      completed: t('admin.warehouse.status.completed', { defaultValue: 'Завершен' }),
+      pending: t('admin.warehouse.status.pending', { defaultValue: 'В обработке' }),
+    }),
+    [t]
+  );
+
   useEffect(() => {
     let ignore = false;
     const loadOrders = async () => {
