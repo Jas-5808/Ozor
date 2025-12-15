@@ -126,12 +126,20 @@ export const useProducts = () => {
   // Загрузить следующую порцию - мемоизировано
   const loadMore = useCallback(() => {
     if (hasMore && !loading) {
-      setDisplayedCount(prev => Math.min(
-        prev + ITEMS_PER_PAGE, 
+      const next = Math.min(
+        displayedCount + ITEMS_PER_PAGE,
         primaryProducts.length + variantProducts.length
-      ));
+      );
+      console.log("[useProducts] loadMore", {
+        from: displayedCount,
+        to: next,
+        total: primaryProducts.length + variantProducts.length,
+      });
+      setDisplayedCount(next);
+    } else {
+      console.log("[useProducts] loadMore skipped", { hasMore, loading });
     }
-  }, [hasMore, loading, primaryProducts.length, variantProducts.length]);
+  }, [hasMore, loading, displayedCount, primaryProducts.length, variantProducts.length]);
 
   const refetch = useCallback(() => {
     // Очищаем кэш при принудительном обновлении

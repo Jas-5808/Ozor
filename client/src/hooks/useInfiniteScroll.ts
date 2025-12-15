@@ -119,7 +119,7 @@ export const useInfiniteScroll = ({
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll, { passive: true });
 
-    // Проверяем сразу после монтирования, если контента меньше высоты окна
+    // Проверяем сразу после монтирования/обновления
     checkPosition();
 
     return () => {
@@ -129,7 +129,7 @@ export const useInfiniteScroll = ({
         cancelAnimationFrame(scrollFallbackRef.current);
       }
     };
-  }, [threshold]);
+  }, [threshold, hasMore, loading]);
 
   // ref-callback, чтобы поймать момент, когда sentinel появился в DOM
   const setSentinelRef = useCallback((node: HTMLDivElement | null) => {
