@@ -1169,6 +1169,7 @@ export function Product() {
                     </div>
                   );
                 })()}
+                {/* Блок рассрочки в мобильной версии - закомментирован
                 <div className="md:hidden mt-6 space-y-3 rounded-[26px] border border-white/40 bg-white/95 p-4 shadow-[0_16px_30px_rgba(15,23,42,0.12)]">
                   <div className="flex items-center justify-between text-sm font-semibold text-slate-900">
                     <span>{t("product.installment.forMonths", { count: selectedInstallment })}</span>
@@ -1229,6 +1230,240 @@ export function Product() {
                   >
                     {t("product.buttons.checkout")}
                   </button>
+                </div>
+                */}
+                
+                {/* Форма "Купить в 1 клик" для мобильной версии */}
+                <div className={`${cn.quick_order_form} md:hidden mt-6 rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.08)] px-4 py-3 space-y-3`}>
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                        {t("product.quickOrder.nameLabel")}
+                      </label>
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder={t("product.quickOrder.namePlaceholder")}
+                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                        {t("product.quickOrder.phoneLabel")}
+                      </label>
+                      <PhoneInput
+                        value={phone}
+                        onChange={setPhone}
+                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                        Город / Область
+                      </label>
+                      <select
+                        value={quickOrderRegion}
+                        onChange={(e) => {
+                          const selectedValue = e.target.value;
+                          setQuickOrderRegion(selectedValue);
+                          setQuickOrderCity(""); // Сбрасываем город при смене
+                        }}
+                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                      >
+                        <option value="">Выберите город или область</option>
+                        <option value="tashkent">Toshkent</option>
+                        <option value="tashkent_region">Toshkent viloyati</option>
+                        <option value="samarkand">Samarqand viloyati</option>
+                        <option value="samarkand_city">Samarqand</option>
+                        <option value="bukhara">Buxoro viloyati</option>
+                        <option value="bukhara_city">Buxoro</option>
+                        <option value="andijan">Andijon viloyati</option>
+                        <option value="andijan_city">Andijon</option>
+                        <option value="fergana">Farg'ona viloyati</option>
+                        <option value="fergana_city">Farg'ona</option>
+                        <option value="namangan">Namangan viloyati</option>
+                        <option value="namangan_city">Namangan</option>
+                        <option value="navoiy">Navoiy viloyati</option>
+                        <option value="navoiy_city">Navoiy</option>
+                        <option value="kashkadarya">Qashqadaryo viloyati</option>
+                        <option value="karshi">Qarshi</option>
+                        <option value="surkhandarya">Surxondaryo viloyati</option>
+                        <option value="termez">Termiz</option>
+                        <option value="sirdarya">Sirdaryo viloyati</option>
+                        <option value="gulistan">Guliston</option>
+                        <option value="jizzakh">Jizzax viloyati</option>
+                        <option value="jizzakh_city">Jizzax</option>
+                        <option value="khorezm">Xorazm viloyati</option>
+                        <option value="urgench">Urganch</option>
+                        <option value="karakalpakstan">Qoraqalpog'iston Respublikasi</option>
+                        <option value="nukus">Nukus</option>
+                      </select>
+                    </div>
+                    
+                    {quickOrderRegion && (() => {
+                      const selectedLocation = uzbekistanLocations.find(loc => loc.id === quickOrderRegion);
+                      const isRegion = selectedLocation?.type === 'region';
+                      const isCityWithoutRegion = selectedLocation?.type === 'city' && !selectedLocation?.parentId;
+                      
+                      if (!isRegion || isCityWithoutRegion) {
+                        return null;
+                      }
+                      
+                      const cities = getCitiesByRegion(quickOrderRegion);
+                      const cityNameMap: Record<string, string> = {
+                        'Андижан': 'Andijon',
+                        'Бухара': 'Buxoro',
+                        'Джизак': 'Jizzax',
+                        'Фергана': 'Farg\'ona',
+                        'Наманган': 'Namangan',
+                        'Навои': 'Navoiy',
+                        'Самарканд': 'Samarqand',
+                        'Ангрен': 'Angren',
+                        'Бекабад': 'Bekobod',
+                        'Чирчик': 'Chirchiq',
+                        'Газалкент': 'Gazalkent',
+                        'Паркент': 'Parkent',
+                        'Каттакурган': 'Kattaqo\'rg\'on',
+                        'Ургут': 'Urgut',
+                        'Каган': 'Kagan',
+                        'Гиждуван': 'G\'ijduvon',
+                        'Асака': 'Asaka',
+                        'Ханабад': 'Xonobod',
+                        'Коканд': 'Qo\'qon',
+                        'Маргилан': 'Marg\'ilon',
+                        'Кува': 'Quva',
+                        'Риштан': 'Rishton',
+                        'Чуст': 'Chust',
+                        'Пап': 'Pop',
+                        'Зарафшан': 'Zarafshon',
+                        'Нурата': 'Nurota',
+                        'Шахрисабз': 'Shahrisabz',
+                        'Китаб': 'Kitob',
+                        'Денау': 'Denov',
+                        'Шурчи': 'Shurchi',
+                        'Янгиер': 'Yangiyer',
+                        'Ширин': 'Shirin',
+                        'Дустлик': 'Do\'stlik',
+                        'Ургенч': 'Urganch',
+                        'Хива': 'Xiva',
+                        'Питнак': 'Pitnak',
+                        'Нукус': 'Nukus',
+                        'Муйнак': 'Mo\'ynoq',
+                      };
+                      
+                      return (
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                            Город
+                          </label>
+                          <select
+                            value={quickOrderCity}
+                            onChange={(e) => setQuickOrderCity(e.target.value)}
+                            className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                          >
+                            <option value="">Выберите город</option>
+                            {cities.map((city) => (
+                              <option key={city.id} value={city.id}>
+                                {cityNameMap[city.name] || city.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  
+                  <button 
+                    type="button"
+                    onClick={async () => {
+                      if (!fetchedProduct) return;
+                      
+                      if (!name.trim()) {
+                        setQuickOrderError(t("product.quickOrder.errors.nameRequired"));
+                        setTimeout(() => setQuickOrderError(null), 3000);
+                        return;
+                      }
+                      if (!phone || phone.trim().length < 8) {
+                        setQuickOrderError(t("product.quickOrder.errors.phoneInvalid"));
+                        setTimeout(() => setQuickOrderError(null), 3000);
+                        return;
+                      }
+                      const selectedLocation = uzbekistanLocations.find(loc => loc.id === quickOrderRegion);
+                      const isRegion = selectedLocation?.type === 'region';
+                      if (isRegion && !quickOrderCity) {
+                        setQuickOrderError("Выберите город");
+                        setTimeout(() => setQuickOrderError(null), 3000);
+                        return;
+                      }
+                      
+                      try {
+                        setQuickOrderLoading(true);
+                        setQuickOrderError(null);
+                        setQuickOrderFeedback(null);
+                        
+                        const variantId = selectedVariant?.id || fetchedProduct.variant_id;
+                        const finalCityId = isRegion ? quickOrderCity : quickOrderRegion;
+                        const cityLocation = uzbekistanLocations.find(loc => loc.id === finalCityId);
+                        const cityCode = toCityCode(finalCityId) || finalCityId;
+                        const regionCode = isRegion ? quickOrderRegion : (cityLocation?.parentId || quickOrderRegion);
+                        
+                        const payload = {
+                          items: [
+                            {
+                              variant_id: variantId,
+                              quantity: 1,
+                              referral_code: referralCode || undefined,
+                            },
+                          ],
+                          guest_user_number: phone,
+                          full_name: name.trim(),
+                          city: cityCode,
+                          order_region: getRegionForCityOrRegion(regionCode) || regionCode,
+                          order_comment: "",
+                        } as any;
+                        
+                        await shopAPI.guestOrder(payload);
+                        setQuickOrderFeedback(t("product.quickOrder.success"));
+                        setName("");
+                        setPhone("");
+                        setQuickOrderRegion("");
+                        setQuickOrderCity("");
+                        setTimeout(() => {
+                          setQuickOrderFeedback(null);
+                        }, 3000);
+                      } catch (err: any) {
+                        logger.errorWithContext(err, { context: "quickOrder" });
+                        const errorMsg = err?.response?.data?.detail || err?.message || t("product.quickOrder.errors.generic");
+                        setQuickOrderError(errorMsg);
+                        setTimeout(() => setQuickOrderError(null), 3000);
+                      } finally {
+                        setQuickOrderLoading(false);
+                      }
+                    }}
+                    disabled={(() => {
+                      if (!name || !phone || !quickOrderRegion) return true;
+                      const selectedLocation = uzbekistanLocations.find(loc => loc.id === quickOrderRegion);
+                      const isRegion = selectedLocation?.type === 'region';
+                      return isRegion ? !quickOrderCity : false;
+                    })() || quickOrderLoading}
+                    className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed" 
+                    style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+                  >
+                    {quickOrderLoading ? t("product.quickOrder.submitting") : t("product.quickOrder.submit")}
+                  </button>
+                  {quickOrderError && (
+                    <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600">
+                      {quickOrderError}
+                    </div>
+                  )}
+                  {quickOrderFeedback && (
+                    <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800">
+                      {quickOrderFeedback}
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
@@ -1342,7 +1577,7 @@ export function Product() {
                 */}
                 
                 {/* Форма "Купить в 1 клик" */}
-                <div className="mt-4 rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.08)] px-5 py-4 space-y-4">
+                <div className={`${cn.quick_order_form} mt-4 rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.08)] px-5 py-4 space-y-4`}>
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1.5">
