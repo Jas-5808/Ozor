@@ -62,7 +62,9 @@ export default function Orders() {
   const [ordersLimit, setOrdersLimit] = useState(20);
   const [ccPage, setCcPage] = useState(1);
   const [ccLimit, setCcLimit] = useState(20);
-  const [ccStatus, setCcStatus] = useState<string>('');
+  const [ccStatus, setCcStatus] = useState<string>('pending');
+  const [ccSortColumn, setCcSortColumn] = useState<string>('');
+  const [ccSortDirection, setCcSortDirection] = useState<'asc' | 'desc'>('asc');
 
   useEffect(()=>{
     const id = setInterval(()=> setCcTick(t=>t+1), 1000);
@@ -152,11 +154,61 @@ export default function Orders() {
   }, [filtered, ordersPage, ordersLimit]);
 
   const filteredCc = useMemo(()=>{
-    const list = ccOrders || [];
-    if (!ccStatus) return list;
-    const st = ccStatus.toLowerCase();
-    return list.filter((o:any)=> String(o?.status||'').toLowerCase() === st);
-  }, [ccOrders, ccStatus]);
+    let list = [...(ccOrders || [])];
+    
+    // Фильтрация по статусу
+    if (ccStatus) {
+      const st = ccStatus.toLowerCase();
+      list = list.filter((o:any)=> String(o?.status||'').toLowerCase() === st);
+    }
+    
+    // Сортировка
+    if (ccSortColumn) {
+      list.sort((a: any, b: any) => {
+        let aVal: any;
+        let bVal: any;
+        
+        switch (ccSortColumn) {
+          case 'order':
+            aVal = a.order_number || '';
+            bVal = b.order_number || '';
+            break;
+          case 'fullName':
+            aVal = (a.full_name || '').toLowerCase();
+            bVal = (b.full_name || '').toLowerCase();
+            break;
+          case 'phone':
+            aVal = (a.client_phone || '').toLowerCase();
+            bVal = (b.client_phone || '').toLowerCase();
+            break;
+          case 'city':
+            aVal = (a.city || '').toLowerCase();
+            bVal = (b.city || '').toLowerCase();
+            break;
+          case 'total':
+            aVal = Number(a.total_price || 0);
+            bVal = Number(b.total_price || 0);
+            break;
+          case 'status':
+            aVal = (a.status || '').toLowerCase();
+            bVal = (b.status || '').toLowerCase();
+            break;
+          case 'time':
+            aVal = a.created_at ? new Date(a.created_at).getTime() : 0;
+            bVal = b.created_at ? new Date(b.created_at).getTime() : 0;
+            break;
+          default:
+            return 0;
+        }
+        
+        if (aVal < bVal) return ccSortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return ccSortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    
+    return list;
+  }, [ccOrders, ccStatus, ccSortColumn, ccSortDirection]);
 
   useEffect(()=>{ adminStore.save('admin_orders', items); }, [items]);
 
@@ -508,13 +560,114 @@ export default function Orders() {
           <table className={s.table}>
             <thead>
               <tr style={{background:'#f8fafc', position:'sticky', top:0, zIndex:1}}>
-                <th>{t('admin.ordersPage.cc.table.order')}</th>
-                <th>{t('admin.ordersPage.cc.table.fullName')}</th>
-                <th>{t('admin.ordersPage.cc.table.phone')}</th>
-                <th>{t('admin.ordersPage.cc.table.city')} / {t('admin.ordersPage.cc.table.region')}</th>
-                <th>{t('admin.ordersPage.cc.table.total')}</th>
-                <th>{t('admin.ordersPage.cc.table.status')}</th>
-                <th>{t('admin.ordersPage.cc.table.time')}</th>
+                <th 
+                  style={{cursor:'pointer', userSelect:'none'}}
+                  onClick={()=>{
+                    if (ccSortColumn === 'order') {
+                      setCcSortDirection(ccSortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setCcSortColumn('order');
+                      setCcSortDirection('asc');
+                    }
+                  }}
+                >
+                  <div style={{display:'flex', alignItems:'center', gap:6}}>
+                    {t('admin.ordersPage.cc.table.order')}
+                    {ccSortColumn === 'order' && (
+                      <span>{ccSortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  style={{cursor:'pointer', userSelect:'none'}}
+                  onClick={()=>{
+                    if (ccSortColumn === 'fullName') {
+                      setCcSortDirection(ccSortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setCcSortColumn('fullName');
+                      setCcSortDirection('asc');
+                    }
+                  }}
+                >
+                  <div style={{display:'flex', alignItems:'center', gap:6}}>
+                    {t('admin.ordersPage.cc.table.fullName')} / {t('admin.ordersPage.cc.table.phone')}
+                    {ccSortColumn === 'fullName' && (
+                      <span>{ccSortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  style={{cursor:'pointer', userSelect:'none'}}
+                  onClick={()=>{
+                    if (ccSortColumn === 'city') {
+                      setCcSortDirection(ccSortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setCcSortColumn('city');
+                      setCcSortDirection('asc');
+                    }
+                  }}
+                >
+                  <div style={{display:'flex', alignItems:'center', gap:6}}>
+                    {t('admin.ordersPage.cc.table.city')} / {t('admin.ordersPage.cc.table.region')}
+                    {ccSortColumn === 'city' && (
+                      <span>{ccSortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  style={{cursor:'pointer', userSelect:'none'}}
+                  onClick={()=>{
+                    if (ccSortColumn === 'total') {
+                      setCcSortDirection(ccSortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setCcSortColumn('total');
+                      setCcSortDirection('asc');
+                    }
+                  }}
+                >
+                  <div style={{display:'flex', alignItems:'center', gap:6}}>
+                    {t('admin.ordersPage.cc.table.total')}
+                    {ccSortColumn === 'total' && (
+                      <span>{ccSortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  style={{cursor:'pointer', userSelect:'none'}}
+                  onClick={()=>{
+                    if (ccSortColumn === 'status') {
+                      setCcSortDirection(ccSortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setCcSortColumn('status');
+                      setCcSortDirection('asc');
+                    }
+                  }}
+                >
+                  <div style={{display:'flex', alignItems:'center', gap:6}}>
+                    {t('admin.ordersPage.cc.table.status')}
+                    {ccSortColumn === 'status' && (
+                      <span>{ccSortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  style={{cursor:'pointer', userSelect:'none'}}
+                  onClick={()=>{
+                    if (ccSortColumn === 'time') {
+                      setCcSortDirection(ccSortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setCcSortColumn('time');
+                      setCcSortDirection('desc');
+                    }
+                  }}
+                >
+                  <div style={{display:'flex', alignItems:'center', gap:6}}>
+                    {t('admin.ordersPage.cc.table.time')}
+                    {ccSortColumn === 'time' && (
+                      <span>{ccSortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
                 <th>{t('admin.ordersPage.cc.table.comment')} / {t('admin.ordersPage.cc.table.schedule')}</th>
                 <th>{t('admin.ordersPage.cc.table.actions')}</th>
               </tr>
@@ -522,9 +675,9 @@ export default function Orders() {
             <tbody>
               {ccLoading && Array.from({length: Math.min(ccLimit, 8)}).map((_, i)=> (
                 <tr key={`cc-sk-${i}`}>
-                  <td colSpan={9}>
-                    <div style={{display:'grid', gridTemplateColumns:'140px 200px 160px 180px 100px 120px 140px 240px 140px', gap:12}}>
-                      {Array.from({length:9}).map((__, j)=> (
+                  <td colSpan={8}>
+                    <div style={{display:'grid', gridTemplateColumns:'140px 180px 180px 100px 120px 140px 240px 140px', gap:12}}>
+                      {Array.from({length:8}).map((__, j)=> (
                         <div key={j} style={{height:16, background:'#e5e7eb', borderRadius:8}} />
                       ))}
                     </div>
@@ -534,8 +687,12 @@ export default function Orders() {
               {!ccLoading && (filteredCc || []).slice((ccPage-1)*ccLimit, (ccPage-1)*ccLimit + ccLimit).map((o:any)=> (
                 <tr key={o.id}>
                   <td>{o.order_number || '—'}</td>
-                  <td>{o.full_name || '—'}</td>
-                  <td>{o.client_phone || '—'}</td>
+                  <td>
+                    <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                      <div style={{fontWeight:600, fontSize:14}}>{o.full_name || '—'}</div>
+                      <div style={{fontSize:12, color:'#64748b'}}>{o.client_phone || '—'}</div>
+                    </div>
+                  </td>
                   <td>
                     <div style={{display:'flex', flexDirection:'column', gap:6}}>
                       <select
@@ -761,7 +918,7 @@ export default function Orders() {
                 </tr>
               ))}
               {(!filteredCc || filteredCc.length===0) && (
-                <tr><td colSpan={9} style={{textAlign:'center', color:'#64748b'}}>Hali buyurtmalar yo'q</td></tr>
+                <tr><td colSpan={8} style={{textAlign:'center', color:'#64748b'}}>Hali buyurtmalar yo'q</td></tr>
               )}
             </tbody>
           </table>
