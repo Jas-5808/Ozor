@@ -18,7 +18,7 @@ export const useInfiniteScroll = ({
   onLoadMore,
   threshold = 200,
   root = null,
-  rootMargin = '0px',
+  rootMargin,
 }: UseInfiniteScrollOptions) => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -47,7 +47,7 @@ export const useInfiniteScroll = ({
 
   useEffect(() => {
     // Используем threshold как расстояние в пикселях через rootMargin
-    const margin = rootMargin || `${threshold}px`;
+    const margin = rootMargin ?? `${threshold}px`;
     
     const options = {
       root,

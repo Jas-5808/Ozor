@@ -299,6 +299,18 @@ export function Product() {
   const { t } = useTranslation();
   const referralCode = useMemo(()=> new URLSearchParams(location.search).get('ref') || '', [location.search]);
   const routeState = (location.state ?? {}) as LocationState;
+  const variantIdFromQuery = useMemo(
+    () => new URLSearchParams(location.search).get("variant") || "",
+    [location.search]
+  );
+  const variantIdFromState = useMemo(
+    () => (routeState?.product?.variant_id ? String(routeState.product.variant_id) : ""),
+    [routeState]
+  );
+  const preferredVariantId = useMemo(
+    () => variantIdFromQuery || variantIdFromState,
+    [variantIdFromQuery, variantIdFromState]
+  );
   const [fetchedProduct, setFetchedProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -553,12 +565,22 @@ export function Product() {
             setFetchedProduct(p);
             // Автоматически выбираем первый доступный вариант
             if (p?.variants && p.variants.length > 0) {
+              const preferredId = preferredVariantId?.trim();
+              const preferredVariant = preferredId
+                ? p.variants.find(
+                    (v) =>
+                      v.id === preferredId ||
+                      (v as any).variant_id === preferredId ||
+                      v.sku === preferredId
+                  )
+                : null;
               // Сначала ищем вариант с ценой и в наличии
               const availableVariant = p.variants.find(v => v.stock > 0 && v.price !== null && v.price !== undefined) || 
                                      p.variants.find(v => v.price !== null && v.price !== undefined) || 
                                      p.variants[0];
-              logger.debug("Variant selected", { variantId: availableVariant?.id });
-              setSelectedVariant(availableVariant);
+              const variantToSelect = preferredVariant || availableVariant;
+              logger.debug("Variant selected", { variantId: variantToSelect?.id, preferredVariantId: preferredId });
+              setSelectedVariant(variantToSelect);
               // Сбрасываем индекс лайтбокса
               setLightboxIndex(0);
             }

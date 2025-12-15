@@ -33,6 +33,14 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
   
   const liked = useMemo(() => isLiked || isProductLiked(uniqueId), [isLiked, isProductLiked, uniqueId]);
 
+  // Формируем ссылку: если это конкретный вариант, пробрасываем его через query
+  const productUrl = useMemo(() => {
+    if (product.variant_id && product.variant_id.trim() !== '') {
+      return `/product/${product.product_id}?variant=${product.variant_id}`;
+    }
+    return `/product/${product.product_id}`;
+  }, [product.product_id, product.variant_id]);
+
   // Получаем изображение: сначала variant_media.main, потом из атрибута, потом основное
   const productImage = useMemo(() => {
     const variantMedia = product.variant_media as VariantMedia[] | undefined;
@@ -60,8 +68,8 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
   return (
     <div className="w-full flex flex-col h-full">
       <Link
-        to={`/product/${product.product_id}`}
-        state={{ product }}
+        to={productUrl}
+        state={{ product, variant_id: product.variant_id }}
         className="flex flex-col text-black transition-transform md:hover:scale-105 mb-2"
       >
         <div className="relative w-full rounded-xl overflow-hidden mb-3" style={{ aspectRatio: '220/285' }}>
