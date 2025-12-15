@@ -73,17 +73,6 @@ export function Profile() {
     limit: 10,
     total: 0,
   });
-  const [withdrawals, setWithdrawals] = useState<Array<{
-    id: string;
-    amount: number;
-    card_number: string;
-    cardholder_name: string;
-    status: string;
-    created_at: string;
-    updated_at?: string;
-  }>>([]);
-  const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
-  const [withdrawalsError, setWithdrawalsError] = useState<string | null>(null);
   
   // Состояние для отслеживания скопированных ссылок (для показа галочки)
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
@@ -121,26 +110,9 @@ export function Profile() {
     }
   }, [isAuthenticated, profile, fetchUserProfile]);
 
-  // Загрузка истории выводов
-  const loadWithdrawals = async () => {
-    try {
-      setWithdrawalsLoading(true);
-      setWithdrawalsError(null);
-      const response = await paymentAPI.getWithdrawals();
-      const data = (response as any)?.data?.data || (response as any)?.data || [];
-      setWithdrawals(Array.isArray(data) ? data : []);
-    } catch (error: any) {
-      setWithdrawalsError(error?.response?.data?.message || error?.message || t("profile.payments.loadError"));
-      logger.errorWithContext(error, { context: 'loadWithdrawals' });
-    } finally {
-      setWithdrawalsLoading(false);
-    }
-  };
-
   // Загрузка истории при открытии вкладки платежей
   useEffect(() => {
     if (activeTab === "payments" && isAuthenticated) {
-      loadWithdrawals();
       loadStatements({ offset: 0, limit: statementsPagination.limit });
     }
   }, [activeTab, isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -183,10 +155,9 @@ export function Profile() {
       setWithdrawalAmount("");
       setCardNumber("");
       setCardholderName("");
-      // Обновляем баланс и историю
+      // Обновляем баланс
       await profileData.refreshBalance();
       setTimeout(() => {
-        loadWithdrawals();
         setWithdrawalSuccess(false);
       }, 2000);
     } catch (error: any) {
@@ -896,7 +867,7 @@ export function Profile() {
               </div>
             )}
             {!apiFlowsLoading && !apiFlowsError && (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                 {referralStats.length === 0 && flows.length === 0 && (
                   <p>{t("profile.flows.empty")}</p>
                 )}
@@ -916,11 +887,12 @@ export function Profile() {
                     <div
                       key={r.id}
                       className={`${cn.glass} ${cn.flowRow} p-3 sm:p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
+                      style={{ minHeight: 170 }}
                     >
-                      <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-3 max-w-full">
                         {/* Верхняя часть: заголовок и код */}
-                        <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3">
-                          <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 max-w-full">
+                          <div className="flex-1 min-w-0 max-w-full">
                             <div className="text-sm sm:text-base font-extrabold text-slate-900 truncate" title={linkTitle}>
                               {linkTitle}
                             </div>
@@ -941,13 +913,13 @@ export function Profile() {
                         </div>
 
                         {/* Средняя часть: ссылка и кнопки */}
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-full">
                           <div 
                             className="flex-1 min-w-0 group relative rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer hover:bg-slate-100 transition-colors"
                             title={shareLink}
                             onClick={() => shareLink && handleCopyFlowLink(shareLink, r.id)}
                           >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 max-w-full">
                               <svg 
                                 className="w-4 h-4 text-slate-400 flex-shrink-0" 
                                 fill="none" 
@@ -959,9 +931,9 @@ export function Profile() {
                               <span className="text-xs sm:text-sm text-slate-600 font-mono truncate flex-1 min-w-0">
                                 {shareLink ? (
                                   <span className="block truncate" title={shareLink}>
-                                    <span className="hidden sm:inline lg:hidden">{shortenUrl(shareLink, 40)}</span>
-                                    <span className="hidden lg:inline">{shortenUrl(shareLink, 50)}</span>
-                                    <span className="sm:hidden">{shortenUrl(shareLink, 25)}</span>
+                                    <span className="hidden sm:inline lg:hidden">{shortenUrl(shareLink, 38)}</span>
+                                    <span className="hidden lg:inline">{shortenUrl(shareLink, 48)}</span>
+                                    <span className="sm:hidden">{shortenUrl(shareLink, 26)}</span>
                                   </span>
                                 ) : (
                                   <span className="text-slate-400 italic">{t("profile.flows.noLink") || "Ссылка не доступна"}</span>
@@ -1030,11 +1002,12 @@ export function Profile() {
                     <div
                       key={f.id}
                       className={`${cn.glass} ${cn.flowRow} p-3 sm:p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
+                      style={{ minHeight: 170 }}
                     >
-                      <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-3 max-w-full">
                         {/* Верхняя часть: название товара и комиссия */}
-                        <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3">
-                          <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 max-w-full">
+                          <div className="flex-1 min-w-0 max-w-full">
                             <div className="text-sm sm:text-base font-extrabold text-slate-900 truncate" title={f.productName}>
                               {f.productName}
                             </div>
@@ -1045,13 +1018,13 @@ export function Profile() {
                         </div>
 
                         {/* Средняя часть: ссылка и кнопки */}
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-full">
                           <div 
                             className="flex-1 min-w-0 group relative rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer hover:bg-slate-100 transition-colors"
                             title={f.link}
                             onClick={() => handleCopyFlowLink(f.link, f.id)}
                           >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 max-w-full">
                               <svg 
                                 className="w-4 h-4 text-slate-400 flex-shrink-0" 
                                 fill="none" 
@@ -1061,9 +1034,9 @@ export function Profile() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                               </svg>
                               <span className="text-xs sm:text-sm text-slate-600 font-mono truncate flex-1 min-w-0" title={f.link}>
-                                <span className="hidden sm:inline lg:hidden">{shortenUrl(f.link, 40)}</span>
-                                <span className="hidden lg:inline">{shortenUrl(f.link, 50)}</span>
-                                <span className="sm:hidden">{shortenUrl(f.link, 25)}</span>
+                                <span className="hidden sm:inline lg:hidden">{shortenUrl(f.link, 38)}</span>
+                                <span className="hidden lg:inline">{shortenUrl(f.link, 48)}</span>
+                                <span className="sm:hidden">{shortenUrl(f.link, 26)}</span>
                               </span>
                             </div>
                           </div>
@@ -1290,89 +1263,6 @@ export function Profile() {
               </form>
             </div>
 
-            {/* Статистика выводов */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h4 className="text-base font-extrabold text-slate-900">{t("profile.payments.history.title")}</h4>
-                  <p className="text-xs text-slate-500">{t("profile.payments.history.subtitle")}</p>
-                </div>
-              </div>
-
-              {withdrawalsLoading && (
-                <div className="py-8 text-center">
-                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#04734b]"></div>
-                  <p className="mt-2 text-sm text-slate-500">{t("profile.payments.history.loading")}</p>
-                </div>
-              )}
-
-              {withdrawalsError && (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                  {withdrawalsError}
-                </div>
-              )}
-
-              {!withdrawalsLoading && !withdrawalsError && (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-500">
-                        <th className="text-left py-3">{t("profile.payments.history.table.date")}</th>
-                        <th className="text-left py-3">{t("profile.payments.history.table.amount")}</th>
-                        <th className="text-left py-3">{t("profile.payments.history.table.cardNumber")}</th>
-                        <th className="text-left py-3">{t("profile.payments.history.table.cardholderName")}</th>
-                        <th className="text-left py-3">{t("profile.payments.history.table.status")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {withdrawals.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="py-8 text-center text-slate-500">
-                            {t("profile.payments.history.empty")}
-                          </td>
-                        </tr>
-                      ) : (
-                        withdrawals.map((withdrawal) => (
-                          <tr key={withdrawal.id} className="border-b border-slate-100 hover:bg-slate-50">
-                            <td className="py-3 text-slate-600">
-                              {new Date(withdrawal.created_at).toLocaleString()}
-                            </td>
-                            <td className="py-3 font-semibold text-slate-900">
-                              {formatPrice(withdrawal.amount, "UZS")}
-                            </td>
-                            <td className="py-3 text-slate-600">
-                              **** {withdrawal.card_number.slice(-4)}
-                            </td>
-                            <td className="py-3 text-slate-600">{withdrawal.cardholder_name}</td>
-                            <td className="py-3">
-                              <span
-                                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
-                                  withdrawal.status === "completed" || withdrawal.status === "paid"
-                                    ? "bg-emerald-100 text-emerald-700"
-                                    : withdrawal.status === "pending"
-                                    ? "bg-amber-100 text-amber-700"
-                                    : withdrawal.status === "rejected" || withdrawal.status === "failed"
-                                    ? "bg-rose-100 text-rose-700"
-                                    : "bg-slate-100 text-slate-700"
-                                }`}
-                              >
-                                {withdrawal.status === "completed" || withdrawal.status === "paid"
-                                  ? t("profile.payments.history.status.completed")
-                                  : withdrawal.status === "pending"
-                                  ? t("profile.payments.history.status.pending")
-                                  : withdrawal.status === "rejected" || withdrawal.status === "failed"
-                                  ? t("profile.payments.history.status.rejected")
-                                  : withdrawal.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
 
             {/* История платежных поручений */}
             <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
@@ -1389,9 +1279,7 @@ export function Profile() {
                   >
                     <option value="">Все</option>
                     <option value="pending">Ожидает</option>
-                    <option value="paid">Оплачено</option>
-                    <option value="completed">Выполнено</option>
-                    <option value="failed">Ошибка</option>
+                    <option value="approved">Одобрено</option>
                     <option value="rejected">Отклонено</option>
                   </select>
                   <button
@@ -1445,19 +1333,19 @@ export function Profile() {
                             <td className="py-3 px-2 text-slate-600">**** {s.card_number.slice(-4)}</td>
                             <td className="py-3 px-2 text-slate-600">{s.card_holder_name}</td>
                             <td className="py-3 px-2">
-                              <span
-                                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
-                                  s.type === "completed" || s.type === "paid"
-                                    ? "bg-emerald-100 text-emerald-700"
-                                    : s.type === "pending"
-                                    ? "bg-amber-100 text-amber-700"
-                                    : s.type === "rejected" || s.type === "failed"
-                                    ? "bg-rose-100 text-rose-700"
-                                    : "bg-slate-100 text-slate-700"
-                                }`}
-                              >
-                                {s.type}
-                              </span>
+                          <span
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+                              s.type === "approved"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : s.type === "pending"
+                                ? "bg-amber-100 text-amber-700"
+                                : s.type === "rejected"
+                                ? "bg-rose-100 text-rose-700"
+                                : "bg-slate-100 text-slate-700"
+                            }`}
+                          >
+                            {t(`profile.payments.statements.status.${s.type}`, { defaultValue: s.type })}
+                          </span>
                             </td>
                             <td className="py-3 px-2 text-slate-600">{s.description || "-"}</td>
                           </tr>

@@ -470,6 +470,13 @@ export const resources = {
               rejected: 'Отклонено',
             },
           },
+          statements: {
+            status: {
+              pending: 'В ожидании',
+              approved: 'Одобрено',
+              rejected: 'Отклонено',
+            },
+          },
         },
         dialog: {
           subtitle: 'Скопируйте реферальную ссылку и поделитесь ею.',
@@ -1443,6 +1450,13 @@ export const resources = {
             status: {
               completed: 'Bajarildi',
               pending: 'Qayta ishlanmoqda',
+              rejected: 'Rad etildi',
+            },
+          },
+          statements: {
+            status: {
+              pending: 'Kutilmoqda',
+              approved: 'Tasdiqlandi',
               rejected: 'Rad etildi',
             },
           },
