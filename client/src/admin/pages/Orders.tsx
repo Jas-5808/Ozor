@@ -511,8 +511,7 @@ export default function Orders() {
                 <th>{t('admin.ordersPage.cc.table.order')}</th>
                 <th>{t('admin.ordersPage.cc.table.fullName')}</th>
                 <th>{t('admin.ordersPage.cc.table.phone')}</th>
-                <th>{t('admin.ordersPage.cc.table.city')}</th>
-                <th>{t('admin.ordersPage.cc.table.region')}</th>
+                <th>{t('admin.ordersPage.cc.table.city')} / {t('admin.ordersPage.cc.table.region')}</th>
                 <th>{t('admin.ordersPage.cc.table.total')}</th>
                 <th>{t('admin.ordersPage.cc.table.status')}</th>
                 <th>{t('admin.ordersPage.cc.table.time')}</th>
@@ -524,9 +523,9 @@ export default function Orders() {
             <tbody>
               {ccLoading && Array.from({length: Math.min(ccLimit, 8)}).map((_, i)=> (
                 <tr key={`cc-sk-${i}`}>
-                  <td colSpan={11}>
-                    <div style={{display:'grid', gridTemplateColumns:'140px 200px 160px 160px 160px 100px 120px 140px 200px 220px 320px', gap:12}}>
-                      {Array.from({length:11}).map((__, j)=> (
+                  <td colSpan={10}>
+                    <div style={{display:'grid', gridTemplateColumns:'140px 200px 160px 180px 100px 120px 140px 200px 220px 320px', gap:12}}>
+                      {Array.from({length:10}).map((__, j)=> (
                         <div key={j} style={{height:16, background:'#e5e7eb', borderRadius:8}} />
                       ))}
                     </div>
@@ -539,26 +538,26 @@ export default function Orders() {
                   <td>{o.full_name || '—'}</td>
                   <td>{o.client_phone || '—'}</td>
                   <td>
-                    <select
-                      className={s.input}
-                      value={(o.city || '').toLowerCase()}
-                      onChange={(e)=> setCcOrders(prev => prev.map(x => x.id===o.id ? { ...x, city: e.target.value } : x))}
-                      style={{height:32, borderRadius:10}}
-                    >
-                      <option value="">—</option>
-                      {LOCATION_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <input
-                      className={s.input}
-                      placeholder={t('admin.ordersPage.cc.regionPlaceholder')}
-                      value={o.order_region || ''}
-                      onChange={(e)=> setCcOrders(prev => prev.map(x => x.id===o.id ? { ...x, order_region: e.target.value } : x))}
-                      style={{height:32, borderRadius:10, padding:'0 10px', border:'1px solid #e5e7eb', background:'#fff'}}
-                    />
+                    <div style={{display:'flex', flexDirection:'column', gap:6}}>
+                      <select
+                        className={s.input}
+                        value={(o.city || '').toLowerCase()}
+                        onChange={(e)=> setCcOrders(prev => prev.map(x => x.id===o.id ? { ...x, city: e.target.value } : x))}
+                        style={{height:32, borderRadius:10, width:'100%'}}
+                      >
+                        <option value="">—</option>
+                        {LOCATION_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
+                        ))}
+                      </select>
+                      <input
+                        className={s.input}
+                        placeholder={t('admin.ordersPage.cc.regionPlaceholder')}
+                        value={o.order_region || ''}
+                        onChange={(e)=> setCcOrders(prev => prev.map(x => x.id===o.id ? { ...x, order_region: e.target.value } : x))}
+                        style={{height:32, borderRadius:10, padding:'0 10px', border:'1px solid #e5e7eb', background:'#fff', width:'100%'}}
+                      />
+                    </div>
                   </td>
                   <td>{Number(o.total_price||0).toLocaleString()}</td>
                   <td>{renderCcStatus(o.status)}</td>
@@ -712,7 +711,7 @@ export default function Orders() {
                 </tr>
               ))}
               {(!filteredCc || filteredCc.length===0) && (
-                <tr><td colSpan={11} style={{textAlign:'center', color:'#64748b'}}>Hali buyurtmalar yo'q</td></tr>
+                <tr><td colSpan={10} style={{textAlign:'center', color:'#64748b'}}>Hali buyurtmalar yo'q</td></tr>
               )}
             </tbody>
           </table>
