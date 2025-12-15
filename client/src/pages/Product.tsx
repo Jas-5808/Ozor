@@ -1321,10 +1321,6 @@ export function Product() {
                 
                 {/* Форма "Купить в 1 клик" */}
                 <div className="mt-4 rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.08)] px-5 py-4 space-y-4">
-                  <div className="flex items-center justify-between text-sm font-semibold text-slate-900 mb-2">
-                    <span>Купить в 1 клик</span>
-                  </div>
-                  
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1.5">
@@ -1472,19 +1468,95 @@ export function Product() {
                   
                   <button 
                     type="button"
-                    onClick={() => setShowComingSoonModal(true)}
+                    onClick={async () => {
+                      if (!fetchedProduct) return;
+                      
+                      // Валидация
+                      if (!name.trim()) {
+                        setQuickOrderError(t("product.quickOrder.errors.nameRequired"));
+                        setTimeout(() => setQuickOrderError(null), 3000);
+                        return;
+                      }
+                      if (!phone || phone.trim().length < 8) {
+                        setQuickOrderError(t("product.quickOrder.errors.phoneInvalid"));
+                        setTimeout(() => setQuickOrderError(null), 3000);
+                        return;
+                      }
+                      const selectedLocation = uzbekistanLocations.find(loc => loc.id === quickOrderRegion);
+                      const isRegion = selectedLocation?.type === 'region';
+                      if (isRegion && !quickOrderCity) {
+                        setQuickOrderError("Выберите город");
+                        setTimeout(() => setQuickOrderError(null), 3000);
+                        return;
+                      }
+                      
+                      try {
+                        setQuickOrderLoading(true);
+                        setQuickOrderError(null);
+                        setQuickOrderFeedback(null);
+                        
+                        const variantId = selectedVariant?.id || fetchedProduct.variant_id;
+                        // Определяем город: если выбран город - используем его, иначе используем выбранный город из второго селекта
+                        const finalCityId = isRegion ? quickOrderCity : quickOrderRegion;
+                        const cityLocation = uzbekistanLocations.find(loc => loc.id === finalCityId);
+                        const cityCode = toCityCode(finalCityId) || finalCityId;
+                        const regionCode = isRegion ? quickOrderRegion : (cityLocation?.parentId || quickOrderRegion);
+                        
+                        const payload = {
+                          items: [
+                            {
+                              variant_id: variantId,
+                              quantity: 1,
+                              referral_code: referralCode || undefined,
+                            },
+                          ],
+                          guest_user_number: phone,
+                          full_name: name.trim(),
+                          city: cityCode,
+                          order_region: getRegionForCityOrRegion(regionCode) || regionCode,
+                          order_comment: "",
+                        } as any;
+                        
+                        await shopAPI.guestOrder(payload);
+                        setQuickOrderFeedback(t("product.quickOrder.success"));
+                        setName("");
+                        setPhone("");
+                        setQuickOrderRegion("");
+                        setQuickOrderCity("");
+                        setTimeout(() => {
+                          setQuickOrderFeedback(null);
+                        }, 3000);
+                      } catch (err: any) {
+                        logger.errorWithContext(err, { context: "quickOrder" });
+                        const errorMsg = err?.response?.data?.detail || err?.message || t("product.quickOrder.errors.generic");
+                        setQuickOrderError(errorMsg);
+                        setTimeout(() => setQuickOrderError(null), 3000);
+                      } finally {
+                        setQuickOrderLoading(false);
+                      }
+                    }}
                     disabled={(() => {
                       if (!name || !phone || !quickOrderRegion) return true;
                       const selectedLocation = uzbekistanLocations.find(loc => loc.id === quickOrderRegion);
                       const isRegion = selectedLocation?.type === 'region';
                       // Если выбрана область, нужен город. Если выбран город, город не нужен
                       return isRegion ? !quickOrderCity : false;
-                    })()}
+                    })() || quickOrderLoading}
                     className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed" 
                     style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
                   >
-                    {t("product.quickOrder.submit")}
+                    {quickOrderLoading ? t("product.quickOrder.submitting") : t("product.quickOrder.submit")}
                   </button>
+                  {quickOrderError && (
+                    <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600">
+                      {quickOrderError}
+                    </div>
+                  )}
+                  {quickOrderFeedback && (
+                    <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800">
+                      {quickOrderFeedback}
+                    </div>
+                  )}
                 </div>
               </div>
 
