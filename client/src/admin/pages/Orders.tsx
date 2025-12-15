@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 // @ts-ignore
 import s from '../AdminLayout.module.scss';
@@ -261,39 +261,47 @@ export default function Orders() {
     return ()=>{ ignore = true; };
   }, []);
 
+  // Function to load call-center orders (can be called manually)
+  const loadCcOrders = useCallback(async ()=>{
+    if (!isSale) return;
+    try {
+      setCcLoading(true);
+      const res = await shopAPI.getCallCenterOrders();
+      const data = Array.isArray(res.data) ? res.data : (res.data?.results || res.data?.data || []);
+      setCcOrders(data);
+      // Prefill comments from API if not yet set
+      setCcComments((prev)=>{
+        const next = { ...prev } as Record<string,string>;
+        (data || []).forEach((o:any)=>{
+          const id = o?.id;
+          const apiComment = (o?.order_comment ?? '') as string;
+          if (id && (next[id] === undefined) && apiComment) {
+            next[id] = apiComment;
+          }
+        });
+        return next;
+      });
+    } catch (_) {
+      setCcOrders([]);
+    } finally {
+      setCcLoading(false);
+    }
+  }, [isSale]);
+
   // Load call-center orders for sale
   useEffect(()=>{
     if (!isSale) return;
-    let ignore = false;
-    const loadCc = async ()=>{
-      try {
-        setCcLoading(true);
-        const res = await shopAPI.getCallCenterOrders();
-        const data = Array.isArray(res.data) ? res.data : (res.data?.results || res.data?.data || []);
-        if (!ignore) {
-          setCcOrders(data);
-          // Prefill comments from API if not yet set
-          setCcComments((prev)=>{
-            const next = { ...prev } as Record<string,string>;
-            (data || []).forEach((o:any)=>{
-              const id = o?.id;
-              const apiComment = (o?.order_comment ?? '') as string;
-              if (id && (next[id] === undefined) && apiComment) {
-                next[id] = apiComment;
-              }
-            });
-            return next;
-          });
-        }
-      } catch (_) {
-        if (!ignore) setCcOrders([]);
-      } finally {
-        if (!ignore) setCcLoading(false);
-      }
-    };
-    loadCc();
-    return ()=>{ ignore = true; };
+    loadCcOrders();
   }, [isSale]);
+
+  // Auto-refresh call-center orders every 15 seconds
+  useEffect(()=>{
+    if (!isSale) return;
+    const interval = setInterval(()=>{
+      loadCcOrders();
+    }, 15000);
+    return ()=> clearInterval(interval);
+  }, [isSale, loadCcOrders]);
 
   useEffect(()=>{
     let ignore = false;
@@ -486,6 +494,13 @@ export default function Orders() {
                         await shopAPI.takeOrderCallCenter(o.id);
                         setNotice({ type: 'success', message: t('admin.ordersPage.cc.takeSuccess') });
                         setTimeout(()=> setNotice(null), 2000);
+                        // Обновить вторую таблицу после успешного действия
+                        await loadCcOrders();
+                        // Также обновить первую таблицу
+                        const res = await shopAPI.getAllOrders();
+                        const data = Array.isArray(res.data) ? res.data : (res.data?.results || []);
+                        const normalized: Order[] = normalizeOrders(data);
+                        setItems(normalized);
                       } catch (e:any) {
                         const msg = e?.response?.data?.detail || e?.message || t('common.forms.error');
                         setNotice({ type:'error', message: msg });
@@ -525,12 +540,60 @@ export default function Orders() {
 
       {isSale && (
         <div style={{marginTop:16}}>
+          <style>{`
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
           <div style={{
             display:'flex', alignItems:'center', justifyContent:'space-between',
             marginBottom:8
           }}>
             <div style={{fontWeight:900}}>{t('admin.ordersPage.cc.title')}</div>
             <div style={{display:'flex', gap:8, alignItems:'center'}}>
+              <button
+                className={s.btn}
+                onClick={loadCcOrders}
+                disabled={ccLoading}
+                style={{
+                  height:32,
+                  padding:'0 12px',
+                  borderRadius:10,
+                  background: ccLoading ? '#e5e7eb' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  color:'#fff',
+                  border:'none',
+                  boxShadow: ccLoading ? 'none' : '0 2px 8px rgba(59, 130, 246, 0.3)',
+                  display:'inline-flex',
+                  alignItems:'center',
+                  justifyContent:'center',
+                  gap:6,
+                  fontWeight:600,
+                  cursor: ccLoading ? 'not-allowed' : 'pointer',
+                  transition:'all 0.2s ease',
+                  opacity: ccLoading ? 0.6 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (!ccLoading) {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!ccLoading) {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.3)';
+                  }
+                }}
+                title="Обновить данные"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{
+                  animation: ccLoading ? 'spin 1s linear infinite' : 'none'
+                }}>
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                {ccLoading ? 'Обновление...' : 'Обновить'}
+              </button>
               <select
                 className={s.input}
                 value={ccStatus}
