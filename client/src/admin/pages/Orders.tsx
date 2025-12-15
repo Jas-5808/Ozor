@@ -515,17 +515,16 @@ export default function Orders() {
                 <th>{t('admin.ordersPage.cc.table.total')}</th>
                 <th>{t('admin.ordersPage.cc.table.status')}</th>
                 <th>{t('admin.ordersPage.cc.table.time')}</th>
-                <th>{t('admin.ordersPage.cc.table.comment')}</th>
-                <th>{t('admin.ordersPage.cc.table.schedule')}</th>
+                <th>{t('admin.ordersPage.cc.table.comment')} / {t('admin.ordersPage.cc.table.schedule')}</th>
                 <th>{t('admin.ordersPage.cc.table.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {ccLoading && Array.from({length: Math.min(ccLimit, 8)}).map((_, i)=> (
                 <tr key={`cc-sk-${i}`}>
-                  <td colSpan={10}>
-                    <div style={{display:'grid', gridTemplateColumns:'140px 200px 160px 180px 100px 120px 140px 200px 220px 320px', gap:12}}>
-                      {Array.from({length:10}).map((__, j)=> (
+                  <td colSpan={9}>
+                    <div style={{display:'grid', gridTemplateColumns:'140px 200px 160px 180px 100px 120px 140px 240px 320px', gap:12}}>
+                      {Array.from({length:9}).map((__, j)=> (
                         <div key={j} style={{height:16, background:'#e5e7eb', borderRadius:8}} />
                       ))}
                     </div>
@@ -563,39 +562,42 @@ export default function Orders() {
                   <td>{renderCcStatus(o.status)}</td>
                   <td>{o.created_at ? new Date(o.created_at).toLocaleString() : '—'}</td>
                   <td>
-                    <input
-                      className={s.input}
-                      placeholder={t('admin.ordersPage.cc.commentPlaceholder')}
-                      value={ccComments[o.id] ?? (o.order_comment || '')}
-                      onChange={(e)=> setCcComments(prev=> ({...prev, [o.id]: e.target.value}))}
-                      style={{height:32, borderRadius:10}}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className={s.input}
-                      type="datetime-local"
-                      value={ccSchedule[o.id] || ''}
-                      onChange={(e)=> setCcSchedule(prev=> ({...prev, [o.id]: e.target.value}))}
-                      style={{height:32, borderRadius:10}}
-                    />
-                    {(() => {
-                      const target = getScheduleTarget(o);
-                      if (!target) return null;
-                      const nowTs = Date.now();
-                      const diff = target.getTime() - nowTs;
-                      const overdue = diff <= 0;
-                      const color = overdue ? '#dc2626' : (diff <= 5*60*1000 ? '#f59e0b' : '#16a34a');
-                      return (
-                        <span style={{
-                          display:'inline-block', marginLeft:8, padding:'2px 8px',
-                          borderRadius:999, fontSize:12, fontWeight:800,
-                          background:'#f8fafc', border:'1px solid #e5e7eb', color
-                        }} title={target.toLocaleString()}>
-                          ⏳ {formatRemaining(diff)}
-                        </span>
-                      );
-                    })()}
+                    <div style={{display:'flex', flexDirection:'column', gap:6}}>
+                      <input
+                        className={s.input}
+                        placeholder={t('admin.ordersPage.cc.commentPlaceholder')}
+                        value={ccComments[o.id] ?? (o.order_comment || '')}
+                        onChange={(e)=> setCcComments(prev=> ({...prev, [o.id]: e.target.value}))}
+                        style={{height:32, borderRadius:10, width:'100%'}}
+                      />
+                      <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                        <input
+                          className={s.input}
+                          type="datetime-local"
+                          value={ccSchedule[o.id] || ''}
+                          onChange={(e)=> setCcSchedule(prev=> ({...prev, [o.id]: e.target.value}))}
+                          style={{height:32, borderRadius:10, width:'100%'}}
+                        />
+                        {(() => {
+                          const target = getScheduleTarget(o);
+                          if (!target) return null;
+                          const nowTs = Date.now();
+                          const diff = target.getTime() - nowTs;
+                          const overdue = diff <= 0;
+                          const color = overdue ? '#dc2626' : (diff <= 5*60*1000 ? '#f59e0b' : '#16a34a');
+                          return (
+                            <span style={{
+                              display:'inline-block', padding:'2px 8px',
+                              borderRadius:999, fontSize:12, fontWeight:800,
+                              background:'#f8fafc', border:'1px solid #e5e7eb', color,
+                              alignSelf:'flex-start'
+                            }} title={target.toLocaleString()}>
+                              ⏳ {formatRemaining(diff)}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    </div>
                   </td>
                   <td>
                     <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8, minWidth:320}}>
@@ -711,7 +713,7 @@ export default function Orders() {
                 </tr>
               ))}
               {(!filteredCc || filteredCc.length===0) && (
-                <tr><td colSpan={10} style={{textAlign:'center', color:'#64748b'}}>Hali buyurtmalar yo'q</td></tr>
+                <tr><td colSpan={9} style={{textAlign:'center', color:'#64748b'}}>Hali buyurtmalar yo'q</td></tr>
               )}
             </tbody>
           </table>
