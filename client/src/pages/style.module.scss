@@ -1319,16 +1319,17 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-height: 420px;
-  padding: 36px 6px;
+  gap: 14px;
+  max-height: 620px;
+  width: 140px;
+  padding: 40px 10px;
   overflow: hidden;
 }
 
 .thumbs_scroller {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   max-height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1354,9 +1355,9 @@
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
   border: 1px solid var(--border, #e5e7eb);
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(4px);
@@ -1380,7 +1381,7 @@
   cursor: not-allowed;
 }
 .thumb {
-  width: 72px; height: 56px; border-radius: 12px;
+  width: 96px; height: 76px; border-radius: 14px;
   border: 2px solid var(--border); background: var(--surface);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); display: grid; place-items: center;
   padding: 0; cursor: pointer; transition: all 0.2s ease;
