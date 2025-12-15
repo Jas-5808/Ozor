@@ -1316,11 +1316,68 @@
 }
 
 .gallery_thumbs {
-  display: flex; flex-direction: column;
-  gap: 20px; /* увеличенные отступы между миниатюрами */
-  max-height: none; /* убираем ограничение высоты */
-  overflow: visible; /* убираем скролл полностью - все миниатюры показываются */
-  padding-right: 0; /* убираем отступ справа где был скролл */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 420px;
+  padding: 36px 6px;
+  overflow: hidden;
+}
+
+.thumbs_scroller {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  padding-right: 4px;
+  touch-action: pan-y;
+}
+
+.thumbs_scroller::-webkit-scrollbar {
+  width: 6px;
+}
+
+.thumbs_scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thumbs_scroller::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+}
+
+.thumb_nav {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid var(--border, #e5e7eb);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  color: #0f172a;
+}
+
+.thumb_nav:active {
+  transform: translateX(-50%) scale(0.97);
+}
+
+.thumb_nav.up { top: 6px; }
+.thumb_nav.down { bottom: 6px; }
+
+.thumb_nav.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 .thumb {
   width: 72px; height: 56px; border-radius: 12px;

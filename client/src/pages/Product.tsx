@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef, FormEvent } from "react";
+import React, { useEffect, useMemo, useState, useRef, FormEvent, useCallback } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 // @ts-ignore – модуль стилей объявлен через d.ts
@@ -334,6 +334,9 @@ export function Product() {
   const [quickOrderRegion, setQuickOrderRegion] = useState<string>("");
   const [quickOrderCity, setQuickOrderCity] = useState<string>("");
   const productRef = useRef<HTMLDivElement>(null);
+  const thumbsScrollRef = useRef<HTMLDivElement | null>(null);
+  const [thumbCanScrollUp, setThumbCanScrollUp] = useState(false);
+  const [thumbCanScrollDown, setThumbCanScrollDown] = useState(false);
   const installmentSteps = [3, 6, 9, 12, 15, 18, 24, 33];
   const INSTALLMENT_TRACK_PADDING = 28;
   const INSTALLMENT_DOT_SIZE = 16;
@@ -642,6 +645,38 @@ export function Product() {
       return images as string[];
     }
   }, [selectedVariant, product]);
+
+  const updateThumbScrollState = useCallback(() => {
+    const el = thumbsScrollRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    setThumbCanScrollUp(scrollTop > 4);
+    setThumbCanScrollDown(scrollTop + clientHeight < scrollHeight - 4);
+  }, []);
+
+  const scrollThumbs = useCallback((delta: number) => {
+    const el = thumbsScrollRef.current;
+    if (!el) return;
+    el.scrollBy({ top: delta, behavior: "smooth" });
+    // Обновляем состояние после анимации скролла
+    setTimeout(updateThumbScrollState, 200);
+  }, [updateThumbScrollState]);
+
+  useEffect(() => {
+    const el = thumbsScrollRef.current;
+    if (!el) return;
+    updateThumbScrollState();
+    const onScroll = () => updateThumbScrollState();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [galleryImages.length, updateThumbScrollState]);
+
+  useEffect(() => {
+    const target = document.getElementById(`thumb-${lightboxIndex}`);
+    if (target && thumbsScrollRef.current) {
+      target.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [lightboxIndex, galleryImages.length]);
 
   // Сбрасываем индекс лайтбокса при изменении варианта или списка изображений
   useEffect(() => {
@@ -1011,19 +1046,44 @@ export function Product() {
               {/* Показываем миниатюры только если есть больше одного изображения */}
               {galleryImages.length > 1 && (
                 <div className={cn.gallery_thumbs}>
-                  {galleryImages.map((img, i) => (
+                  {(thumbCanScrollUp || thumbCanScrollDown) && (
                     <button
-                      key={i}
-                      className={`${cn.thumb} ${i === lightboxIndex ? 'active' : ''}`}
                       type="button"
-                      aria-label={t("product.lightbox.preview", { index: i + 1 })}
-                      onClick={() => {
-                        setLightboxIndex(i);
-                      }}
+                      aria-label={t("product.lightbox.prev")}
+                      className={`${cn.thumb_nav} ${cn.up} ${!thumbCanScrollUp ? cn.disabled : ''}`}
+                      onClick={() => scrollThumbs(-160)}
+                      disabled={!thumbCanScrollUp}
                     >
-                      <img src={img} alt="" />
+                      ↑
                     </button>
-                  ))}
+                  )}
+                  <div className={cn.thumbs_scroller} ref={thumbsScrollRef}>
+                    {galleryImages.map((img, i) => (
+                      <button
+                        id={`thumb-${i}`}
+                        key={i}
+                        className={`${cn.thumb} ${i === lightboxIndex ? 'active' : ''}`}
+                        type="button"
+                        aria-label={t("product.lightbox.preview", { index: i + 1 })}
+                        onClick={() => {
+                          setLightboxIndex(i);
+                        }}
+                      >
+                        <img src={img} alt="" />
+                      </button>
+                    ))}
+                  </div>
+                  {(thumbCanScrollUp || thumbCanScrollDown) && (
+                    <button
+                      type="button"
+                      aria-label={t("product.lightbox.next")}
+                      className={`${cn.thumb_nav} ${cn.down} ${!thumbCanScrollDown ? cn.disabled : ''}`}
+                      onClick={() => scrollThumbs(160)}
+                      disabled={!thumbCanScrollDown}
+                    >
+                      ↓
+                    </button>
+                  )}
                 </div>
               )}
               <div className={cn.gallery_main}>
