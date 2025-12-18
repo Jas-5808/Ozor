@@ -49,12 +49,12 @@ const inputBase =
 const selectBase = inputBase;
 const btnBase =
   "inline-flex items-center justify-center gap-2 rounded-xl px-4 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
+const btnIcon =
+  "inline-flex items-center justify-center rounded-xl font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 px-0 p-0";
 const btnMuted =
   "bg-slate-100 text-slate-900 hover:bg-slate-200 disabled:hover:bg-slate-100";
 const btnGreen =
   "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-sm hover:from-emerald-600 hover:to-emerald-700";
-const btnBlue =
-  "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-sm hover:from-blue-600 hover:to-blue-700";
 const btnRed =
   "bg-gradient-to-br from-red-500 to-red-600 text-white shadow-sm hover:from-red-600 hover:to-red-700";
 const btnAmber =
@@ -97,7 +97,6 @@ export default function Orders() {
   const [serverNow, setServerNow] = useState<Date | null>(null);
 
   const [ccOrders, setCcOrders] = useState<any[]>([]);
-  const [ccLoading, setCcLoading] = useState(false);
   const [notice, setNotice] = useState<{
     type: "success" | "error";
     message: string;
@@ -106,6 +105,15 @@ export default function Orders() {
   const [ccComments, setCcComments] = useState<Record<string, string>>({});
   const [ccSchedule, setCcSchedule] = useState<Record<string, string>>({});
   const [ccTick, setCcTick] = useState<number>(0);
+  const [ccOverrides, setCcOverrides] = useState<
+    Record<string, { city?: string; order_region?: string }>
+  >(() => {
+    try {
+      return JSON.parse(localStorage.getItem("admin_cc_overrides") || "{}");
+    } catch {
+      return {};
+    }
+  });
 
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersLimit, setOrdersLimit] = useState(20);
@@ -113,8 +121,8 @@ export default function Orders() {
   const [ccPage, setCcPage] = useState(1);
   const [ccLimit, setCcLimit] = useState(20);
   const [ccStatus, setCcStatus] = useState<string>("pending");
-  const [ccSortColumn, setCcSortColumn] = useState<string>("");
-  const [ccSortDirection, setCcSortDirection] = useState<"asc" | "desc">("asc");
+  const [ccSortColumn, setCcSortColumn] = useState<string>("time");
+  const [ccSortDirection, setCcSortDirection] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     const id = setInterval(() => setCcTick((x) => x + 1), 1000);
@@ -293,12 +301,22 @@ export default function Orders() {
   const loadCcOrders = useCallback(async () => {
     if (!isSale) return;
     try {
-      setCcLoading(true);
       const res = await shopAPI.getCallCenterOrders();
       const data = Array.isArray(res.data)
         ? res.data
         : res.data?.results || res.data?.data || [];
-      setCcOrders(data);
+      setCcOrders((prev) =>
+        (data || []).map((o: any) => {
+          const existing = prev.find((p) => p.id === o.id);
+          const ov = ccOverrides[o.id] || {};
+          return {
+            ...o,
+            // сохраняем выбранные значения города/региона, если пользователь менял их вручную
+            city: ov.city ?? existing?.city ?? o.city,
+            order_region: ov.order_region ?? existing?.order_region ?? o.order_region,
+          };
+        })
+      );
 
       setCcComments((prev) => {
         const next = { ...prev } as Record<string, string>;
@@ -311,20 +329,20 @@ export default function Orders() {
       });
     } catch {
       setCcOrders([]);
-    } finally {
-      setCcLoading(false);
     }
   }, [isSale]);
 
   useEffect(() => {
-    if (!isSale) return;
-    loadCcOrders();
-  }, [isSale, loadCcOrders]);
+    try {
+      localStorage.setItem("admin_cc_overrides", JSON.stringify(ccOverrides));
+    } catch {
+      // ignore
+    }
+  }, [ccOverrides]);
 
   useEffect(() => {
     if (!isSale) return;
-    const interval = setInterval(loadCcOrders, 15000);
-    return () => clearInterval(interval);
+    loadCcOrders();
   }, [isSale, loadCcOrders]);
 
   useEffect(() => {
@@ -731,31 +749,6 @@ export default function Orders() {
             <div className="font-black text-slate-900">{t("admin.ordersPage.cc.title")}</div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                className={btnBase + " h-10 " + btnBlue}
-                onClick={loadCcOrders}
-                disabled={ccLoading}
-                title="Обновить данные"
-              >
-                <svg
-                  className={ccLoading ? "animate-spin" : ""}
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                {ccLoading ? "Обновление..." : "Обновить"}
-              </button>
-
               <select
                 className={selectBase}
                 value={ccStatus}
@@ -786,10 +779,6 @@ export default function Orders() {
               </select>
             </div>
           </div>
-
-          {ccLoading && (
-            <div className="mb-2 text-xs text-slate-500">{t("admin.ordersPage.loading")}</div>
-          )}
 
           <div className="overflow-x-auto">
             <table className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -845,10 +834,9 @@ export default function Orders() {
               </thead>
 
               <tbody className="text-sm">
-                {!ccLoading &&
-                  (filteredCc || [])
-                    .slice((ccPage - 1) * ccLimit, (ccPage - 1) * ccLimit + ccLimit)
-                    .map((o: any, idx: number) => {
+                {(filteredCc || [])
+                  .slice((ccPage - 1) * ccLimit, (ccPage - 1) * ccLimit + ccLimit)
+                  .map((o: any, idx: number) => {
                       const target = getScheduleTarget(o);
                       const diff = target ? target.getTime() - Date.now() : null;
                       const overdue = diff !== null && diff <= 0;
@@ -886,9 +874,17 @@ export default function Orders() {
                                 className={selectBase}
                                 value={(o.city || "").toLowerCase()}
                                 onChange={(e) =>
-                                  setCcOrders((prev) =>
-                                    prev.map((x) => (x.id === o.id ? { ...x, city: e.target.value } : x))
-                                  )
+                              setCcOrders((prev) =>
+                                prev.map((x) => {
+                                  if (x.id !== o.id) return x;
+                                  const updated = { ...x, city: e.target.value };
+                                  setCcOverrides((p) => ({
+                                    ...p,
+                                    [o.id]: { ...(p[o.id] || {}), city: e.target.value },
+                                  }));
+                                  return updated;
+                                })
+                              )
                                 }
                               >
                                 <option value="">—</option>
@@ -904,11 +900,17 @@ export default function Orders() {
                                 placeholder={t("admin.ordersPage.cc.regionPlaceholder")}
                                 value={o.order_region || ""}
                                 onChange={(e) =>
-                                  setCcOrders((prev) =>
-                                    prev.map((x) =>
-                                      x.id === o.id ? { ...x, order_region: e.target.value } : x
-                                    )
-                                  )
+                              setCcOrders((prev) =>
+                                prev.map((x) => {
+                                  if (x.id !== o.id) return x;
+                                  const updated = { ...x, order_region: e.target.value };
+                                  setCcOverrides((p) => ({
+                                    ...p,
+                                    [o.id]: { ...(p[o.id] || {}), order_region: e.target.value },
+                                  }));
+                                  return updated;
+                                })
+                              )
                                 }
                               />
                             </div>
@@ -964,14 +966,17 @@ export default function Orders() {
                           <td className="px-3 py-3">
                             <div className="flex items-center justify-center gap-2">
                               <button
-                                className={btnBase + " h-10 w-10 p-0 " + btnGreen}
+                                className={btnIcon + " h-10 w-10 " + btnGreen}
                                 title="Qabul qilish"
                                 onClick={async () => {
                                   try {
+                                    const cityVal = (o.city || "").trim() || " ";
+                                    const regionVal = (o.order_region || "").trim() || " ";
+                                    const commentVal = (ccComments[o.id] || o.order_comment || "").trim() || " ";
                                     const payload = {
-                                      city: (o.city || "") || undefined,
-                                      region: (o.order_region || "") || undefined,
-                                      order_comment: (ccComments[o.id] || "").trim() || undefined,
+                                      city: cityVal,
+                                      region: regionVal,
+                                      order_comment: commentVal,
                                       status: "accepted",
                                     };
                                     await shopAPI.updateOrderLocation(o.id, payload);
@@ -987,11 +992,11 @@ export default function Orders() {
                                   }
                                 }}
                               >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                                   <path
                                     d="M20 6L9 17l-5-5"
                                     stroke="currentColor"
-                                    strokeWidth="2.5"
+                                    strokeWidth="2.4"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                   />
@@ -999,14 +1004,17 @@ export default function Orders() {
                               </button>
 
                               <button
-                                className={btnBase + " h-10 w-10 p-0 " + btnRed}
+                                className={btnIcon + " h-10 w-10 " + btnRed}
                                 title="Rad etish"
                                 onClick={async () => {
                                   try {
+                                    const cityVal = (o.city || "").trim() || " ";
+                                    const regionVal = (o.order_region || "").trim() || " ";
+                                    const commentVal = (ccComments[o.id] || o.order_comment || "").trim() || " ";
                                     const payload = {
-                                      city: (o.city || "") || undefined,
-                                      region: (o.order_region || "") || undefined,
-                                      order_comment: (ccComments[o.id] || "").trim() || undefined,
+                                      city: cityVal,
+                                      region: regionVal,
+                                      order_comment: commentVal,
                                       status: "cancelled",
                                     };
                                     await shopAPI.updateOrderLocation(o.id, payload);
@@ -1022,11 +1030,11 @@ export default function Orders() {
                                   }
                                 }}
                               >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                                   <path
                                     d="M18 6L6 18M6 6l12 12"
                                     stroke="currentColor"
-                                    strokeWidth="2.5"
+                                    strokeWidth="2.4"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                   />
@@ -1034,7 +1042,7 @@ export default function Orders() {
                               </button>
 
                               <button
-                                className={btnBase + " h-10 w-10 p-0 " + btnAmber}
+                                className={btnIcon + " h-10 w-10 " + btnAmber}
                                 title="Kechiktirish"
                                 onClick={async () => {
                                   try {
@@ -1044,11 +1052,13 @@ export default function Orders() {
                                     const human = schedule ? new Date(schedule).toLocaleString() : "";
                                     const composed = schedule
                                       ? `${baseComment ? baseComment + " | " : ""}Reja: ${human} [reja_at:${iso}]`
-                                      : baseComment || undefined;
+                                      : baseComment || " ";
 
+                                    const cityVal = (o.city || "").trim() || " ";
+                                    const regionVal = (o.order_region || "").trim() || " ";
                                     const payload = {
-                                      city: (o.city || "") || undefined,
-                                      region: (o.order_region || "") || undefined,
+                                      city: cityVal,
+                                      region: regionVal,
                                       order_comment: composed,
                                       status: "processing",
                                     };
@@ -1065,12 +1075,12 @@ export default function Orders() {
                                   }
                                 }}
                               >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.2" />
                                   <path
                                     d="M12 6v6l4 2"
                                     stroke="currentColor"
-                                    strokeWidth="2"
+                                    strokeWidth="2.2"
                                     strokeLinecap="round"
                                   />
                                 </svg>
@@ -1079,9 +1089,9 @@ export default function Orders() {
                           </td>
                         </tr>
                       );
-                    })}
+                  })}
 
-                {!ccLoading && (!filteredCc || filteredCc.length === 0) && (
+                {(!filteredCc || filteredCc.length === 0) && (
                   <tr className="border-t border-slate-200">
                     <td colSpan={8} className="px-3 py-6 text-center text-sm text-slate-500">
                       Hali buyurtmalar yo&apos;q
@@ -1092,7 +1102,7 @@ export default function Orders() {
             </table>
           </div>
 
-          {!ccLoading && filteredCc && filteredCc.length > 0 && (
+          {filteredCc && filteredCc.length > 0 && (
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
               <div className="text-xs text-slate-500">
                 Page {ccPage} of {Math.max(1, Math.ceil(filteredCc.length / ccLimit))}

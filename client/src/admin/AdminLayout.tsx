@@ -230,7 +230,7 @@ export default function AdminLayout() {
     .join(' ');
 
   const navLinkBase =
-    'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-colors';
+    'flex items-center gap-3 rounded-xl py-2 text-sm font-semibold transition-colors';
   const navLinkActive = isDarkTheme
     ? 'bg-emerald-600 text-white shadow'
     : 'bg-emerald-100 text-emerald-900 shadow-sm';
