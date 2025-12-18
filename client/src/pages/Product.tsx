@@ -302,6 +302,9 @@ export function Product() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxZoom, setLightboxZoom] = useState(1);
+  const [recommended, setRecommended] = useState<ProductType[]>([]);
+  const [recommendedLoading, setRecommendedLoading] = useState(false);
+  const [recommendedError, setRecommendedError] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<"description" | "characteristics" | "comments">("description");
   const [comments] = useState<Array<{ id: string; author: string; text: string; createdAt: string }>>([]);
@@ -529,6 +532,51 @@ export function Product() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Рекомендации по категории
+  useEffect(() => {
+    const categoryId = product?.category?.id || product?.category || "";
+    if (!categoryId) return;
+    let ignore = false;
+    setRecommendedLoading(true);
+    setRecommendedError(null);
+    shopAPI
+      .getProductsByCategory(categoryId, { offset: 0, limit: 10 })
+      .then((res) => {
+        if (ignore) return;
+        const results = (res as any)?.data?.results ?? (res as any)?.data ?? [];
+        const list: ProductType[] = Array.isArray(results)
+          ? results
+              .filter((p: any) => p?.product_id && p.product_id !== product?.product_id && typeof p?.price === "number" && p.price > 0)
+              .map((p: any) => ({
+                product_id: p.product_id,
+                product_name: p.product_name,
+                product_description: p.product_description,
+                category: p.category,
+                refferal_price: p.refferal_price,
+                main_image: p.main_image,
+                variant_id: p.variant_id,
+                variant_sku: p.variant_sku,
+                price: p.price,
+                stock: p.stock,
+                variant_attributes: p.variant_attributes || [],
+                variant_media: p.variant_media || [],
+              }))
+          : [];
+        setRecommended(list);
+      })
+      .catch((err: any) => {
+        if (ignore) return;
+        setRecommendedError(err?.message || "Failed to load recommendations");
+      })
+      .finally(() => {
+        if (!ignore) setRecommendedLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [product?.category, product?.product_id]);
 
   // Галерея
   const galleryImages: string[] = useMemo(() => {
@@ -1530,18 +1578,26 @@ export function Product() {
             </div>
           </section>
 
-          {/* Recommendations (placeholder) */}
+          {/* Recommendations */}
           <section className="rounded-3xl bg-white border border-slate-200 shadow-sm p-4 md:p-5">
             <h3 className="text-base sm:text-lg font-bold text-slate-900">{t("product.sections.recommendations")}</h3>
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="h-32 rounded-xl bg-slate-200/60" />
-                  <div className="mt-3 h-4 w-2/3 rounded bg-slate-200/70" />
-                  <div className="mt-2 h-4 w-1/3 rounded bg-slate-200/70" />
-                </div>
-              ))}
-            </div>
+            {recommendedLoading && <p className="mt-2 text-sm text-slate-500">Загрузка рекомендаций...</p>}
+            {recommendedError && <p className="mt-2 text-sm text-rose-500">{recommendedError}</p>}
+            {!recommendedLoading && !recommendedError && recommended.length === 0 && (
+              <p className="mt-2 text-sm text-slate-500">Нет рекомендаций.</p>
+            )}
+            {!recommendedLoading && !recommendedError && recommended.length > 0 && (
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+                {recommended.map((p) => {
+                  const uniqueKey = p.variant_id ? `${p.product_id}_${p.variant_id}` : p.product_id;
+                  return (
+                    <div key={uniqueKey} className="min-w-0">
+                      <ProductCard product={p} size="compact" />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         </div>
       </div>
