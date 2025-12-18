@@ -535,7 +535,10 @@ export function Product() {
 
   // Рекомендации по категории
   useEffect(() => {
-    const categoryId = product?.category?.id || product?.category || "";
+    const categoryId =
+      typeof product?.category === "string"
+        ? product.category
+        : (product?.category as any)?.id || "";
     if (!categoryId) return;
     let ignore = false;
     setRecommendedLoading(true);
@@ -721,10 +724,15 @@ export function Product() {
   const [lightboxPan, setLightboxPan] = useState({ x: 0, y: 0 });
   const lastTapRef = useRef<number>(0);
 
-  const distance = (touches: ArrayLike<Touch>) => {
-    if (touches.length < 2) return null;
-    const t0 = touches[0] || (typeof (touches as any).item === "function" ? (touches as any).item(0) : null);
-    const t1 = touches[1] || (typeof (touches as any).item === "function" ? (touches as any).item(1) : null);
+  const distance = (touches: TouchList | React.TouchList) => {
+    if (!touches || touches.length < 2) return null;
+    const getTouch = (idx: number): Touch | null => {
+      const anyTouches = touches as any;
+      if (typeof anyTouches.item === "function") return anyTouches.item(idx) || null;
+      return (anyTouches[idx] as Touch) || null;
+    };
+    const t0 = getTouch(0);
+    const t1 = getTouch(1);
     if (!t0 || !t1) return null;
     const dx = t0.clientX - t1.clientX;
     const dy = t0.clientY - t1.clientY;
