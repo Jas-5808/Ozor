@@ -534,6 +534,8 @@ export const orderAPI = {
     apiClient.post("/orders", orderData),
   getOrderById: (orderId: string): Promise<TypedAxiosResponse<OrderResponse>> =>
     apiClient.get(`/orders/${orderId}`),
+  updateStatus: (orderId: string, status: string): Promise<TypedAxiosResponse<any>> =>
+    apiClient.put(`/shop/order/${orderId}/status`, { status }),
 };
 
 export const warehouseAPI = {
