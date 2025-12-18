@@ -10,7 +10,8 @@ interface Slide {
   link: string;
 }
 
-const fallbackSlides: Slide[] = [
+const fallbackSlides: Slide[] = [];
+/*
   {
     id: "1",
     title: "",
@@ -194,6 +195,7 @@ const fallbackSlides: Slide[] = [
     link: "#",
   },
 ];
+*/
 
 export const SimpleSlider: React.FC = () => {
   const { t } = useTranslation();
@@ -271,6 +273,7 @@ export const SimpleSlider: React.FC = () => {
   }, [mobileSlideIndex, infiniteSlides.length]);
 
   useEffect(() => {
+    if (!slides || slides.length === 0) return;
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
       // Для мобильной версии - просто увеличиваем индекс, переход обработается в useEffect выше
@@ -278,10 +281,17 @@ export const SimpleSlider: React.FC = () => {
     }, 4000); // Автопрокрутка каждые 4 секунды
 
     return () => clearInterval(interval);
-  }, []);
+  }, [slides]);
 
   // Оптимизированная загрузка изображений - только первое и следующие 2 для предзагрузки
   useEffect(() => {
+    if (!slides || slides.length === 0) {
+      setAllImagesLoaded(true);
+      return;
+    }
+
+    setAllImagesLoaded(false);
+
     // Загружаем только первое изображение и следующие 2 для предзагрузки
     const imagesToPreload = [0, 1, 2].filter(i => i < slides.length);
     
@@ -315,7 +325,7 @@ export const SimpleSlider: React.FC = () => {
     Promise.all(imagePromises).then(() => {
       setAllImagesLoaded(true);
     });
-  }, []);
+  }, [slides]);
 
   const goToSlide = (index: number) => {
     setCurrentSlide(index);
