@@ -653,6 +653,7 @@ export function Product() {
   const closeLightbox = () => {
     setLightboxOpen(false);
     setLightboxZoom(1);
+    setLightboxPan({ x: 0, y: 0 });
     document.body.style.overflow = "";
   };
   const nextImage = () => setLightboxIndex((prev) => (prev + 1) % Math.max(galleryImages.length, 1));
@@ -662,6 +663,73 @@ export function Product() {
   const onLightboxWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
     if (e.deltaY < 0) zoomIn();
     else zoomOut();
+  };
+
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const pinchStartDist = useRef<number | null>(null);
+  const pinchStartZoom = useRef<number>(1);
+  const panStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [lightboxPan, setLightboxPan] = useState({ x: 0, y: 0 });
+  const lastTapRef = useRef<number>(0);
+
+  const distance = (touches: ArrayLike<Touch>) => {
+    if (touches.length < 2) return null;
+    const t0 = touches[0] || (typeof (touches as any).item === "function" ? (touches as any).item(0) : null);
+    const t1 = touches[1] || (typeof (touches as any).item === "function" ? (touches as any).item(1) : null);
+    if (!t0 || !t1) return null;
+    const dx = t0.clientX - t1.clientX;
+    const dy = t0.clientY - t1.clientY;
+    return Math.hypot(dx, dy);
+  };
+
+  const handleTouchStart: React.TouchEventHandler<HTMLDivElement> = (e) => {
+    if (e.touches.length === 1) {
+      touchStartX.current = e.touches[0]?.clientX ?? null;
+      touchStartY.current = e.touches[0]?.clientY ?? null;
+      pinchStartDist.current = null;
+      panStart.current = { x: lightboxPan.x, y: lightboxPan.y };
+    } else if (e.touches.length === 2) {
+      pinchStartDist.current = distance(e.touches);
+      pinchStartZoom.current = lightboxZoom;
+      touchStartX.current = null;
+      touchStartY.current = null;
+    }
+  };
+
+  const handleTouchMove: React.TouchEventHandler<HTMLDivElement> = (e) => {
+    if (e.touches.length === 2) {
+      const dist = distance(e.touches);
+      if (dist && pinchStartDist.current) {
+        const ratio = dist / pinchStartDist.current;
+        const nextZoom = Math.min(3, Math.max(0.6, pinchStartZoom.current * ratio));
+        setLightboxZoom(nextZoom);
+        if (nextZoom <= 1) {
+          setLightboxPan({ x: 0, y: 0 });
+        }
+      }
+    } else if (e.touches.length === 1 && lightboxZoom > 1 && touchStartX.current !== null && touchStartY.current !== null) {
+      const cx = e.touches[0]?.clientX ?? 0;
+      const cy = e.touches[0]?.clientY ?? 0;
+      const dx = cx - touchStartX.current;
+      const dy = cy - touchStartY.current;
+      setLightboxPan({ x: panStart.current.x + dx, y: panStart.current.y + dy });
+    }
+  };
+
+  const handleTouchEnd: React.TouchEventHandler<HTMLDivElement> = (e) => {
+    if (touchStartX.current !== null && lightboxZoom <= 1) {
+      const dx = (e.changedTouches[0]?.clientX ?? 0) - touchStartX.current;
+      touchStartX.current = null;
+      touchStartY.current = null;
+      if (Math.abs(dx) > 40) {
+        if (dx > 0) prevImage();
+        else nextImage();
+      }
+    } else {
+      touchStartX.current = null;
+      touchStartY.current = null;
+    }
   };
 
   useEffect(() => {
@@ -1044,7 +1112,7 @@ export function Product() {
 
             {/* Aside actions + Quick order (desktop) */}
             <aside className="rounded-3xl bg-white border border-slate-200 shadow-sm p-4 md:p-5 space-y-4">
-              <div className="flex items-center gap-3">
+              {/* <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={openQuickOrder}
@@ -1086,7 +1154,7 @@ export function Product() {
                     {t("product.buttons.addToCart")}
                   </button>
                 )}
-              </div>
+              </div> */}
 
               <p className="text-center text-xs font-medium text-slate-500">{t("product.paymentInfo")}</p>
 
@@ -1351,7 +1419,7 @@ export function Product() {
               >
                 {t("product.tabs.description")}
               </button>
-              <button
+              {/* <button
                 type="button"
                 onClick={() => setActiveTab("characteristics")}
                 className={`flex-1 h-10 rounded-xl text-sm font-semibold transition ${
@@ -1359,7 +1427,7 @@ export function Product() {
                 }`}
               >
                 {t("product.tabs.specs")}
-              </button>
+              </button> */}
               <button
                 type="button"
                 onClick={() => setActiveTab("comments")}
@@ -1478,26 +1546,28 @@ export function Product() {
         </div>
       </div>
 
-      {/* QuickOrderSheet */}
+      {/* QuickOrderSheet (disabled on mobile) */}
       {product && (
-        <QuickOrderSheet
-          open={isQuickOrderOpen}
-          onClose={closeQuickOrder}
-          product={product}
-          variant={selectedVariant}
-          name={name}
-          phone={phone}
-          onNameChange={setName}
-          onPhoneChange={setPhone}
-          agreeTerms={agreeTerms}
-          onAgreeChange={setAgreeTerms}
-          loading={quickOrderLoading}
-          error={quickOrderError}
-          feedback={quickOrderFeedback}
-          onSubmit={handleQuickOrderSubmit}
-          locationLabel={locationLabel}
-          locationHint={locationHint}
-        />
+        <div className="hidden md:block">
+          <QuickOrderSheet
+            open={isQuickOrderOpen}
+            onClose={closeQuickOrder}
+            product={product}
+            variant={selectedVariant}
+            name={name}
+            phone={phone}
+            onNameChange={setName}
+            onPhoneChange={setPhone}
+            agreeTerms={agreeTerms}
+            onAgreeChange={setAgreeTerms}
+            loading={quickOrderLoading}
+            error={quickOrderError}
+            feedback={quickOrderFeedback}
+            onSubmit={handleQuickOrderSubmit}
+            locationLabel={locationLabel}
+            locationHint={locationHint}
+          />
+        </div>
       )}
 
       {/* Mobile bottom bar (disabled per request) */}
@@ -1550,13 +1620,16 @@ export function Product() {
         <div
           className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center px-4"
           onWheel={onLightboxWheel}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
           onClick={(e) => {
             if (e.target === e.currentTarget) closeLightbox();
           }}
         >
           <div className="relative w-full max-w-5xl">
             <button
-              className="absolute -top-3 -right-3 h-10 w-10 rounded-full bg-white/90 text-slate-900 shadow-md grid place-items-center"
+              className="hidden md:grid absolute -top-3 -right-3 h-10 w-10 rounded-full bg-white/90 text-slate-900 shadow-md place-items-center"
               onClick={closeLightbox}
               aria-label={t("product.lightbox.close")}
             >
@@ -1564,7 +1637,7 @@ export function Product() {
             </button>
 
             <button
-              className="absolute left-2 top-1/2 -translate-y-1/2 h-12 w-12 rounded-2xl bg-white/90 text-slate-900 shadow-md grid place-items-center"
+              className="hidden md:grid absolute left-2 top-1/2 -translate-y-1/2 h-12 w-12 rounded-2xl bg-white/90 text-slate-900 shadow-md place-items-center"
               onClick={(e) => {
                 e.stopPropagation();
                 prevImage();
@@ -1575,7 +1648,7 @@ export function Product() {
             </button>
 
             <button
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-12 w-12 rounded-2xl bg-white/90 text-slate-900 shadow-md grid place-items-center"
+              className="hidden md:grid absolute right-2 top-1/2 -translate-y-1/2 h-12 w-12 rounded-2xl bg-white/90 text-slate-900 shadow-md place-items-center"
               onClick={(e) => {
                 e.stopPropagation();
                 nextImage();
@@ -1590,12 +1663,23 @@ export function Product() {
                 src={galleryImages[lightboxIndex] || getProductImageUrl(product?.main_image || "")}
                 alt={t("product.lightbox.view")}
                 className="w-full max-h-[80vh] object-contain"
-                style={{ transform: `scale(${lightboxZoom})` }}
-                onClick={(e) => e.stopPropagation()}
+                style={{ transform: `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxZoom})` }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const now = Date.now();
+                  if (now - lastTapRef.current < 300) {
+                    setLightboxZoom(1);
+                    setLightboxPan({ x: 0, y: 0 });
+                  } else {
+                    setLightboxZoom((z) => (z >= 2 ? 1 : 2));
+                    if (lightboxZoom <= 1) setLightboxPan({ x: 0, y: 0 });
+                  }
+                  lastTapRef.current = now;
+                }}
               />
             </div>
 
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 hidden md:flex gap-2">
               <button
                 className="h-11 w-11 rounded-2xl bg-white/90 text-slate-900 shadow-md text-xl font-bold"
                 onClick={(e) => {
