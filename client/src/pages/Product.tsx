@@ -895,9 +895,9 @@ export function Product() {
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 md:gap-6">
           {/* Gallery */}
           <section className="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-            <div className="flex gap-3 p-3 md:p-4">
+            <div className="flex gap-3 p-3 md:p-4 items-start">
               {galleryImages.length > 1 && (
-                <div className="relative flex flex-col gap-1.5  w-[88px] overflow-hidden px-1.5 py-3 sm:w-[96px] md:w-[104px] xl:w-[120px]">
+                <div className="relative flex flex-col gap-1.5 max-h-[520px] sm:max-h-[840px] w-[88px] overflow-hidden px-1.5 py-3 sm:w-[96px] md:w-[104px] xl:w-[120px]">
                   {(thumbCanScrollUp || thumbCanScrollDown) && (
                     <button
                       type="button"
@@ -913,14 +913,14 @@ export function Product() {
                   )}
 
                     <div
-                      className="flex flex-col gap-2 h-full overflow-y-auto overscroll-contain scroll-smooth pr-1 touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                      className="flex flex-col gap-2 max-h-full overflow-y-auto overscroll-contain scroll-smooth pr-1 touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                       ref={thumbsScrollRef}
                     >
                     {galleryImages.map((img, i) => (
                       <button
                         id={`thumb-${i}`}
                         key={i}
-                          className={`w-full rounded-[16px] border-2 bg-white shadow-sm grid place-items-center transition relative ${
+                          className={`w-full h-[68px] sm:h-[80px] md:h-[92px] xl:h-[408px] rounded-[16px] border-2 bg-white shadow-sm grid place-items-center transition relative ${
                           i === lightboxIndex ? "border-emerald-600 shadow-md" : "border-slate-200 hover:-translate-y-0.5 hover:shadow-md"
                         }`}
                         type="button"
@@ -952,7 +952,7 @@ export function Product() {
                 <img
                   src={galleryImages[Math.min(lightboxIndex, galleryImages.length - 1)] || getProductImageUrl(product.main_image)}
                   alt={product.product_name}
-                  className="w-full rounded-3xl object-cover cursor-zoom-in"
+                  className="w-full max-h-[520px] sm:max-h-[960px] rounded-3xl object-contain cursor-zoom-in"
                   onClick={() => openLightbox(Math.min(lightboxIndex, galleryImages.length - 1))}
                 />
               </div>
