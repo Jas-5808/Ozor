@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import apiClient from "../services/api";
 
 interface Slide {
   id: string;
@@ -9,12 +10,12 @@ interface Slide {
   link: string;
 }
 
-const slides: Slide[] = [
+const fallbackSlides: Slide[] = [
   {
     id: "1",
     title: "",
     subtitle: "",
-    image: "https://images.uzum.uz/d33ptvl2llnd6jumh5lg/main_page_banner.jpg",
+    image: "https://lab.ozar.uz/media/banners/ChatGPT_Image_18_%D0%B4%D0%B5%D0%BA._2025_%D0%B3._13_31_57.png",
     link: "#",
   },
   {
@@ -196,6 +197,7 @@ const slides: Slide[] = [
 
 export const SimpleSlider: React.FC = () => {
   const { t } = useTranslation();
+  const [remoteSlides, setRemoteSlides] = useState<Slide[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [mobileSlideIndex, setMobileSlideIndex] = useState(1); // Начинаем с 1, т.к. первый слайд - дубликат
   const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
@@ -209,10 +211,43 @@ export const SimpleSlider: React.FC = () => {
   const wasSwiped = useRef<boolean>(false);
 
   // Для мобильной версии создаем массив с дубликатами: последний + все слайды + первый
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = async () => {
+      try {
+        const res = await apiClient.get("/marketing/banners", { signal: controller.signal });
+        const results = res?.data?.results;
+        if (Array.isArray(results) && results.length > 0) {
+          const mapped: Slide[] = results
+            .sort((a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0))
+            .map((b: any) => ({
+              id: b?.id || crypto.randomUUID(),
+              title: b?.title || "",
+              subtitle: "",
+              image:
+                (b?.image || "").replace(
+                  /^https?:\/\/api\.ozar\.uz\/media\/banners\//,
+                  "https://lab.ozar.uz/media/banners/"
+                ) || "",
+              link: b?.link || "#",
+            }))
+            .filter((s) => s.image);
+          if (mapped.length > 0) setRemoteSlides(mapped);
+        }
+      } catch {
+        // fallback to static slides silently
+      }
+    };
+    load();
+    return () => controller.abort();
+  }, []);
+
+  const slides = remoteSlides;
+
   const infiniteSlides = useMemo(() => {
     if (slides.length === 0) return [];
     return [slides[slides.length - 1], ...slides, slides[0]];
-  }, []);
+  }, [slides]);
 
   // Обработка перехода в начало/конец для мобильной версии
   useEffect(() => {

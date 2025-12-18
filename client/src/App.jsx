@@ -39,16 +39,6 @@ function AppContent() {
   const { isAuthenticated } = useAuth();
   const { location: geoLocation, requestLocationPermission } = useGeolocation();
 
-  useEffect(() => {
-    const hasShownLocationModal = localStorage.getItem("hasShownLocationModal");
-    const hasLocation = localStorage.getItem("userLocation");
-
-    if (!hasShownLocationModal && !hasLocation) {
-      showLocationModal();
-      localStorage.setItem("hasShownLocationModal", "true");
-    }
-  }, [showLocationModal]);
-
   const handleLocationConfirm = (deliveryData) => {
     if (deliveryData.location) {
       setLocation(deliveryData.location);
