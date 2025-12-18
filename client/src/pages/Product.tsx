@@ -1045,7 +1045,7 @@ export function Product() {
             <section className={`${cn.product_gallery} ${galleryImages.length <= 1 ? cn.gallery_no_thumbs : ''}`}>
               {/* Показываем миниатюры только если есть больше одного изображения */}
               {galleryImages.length > 1 && (
-                <div className="relative flex w-[140px] flex-col gap-2.5 max-h-[680px] overflow-hidden px-2.5 py-11">
+                <div className="relative flex w-[140px] flex-col gap-2.5 max-h-[440px] overflow-hidden px-2.5">
                   { (thumbCanScrollUp || thumbCanScrollDown) && (
                     <button
                       type="button"
@@ -1060,14 +1060,14 @@ export function Product() {
                     </button>
                   )}
                   <div
-                    className="flex flex-col gap-2.5 max-h-full overflow-y-auto overscroll-contain scroll-smooth pr-2 touch-pan-y"
+                    className="flex flex-col gap-2.5 max-h-full overflow-y-auto overscroll-contain scroll-smooth pr-2 touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     ref={thumbsScrollRef}
                   >
                     {galleryImages.map((img, i) => (
                       <button
                         id={`thumb-${i}`}
                         key={i}
-                        className={`w-[104px] h-full rounded-[16px] border-2 bg-white shadow-sm grid place-items-center transition relative ${
+                        className={`w-[104px] rounded-[16px] border-2 bg-white shadow-sm grid place-items-center transition relative ${
                           i === lightboxIndex
                             ? "border-blue-500 shadow-lg"
                             : "border-slate-200 hover:-translate-y-0.5 hover:shadow-md"
