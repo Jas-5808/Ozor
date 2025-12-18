@@ -8,10 +8,10 @@ export default function PieChart({ data, size = 180, innerRadius = 0, animate = 
   const r = size/2;
   const ir = innerRadius;
   let angle = -Math.PI/2; // start at top
-  const pathLen = 1000;
+  const colors = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6'];
+
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      {animate ? (<style>{`@keyframes spinIn { from { transform: rotate(-20deg); opacity:.5; } to { transform: rotate(0); opacity:1; } }`}</style>) : null}
       {data.map((s, i) => {
         const a = (s.value/total) * Math.PI * 2;
         const x1 = r + Math.cos(angle) * r, y1 = r + Math.sin(angle) * r;
@@ -27,14 +27,17 @@ export default function PieChart({ data, size = 180, innerRadius = 0, animate = 
         } else {
           d = outerArc + ` L ${r} ${r} Z`;
         }
-        const el = (
-          <path key={i} d={d} fill={s.color || ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6'][i%5]}
-            style={animate ? { transformOrigin: `${r}px ${r}px`, animation: `spinIn 600ms ease ${i*80}ms both` } : undefined} />
-        );
         angle += a;
-        return el;
+        return (
+          <path
+            key={i}
+            d={d}
+            fill={s.color || colors[i % colors.length]}
+            className={animate ? 'origin-center animate-[spinIn_600ms_ease_forwards]' : undefined}
+            style={animate ? { animationDelay: `${i * 80}ms` } : undefined}
+          />
+        );
       })}
     </svg>
   );
 }
-

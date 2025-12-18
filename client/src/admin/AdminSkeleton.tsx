@@ -1,39 +1,39 @@
 import React from 'react';
-// @ts-ignore
-import s from './AdminLayout.module.scss';
 
 type Props = { rows?: number };
 
 export default function AdminSkeleton({ rows = 8 }: Props) {
   return (
-    <div className={s.panel}>
-      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12}}>
-        <div style={{width:160, height:16, background:'#e5e7eb', borderRadius:6}} />
-        <div style={{display:'flex', gap:8}}>
-          <div style={{width:120, height:32, background:'#e5e7eb', borderRadius:8}} />
-          <div style={{width:120, height:32, background:'#e5e7eb', borderRadius:8}} />
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="h-4 w-40 rounded bg-slate-200 animate-pulse" />
+        <div className="flex gap-2">
+          <div className="h-8 w-28 rounded-lg bg-slate-200 animate-pulse" />
+          <div className="h-8 w-28 rounded-lg bg-slate-200 animate-pulse" />
         </div>
       </div>
-      <table className={s.table}>
-        <thead>
-          <tr>
-            <th></th><th></th><th></th><th></th><th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {Array.from({ length: rows }).map((_, i) => (
-            <tr key={i}>
-              <td><div style={{height:14, background:'#e5e7eb', borderRadius:6}} /></td>
-              <td><div style={{height:14, background:'#e5e7eb', borderRadius:6}} /></td>
-              <td><div style={{height:14, background:'#e5e7eb', borderRadius:6}} /></td>
-              <td><div style={{height:14, background:'#e5e7eb', borderRadius:6}} /></td>
-              <td><div style={{height:14, background:'#e5e7eb', borderRadius:6}} /></td>
+      <div className="overflow-hidden rounded-xl border border-slate-200">
+        <table className="w-full border-collapse text-left">
+          <thead className="bg-slate-100">
+            <tr>
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <th key={idx} className="h-10 px-3" />
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {Array.from({ length: rows }).map((_, i) => (
+              <tr key={i} className="even:bg-slate-50">
+                {Array.from({ length: 5 }).map((_, j) => (
+                  <td key={j} className="px-3 py-2">
+                    <div className="h-4 rounded bg-slate-200 animate-pulse" />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
-
-

@@ -1,7 +1,5 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-// @ts-ignore
-import s from '../AdminLayout.module.scss';
 
 const LANG_OPTIONS = [
   { value: 'ru', label: 'RU' },
@@ -23,9 +21,9 @@ export default function AdminLanguageSwitcher() {
   };
 
   return (
-    <label className={s.langSwitch}>
+    <label className="inline-flex items-center">
       <select
-        className={s.langSelect}
+        className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm hover:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
         value={current}
         onChange={(e) => handleChange(e.target.value)}
         aria-label={t('admin.toolbar.language')}

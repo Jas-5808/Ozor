@@ -49,40 +49,66 @@ export default function CalendarHeatmap({ from, to, values, cellSize = 22, showD
   const monthLabels = useMemo(()=> weeks.map(w => monthShort(new Date(w[2]))), [weeks]);
   const monthDisplay = monthLabels.map((m, i) => (i === 0 || m !== monthLabels[i-1]) ? m : '');
   return (
-    <div>
+    <div className="space-y-1">
       {/* Month header */}
-      <div style={{display:'grid', gridTemplateColumns: `${labelColWidth}px repeat(${weeks.length}, ${cellSize}px)`, gap, alignItems:'end', marginBottom:6}}>
+      <div
+        className="grid items-end"
+        style={{
+          gridTemplateColumns: `${labelColWidth}px repeat(${weeks.length}, ${cellSize}px)`,
+          gap,
+        }}
+      >
         <div />
         {weeks.map((_, i) => (
-          <div key={`mh-${i}`} style={{fontSize:12, color:'#475569', textAlign:'center'}}>{monthDisplay[i]}</div>
+          <div
+            key={`mh-${i}`}
+            className="text-center text-[12px] text-slate-600"
+          >
+            {monthDisplay[i]}
+          </div>
         ))}
       </div>
+
       {/* Heatmap grid with weekdays */}
-      <div style={{display:'grid', gridTemplateColumns:`${labelColWidth}px repeat(${weeks.length}, ${cellSize}px)`, gap, alignItems:'center'}}>
-        {weekDays.map((wd, r)=> (
+      <div
+        className="grid items-center"
+        style={{
+          gridTemplateColumns: `${labelColWidth}px repeat(${weeks.length}, ${cellSize}px)`,
+          gap,
+        }}
+      >
+        {weekDays.map((wd, r) => (
           <React.Fragment key={wd}>
-            <div style={{fontSize:12, color:'#64748b'}}>{wd}</div>
-            {weeks.map((w, c)=> {
+            <div className="text-[12px] text-slate-500">{wd}</div>
+            {weeks.map((w, c) => {
               const date = w[r];
-              const iso = date.toISOString().slice(0,10);
+              const iso = date.toISOString().slice(0, 10);
               const v = values[iso] || 0;
               const dayNum = date.getDate();
-              const text = display === 'value' ? (valueFormatter ? valueFormatter(v) : String(v)) : String(dayNum);
+              const text =
+                display === 'value'
+                  ? valueFormatter
+                    ? valueFormatter(v)
+                    : String(v)
+                  : String(dayNum);
               const fontSize = Math.max(10, Math.floor(cellSize / 3));
               return (
-                <div key={`${c}-${r}`} title={`${iso}: ${v}`}
+                <div
+                  key={`${c}-${r}`}
+                  title={`${iso}: ${v}`}
+                  className="grid place-items-center rounded-[6px] font-bold text-slate-900 select-none"
                   style={{
                     width: cellSize,
                     height: cellSize,
-                    borderRadius: 6,
                     background: colorFor(v),
-                    display:'grid', placeItems:'center',
-                    color: '#0f172a',
                     fontSize,
-                    fontWeight: 700,
-                    userSelect: 'none'
-                  }}>
-                  {display === 'value' ? <span style={{opacity:.85}}>{text}</span> : (showDayNumbers ? <span style={{opacity:.7}}>{dayNum}</span> : null)}
+                  }}
+                >
+                  {display === 'value' ? (
+                    <span className="opacity-85">{text}</span>
+                  ) : showDayNumbers ? (
+                    <span className="opacity-70">{dayNum}</span>
+                  ) : null}
                 </div>
               );
             })}

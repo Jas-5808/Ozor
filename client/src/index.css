@@ -1,43 +1,10 @@
 @import "tailwindcss";
 
-*{
-  text-decoration: none;
-  list-style: none;
-  box-sizing: border-box;
+:root {
   font-family: "Montserrat", system-ui, -apple-system, sans-serif;
 }
 
-/* Оптимизация загрузки шрифтов */
 @font-face {
-  font-family: 'Montserrat';
-  font-display: swap; /* Показываем fallback шрифт сразу, затем заменяем на Montserrat */
+  font-family: "Montserrat";
+  font-display: swap;
 }
-html, body {
-  overflow-x: hidden;
-}
-body{
-  background: rgb(246, 246, 246);
-}
-
-.container{
-  max-width: 1240px;
-  padding: 0 20px;
-  margin: auto;
-}
-
-button{
-  border: none;
-  background: none;
-  cursor: pointer;
-}
-html, body {
-  scrollbar-width: none; 
-  -ms-overflow-style: none;
-}
-
-html::-webkit-scrollbar, 
-body::-webkit-scrollbar {
-  display: none; 
-}
-
-/* (header стилизуется утилитами tailwind в компонентах) */

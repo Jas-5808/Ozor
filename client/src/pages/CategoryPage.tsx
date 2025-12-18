@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { shopAPI } from "../services/api";
@@ -175,7 +175,7 @@ export function CategoryPage() {
     }
   }, [hasMore, loading, totalProductsCount]);
 
-  const sentinelRef = useInfiniteScroll({
+  const { ref: sentinelRef } = useInfiniteScroll({
     hasMore,
     loading,
     onLoadMore: loadMore,

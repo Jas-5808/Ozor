@@ -1,75 +1,391 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-// @ts-ignore
-import s from '../AdminLayout.module.scss';
-import { adminStore } from '../storage';
-import { shopAPI, userAPI } from '../../services/api';
-import apiClient from '../../services/api';
-import { useAuth } from '../../hooks/useAuth';
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import { adminStore } from "../storage";
+import { shopAPI, userAPI } from "../../services/api";
+import apiClient from "../../services/api";
+import { useAuth } from "../../hooks/useAuth";
 
 type OrderStatus =
-  | 'pending'
-  | 'accepted'
-  | 'packing'
-  | 'packed'
-  | 'processing'
-  | 'shipped'
-  | 'delivered'
-  | 'cancelled'
-  | 'refunded'
-  | 'paid'; // legacy support
+  | "pending"
+  | "accepted"
+  | "packing"
+  | "packed"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "cancelled"
+  | "refunded"
+  | "paid";
 
-type Order = { id: string; customer: string; total: number; status: OrderStatus; order_number?: string; created_at?: string; location?: string };
+type Order = {
+  id: string;
+  customer: string;
+  total: number;
+  status: OrderStatus;
+  order_number?: string;
+  created_at?: string;
+  location?: string;
+};
 
 const LOCATION_OPTIONS: Array<{ value: string; labelKey: string }> = [
-  { value: 'tashkent', labelKey: 'profileUpdate.regions.tashkent' },
-  { value: 'tashkent_region', labelKey: 'profileUpdate.regions.tashkentRegion' },
-  { value: 'samarkand', labelKey: 'profileUpdate.regions.samarkand' },
-  { value: 'bukhara', labelKey: 'profileUpdate.regions.bukhara' },
-  { value: 'andijan', labelKey: 'profileUpdate.regions.andijan' },
-  { value: 'fergana', labelKey: 'profileUpdate.regions.fergana' },
-  { value: 'namangan', labelKey: 'profileUpdate.regions.namangan' },
-  { value: 'navoiy', labelKey: 'profileUpdate.regions.navoiy' },
-  { value: 'kashkadarya', labelKey: 'profileUpdate.regions.kashkadarya' },
-  { value: 'surkhandarya', labelKey: 'profileUpdate.regions.surkhandarya' },
-  { value: 'sirdarya', labelKey: 'profileUpdate.regions.sirdarya' },
-  { value: 'jizzakh', labelKey: 'profileUpdate.regions.jizzakh' },
-  { value: 'khorezm', labelKey: 'profileUpdate.regions.khorezm' },
-  { value: 'karakalpakstan', labelKey: 'profileUpdate.regions.karakalpakstan' },
+  { value: "tashkent", labelKey: "profileUpdate.regions.tashkent" },
+  { value: "tashkent_region", labelKey: "profileUpdate.regions.tashkentRegion" },
+  { value: "samarkand", labelKey: "profileUpdate.regions.samarkand" },
+  { value: "bukhara", labelKey: "profileUpdate.regions.bukhara" },
+  { value: "andijan", labelKey: "profileUpdate.regions.andijan" },
+  { value: "fergana", labelKey: "profileUpdate.regions.fergana" },
+  { value: "namangan", labelKey: "profileUpdate.regions.namangan" },
+  { value: "navoiy", labelKey: "profileUpdate.regions.navoiy" },
+  { value: "kashkadarya", labelKey: "profileUpdate.regions.kashkadarya" },
+  { value: "surkhandarya", labelKey: "profileUpdate.regions.surkhandarya" },
+  { value: "sirdarya", labelKey: "profileUpdate.regions.sirdarya" },
+  { value: "jizzakh", labelKey: "profileUpdate.regions.jizzakh" },
+  { value: "khorezm", labelKey: "profileUpdate.regions.khorezm" },
+  { value: "karakalpakstan", labelKey: "profileUpdate.regions.karakalpakstan" },
 ];
+
+const inputBase =
+  "h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100";
+const selectBase = inputBase;
+const btnBase =
+  "inline-flex items-center justify-center gap-2 rounded-xl px-4 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
+const btnMuted =
+  "bg-slate-100 text-slate-900 hover:bg-slate-200 disabled:hover:bg-slate-100";
+const btnGreen =
+  "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-sm hover:from-emerald-600 hover:to-emerald-700";
+const btnBlue =
+  "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-sm hover:from-blue-600 hover:to-blue-700";
+const btnRed =
+  "bg-gradient-to-br from-red-500 to-red-600 text-white shadow-sm hover:from-red-600 hover:to-red-700";
+const btnAmber =
+  "bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-sm hover:from-amber-600 hover:to-amber-700";
+
+const badgeMap: Record<string, string> = {
+  pending: "bg-amber-100 text-amber-800",
+  accepted: "bg-emerald-100 text-emerald-700",
+  packing: "bg-indigo-100 text-indigo-700",
+  packed: "bg-blue-100 text-blue-700",
+  processing: "bg-sky-100 text-sky-700",
+  shipped: "bg-cyan-100 text-cyan-700",
+  delivered: "bg-emerald-100 text-emerald-700",
+  cancelled: "bg-rose-100 text-rose-700",
+  refunded: "bg-amber-100 text-amber-700",
+  paid: "bg-emerald-100 text-emerald-700",
+};
 
 export default function Orders() {
   const { t } = useTranslation();
   const { profile } = useAuth() as any;
-  const roleRaw = String(profile?.role || profile?.user_role || profile?.data?.role || '').toLowerCase();
-  const [roleState, setRoleState] = useState<string>(roleRaw || '');
-  const normalizedRole = (roleState === 'sale_operator') ? 'sale' : roleState;
-  const isSale = normalizedRole === 'sale';
-  const [items, setItems] = useState<Order[]>(adminStore.load<Order[]>('admin_orders', []));
-  const [q, setQ] = useState('');
-  const [debouncedQ, setDebouncedQ] = useState('');
-  const [status, setStatus] = useState<string>('');
+
+  const roleRaw = String(
+    profile?.role || profile?.user_role || profile?.data?.role || ""
+  ).toLowerCase();
+  const [roleState, setRoleState] = useState<string>(roleRaw || "");
+  const normalizedRole = roleState === "sale_operator" ? "sale" : roleState;
+  const isSale = normalizedRole === "sale";
+
+  const [items, setItems] = useState<Order[]>(
+    adminStore.load<Order[]>("admin_orders", [])
+  );
+
+  const [q, setQ] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
+  const [status, setStatus] = useState<string>("");
+
   const [loading, setLoading] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+
   const [serverNow, setServerNow] = useState<Date | null>(null);
+
   const [ccOrders, setCcOrders] = useState<any[]>([]);
   const [ccLoading, setCcLoading] = useState(false);
-  const [notice, setNotice] = useState<{ type: 'success'|'error'; message: string } | null>(null);
-  const [ccComments, setCcComments] = useState<Record<string,string>>({});
-  const [ccSchedule, setCcSchedule] = useState<Record<string,string>>({});
+  const [notice, setNotice] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const [ccComments, setCcComments] = useState<Record<string, string>>({});
+  const [ccSchedule, setCcSchedule] = useState<Record<string, string>>({});
   const [ccTick, setCcTick] = useState<number>(0);
+
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersLimit, setOrdersLimit] = useState(20);
+
   const [ccPage, setCcPage] = useState(1);
   const [ccLimit, setCcLimit] = useState(20);
-  const [ccStatus, setCcStatus] = useState<string>('pending');
-  const [ccSortColumn, setCcSortColumn] = useState<string>('');
-  const [ccSortDirection, setCcSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [ccStatus, setCcStatus] = useState<string>("pending");
+  const [ccSortColumn, setCcSortColumn] = useState<string>("");
+  const [ccSortDirection, setCcSortDirection] = useState<"asc" | "desc">("asc");
 
-  useEffect(()=>{
-    const id = setInterval(()=> setCcTick(t=>t+1), 1000);
-    return ()=> clearInterval(id);
+  useEffect(() => {
+    const id = setInterval(() => setCcTick((x) => x + 1), 1000);
+    return () => clearInterval(id);
   }, []);
+
+  const statusLabel = (st?: string) => {
+    const code = String(st || "").toLowerCase();
+    return t(`admin.ordersPage.statuses.${code}`, code || "—");
+  };
+
+  const StatusBadge = ({ value }: { value?: string }) => {
+    const code = String(value || "").toLowerCase();
+    return (
+      <span
+        className={[
+          "inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold",
+          badgeMap[code] || "bg-slate-100 text-slate-700",
+        ].join(" ")}
+      >
+        {statusLabel(code)}
+      </span>
+    );
+  };
+
+  const normalizeOrders = (data: any[]): Order[] =>
+    data.map((o: any) => {
+      const first = (o.buyer_firstname ?? "").trim();
+      const last = (o.buyer_lastname ?? "").trim();
+      const full = (o.full_name ?? "").trim();
+      const byNames = first || last ? `${first} ${last}`.trim() : "";
+      const customer = byNames || full || (o.order_comment || "").trim() || "Guest";
+      const userLoc = (o.user_location ?? "").trim();
+      const cityApi = (o.city ?? "").trim();
+      const location = userLoc || cityApi || "";
+      return {
+        id: o.order_id || o.id,
+        customer,
+        total: o.total_price || 0,
+        status: o.status || "pending",
+        order_number: o.order_number || o.number || o.code || "",
+        created_at:
+          o.created_at || o.created || o.order_date || o.date || o.createdAt || null,
+        location,
+      };
+    });
+
+  const filtered = useMemo(
+    () =>
+      items.filter(
+        (o) =>
+          (debouncedQ
+            ? o.id.includes(debouncedQ) ||
+              o.customer.toLowerCase().includes(debouncedQ.toLowerCase()) ||
+              (o.order_number || "").includes(debouncedQ)
+            : true) && (status ? o.status === status : true)
+      ),
+    [items, debouncedQ, status]
+  );
+
+  const pagedOrders = useMemo(() => {
+    const start = (ordersPage - 1) * ordersLimit;
+    return filtered.slice(start, start + ordersLimit);
+  }, [filtered, ordersPage, ordersLimit]);
+
+  const filteredCc = useMemo(() => {
+    let list = [...(ccOrders || [])];
+
+    if (ccStatus) {
+      const st = ccStatus.toLowerCase();
+      list = list.filter((o: any) => String(o?.status || "").toLowerCase() === st);
+    }
+
+    if (ccSortColumn) {
+      list.sort((a: any, b: any) => {
+        let aVal: any;
+        let bVal: any;
+
+        switch (ccSortColumn) {
+          case "order":
+            aVal = a.order_number || "";
+            bVal = b.order_number || "";
+            break;
+          case "fullName":
+            aVal = (a.full_name || "").toLowerCase();
+            bVal = (b.full_name || "").toLowerCase();
+            break;
+          case "phone":
+            aVal = (a.client_phone || "").toLowerCase();
+            bVal = (b.client_phone || "").toLowerCase();
+            break;
+          case "city":
+            aVal = (a.city || "").toLowerCase();
+            bVal = (b.city || "").toLowerCase();
+            break;
+          case "total":
+            aVal = Number(a.total_price || 0);
+            bVal = Number(b.total_price || 0);
+            break;
+          case "status":
+            aVal = (a.status || "").toLowerCase();
+            bVal = (b.status || "").toLowerCase();
+            break;
+          case "time":
+            aVal = a.created_at ? new Date(a.created_at).getTime() : 0;
+            bVal = b.created_at ? new Date(b.created_at).getTime() : 0;
+            break;
+          default:
+            return 0;
+        }
+
+        if (aVal < bVal) return ccSortDirection === "asc" ? -1 : 1;
+        if (aVal > bVal) return ccSortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return list;
+  }, [ccOrders, ccStatus, ccSortColumn, ccSortDirection]);
+
+  useEffect(() => {
+    adminStore.save("admin_orders", items);
+  }, [items]);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQ(q), 400);
+    return () => clearTimeout(id);
+  }, [q]);
+
+  // resolve role
+  useEffect(() => {
+    let ignore = false;
+    const load = async () => {
+      if (roleState) return;
+      const uid = profile?.id || profile?.user_id || profile?.data?.id;
+      if (!uid) return;
+      try {
+        const info = await userAPI.getUsersInfo();
+        const roleFromInfo = String(info?.data?.role || "").toLowerCase();
+        if (!ignore && roleFromInfo) {
+          setRoleState(roleFromInfo);
+          return;
+        }
+        const res = await userAPI.getUserById(String(uid));
+        const apiRole = String(res?.data?.role || "").toLowerCase();
+        if (!ignore) setRoleState(apiRole);
+      } catch {
+        if (!ignore) setRoleState("");
+      }
+    };
+    load();
+    return () => {
+      ignore = true;
+    };
+  }, [profile, roleState]);
+
+  useEffect(() => {
+    let ignore = false;
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        const res = await shopAPI.getAllOrders();
+        if (ignore) return;
+        const data = Array.isArray(res.data) ? res.data : res.data?.results || [];
+        setItems(normalizeOrders(data));
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const loadCcOrders = useCallback(async () => {
+    if (!isSale) return;
+    try {
+      setCcLoading(true);
+      const res = await shopAPI.getCallCenterOrders();
+      const data = Array.isArray(res.data)
+        ? res.data
+        : res.data?.results || res.data?.data || [];
+      setCcOrders(data);
+
+      setCcComments((prev) => {
+        const next = { ...prev } as Record<string, string>;
+        (data || []).forEach((o: any) => {
+          const id = o?.id;
+          const apiComment = (o?.order_comment ?? "") as string;
+          if (id && next[id] === undefined && apiComment) next[id] = apiComment;
+        });
+        return next;
+      });
+    } catch {
+      setCcOrders([]);
+    } finally {
+      setCcLoading(false);
+    }
+  }, [isSale]);
+
+  useEffect(() => {
+    if (!isSale) return;
+    loadCcOrders();
+  }, [isSale, loadCcOrders]);
+
+  useEffect(() => {
+    if (!isSale) return;
+    const interval = setInterval(loadCcOrders, 15000);
+    return () => clearInterval(interval);
+  }, [isSale, loadCcOrders]);
+
+  useEffect(() => {
+    let ignore = false;
+    const tick = async () => {
+      try {
+        const res = await shopAPI.getAllOrders();
+        if (ignore) return;
+        const data = Array.isArray(res.data) ? res.data : res.data?.results || [];
+        setItems(normalizeOrders(data));
+      } catch {}
+    };
+    const id = setInterval(tick, 10000);
+    return () => {
+      ignore = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+    const loadServerTime = async () => {
+      try {
+        const res = await apiClient.get("/course/time/now");
+        if (ignore) return;
+        const payload = res?.data;
+        const iso =
+          typeof payload === "string" ? payload : payload?.now || payload?.data || payload?.time;
+        if (iso) setServerNow(new Date(iso));
+      } catch {}
+    };
+    loadServerTime();
+    const tmr = setInterval(loadServerTime, 60000);
+    return () => {
+      ignore = true;
+      clearInterval(tmr);
+    };
+  }, []);
+
+  const formatDateTime = (iso?: string) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleString("ru-RU", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const timeClass = (iso?: string) => {
+    if (!iso || !serverNow) return "text-slate-600";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "text-slate-600";
+    const diffMin = Math.abs((serverNow.getTime() - d.getTime()) / 60000);
+    if (diffMin <= 10) return "text-emerald-600";
+    if (diffMin <= 20) return "text-amber-600";
+    return "text-red-600";
+  };
 
   const getScheduleTarget = (o: any): Date | null => {
     const local = ccSchedule[o.id];
@@ -79,995 +395,743 @@ export default function Orders() {
     }
     const raw = String(o?.order_comment || "");
     const m = raw.match(/\[reja_at:([^\]]+)\]/i);
-    if (m && m[1]) {
+    if (m?.[1]) {
       const d = new Date(m[1]);
       return isNaN(d.getTime()) ? null : d;
     }
     return null;
   };
 
-  const STATUS_CLASS_MAP: Record<string, string> = {
-    pending: `${s.badge} ${s.badgePending}`,
-    accepted: `${s.badge} ${s.badgeAccepted}`,
-    packing: `${s.badge} ${s.badgePacking}`,
-    packed: `${s.badge} ${s.badgePacked}`,
-    processing: `${s.badge} ${s.badgeProcessing}`,
-    shipped: `${s.badge} ${s.badgeShipped}`,
-    delivered: `${s.badge} ${s.badgeDelivered}`,
-    cancelled: `${s.badge} ${s.badgeCancelled}`,
-    refunded: `${s.badge} ${s.badgeRefunded}`,
-    paid: `${s.badge} ${s.badgePaid}`,
-  };
-
-  const statusLabel = (status?: string) => {
-    const code = String(status || '').toLowerCase();
-    return t(`admin.ordersPage.statuses.${code}`, code || '—');
-  };
-
-  const renderStatusBadge = (status?: string) => {
-    const code = String(status || '').toLowerCase();
-    return (
-      <span className={STATUS_CLASS_MAP[code] || s.badge}>
-        {statusLabel(code)}
-      </span>
-    );
-  };
-
   const formatRemaining = (ms: number): string => {
     const total = Math.max(0, Math.floor(ms / 1000));
-    const h = Math.floor(total / 3600).toString().padStart(2, '0');
-    const m = Math.floor((total % 3600) / 60).toString().padStart(2, '0');
-    const s = Math.floor(total % 60).toString().padStart(2, '0');
+    const h = Math.floor(total / 3600).toString().padStart(2, "0");
+    const m = Math.floor((total % 3600) / 60).toString().padStart(2, "0");
+    const s = Math.floor(total % 60).toString().padStart(2, "0");
     return `${h}:${m}:${s}`;
   };
 
-  const renderCcStatus = (status?: string) => renderStatusBadge(status);
-
-  const normalizeOrders = (data: any[]): Order[] => data.map((o:any)=> {
-    const first = (o.buyer_firstname ?? '').trim();
-    const last = (o.buyer_lastname ?? '').trim();
-    const full = (o.full_name ?? '').trim();
-    const byNames = (first || last) ? `${first} ${last}`.trim() : '';
-    const customer = byNames || full || (o.order_comment || '').trim() || 'Guest';
-    const userLoc = (o.user_location ?? '').trim();
-    const cityApi = (o.city ?? '').trim();
-    const location = userLoc || cityApi || '';
-    return {
-      id: o.order_id || o.id,
-      customer,
-      total: o.total_price || 0,
-      status: o.status || 'pending',
-      order_number: o.order_number || o.number || o.code || '',
-      created_at: o.created_at || o.created || o.order_date || o.date || o.createdAt || null,
-      location,
-    };
-  });
-
-  const filtered = useMemo(()=> items.filter(o =>
-    (debouncedQ ? (o.id.includes(debouncedQ) || o.customer.toLowerCase().includes(debouncedQ.toLowerCase()) || (o.order_number||'').includes(debouncedQ)) : true)
-    && (status ? o.status === status : true)
-  ), [items, debouncedQ, status]);
-
-  const pagedOrders = useMemo(()=>{
-    const start = (ordersPage - 1) * ordersLimit;
-    return filtered.slice(start, start + ordersLimit);
-  }, [filtered, ordersPage, ordersLimit]);
-
-  const filteredCc = useMemo(()=>{
-    let list = [...(ccOrders || [])];
-    
-    // Фильтрация по статусу
-    if (ccStatus) {
-      const st = ccStatus.toLowerCase();
-      list = list.filter((o:any)=> String(o?.status||'').toLowerCase() === st);
-    }
-    
-    // Сортировка
-    if (ccSortColumn) {
-      list.sort((a: any, b: any) => {
-        let aVal: any;
-        let bVal: any;
-        
-        switch (ccSortColumn) {
-          case 'order':
-            aVal = a.order_number || '';
-            bVal = b.order_number || '';
-            break;
-          case 'fullName':
-            aVal = (a.full_name || '').toLowerCase();
-            bVal = (b.full_name || '').toLowerCase();
-            break;
-          case 'phone':
-            aVal = (a.client_phone || '').toLowerCase();
-            bVal = (b.client_phone || '').toLowerCase();
-            break;
-          case 'city':
-            aVal = (a.city || '').toLowerCase();
-            bVal = (b.city || '').toLowerCase();
-            break;
-          case 'total':
-            aVal = Number(a.total_price || 0);
-            bVal = Number(b.total_price || 0);
-            break;
-          case 'status':
-            aVal = (a.status || '').toLowerCase();
-            bVal = (b.status || '').toLowerCase();
-            break;
-          case 'time':
-            aVal = a.created_at ? new Date(a.created_at).getTime() : 0;
-            bVal = b.created_at ? new Date(b.created_at).getTime() : 0;
-            break;
-          default:
-            return 0;
-        }
-        
-        if (aVal < bVal) return ccSortDirection === 'asc' ? -1 : 1;
-        if (aVal > bVal) return ccSortDirection === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-    
-    return list;
-  }, [ccOrders, ccStatus, ccSortColumn, ccSortDirection]);
-
-  useEffect(()=>{ adminStore.save('admin_orders', items); }, [items]);
-
-  // debounce search input for large datasets
-  useEffect(()=>{
-    const id = setTimeout(()=> setDebouncedQ(q), 400);
-    return ()=> clearTimeout(id);
-  }, [q]);
-
-  // Resolve role from API if missing in profile (try user-info, then users/{id})
-  useEffect(()=>{
-    let ignore = false;
-    const load = async ()=>{
-      if (roleState) return; // already known
-      const uid = profile?.id || profile?.user_id || profile?.data?.id;
-      if (!uid) return;
-      try {
-        const info = await userAPI.getUsersInfo();
-        const roleFromInfo = String(info?.data?.role || '').toLowerCase();
-        if (!ignore && roleFromInfo) {
-          setRoleState(roleFromInfo);
-          return;
-        }
-        const res = await userAPI.getUserById(String(uid));
-        const apiRole = String(res?.data?.role || '').toLowerCase();
-        if (!ignore) setRoleState(apiRole);
-      } catch {
-        if (!ignore) setRoleState('');
-      }
-    };
-    load();
-    return ()=>{ ignore = true; };
-  }, [profile, roleState]);
-
-  useEffect(()=>{
-    let ignore = false;
-    const fetchOrders = async ()=>{
-      try {
-        setLoading(true);
-        const res = await shopAPI.getAllOrders();
-        if (ignore) return;
-        const data = Array.isArray(res.data) ? res.data : (res.data?.results || []);
-        const normalized: Order[] = normalizeOrders(data);
-        setItems(normalized);
-      } catch (e) {
-        // keep local
-      } finally { setLoading(false); }
-    };
-    fetchOrders();
-    return ()=>{ ignore = true; };
-  }, []);
-
-  // Function to load call-center orders (can be called manually)
-  const loadCcOrders = useCallback(async ()=>{
-    if (!isSale) return;
-    try {
-      setCcLoading(true);
-      const res = await shopAPI.getCallCenterOrders();
-      const data = Array.isArray(res.data) ? res.data : (res.data?.results || res.data?.data || []);
-      setCcOrders(data);
-      // Prefill comments from API if not yet set
-      setCcComments((prev)=>{
-        const next = { ...prev } as Record<string,string>;
-        (data || []).forEach((o:any)=>{
-          const id = o?.id;
-          const apiComment = (o?.order_comment ?? '') as string;
-          if (id && (next[id] === undefined) && apiComment) {
-            next[id] = apiComment;
-          }
-        });
-        return next;
-      });
-    } catch (_) {
-      setCcOrders([]);
-    } finally {
-      setCcLoading(false);
-    }
-  }, [isSale]);
-
-  // Load call-center orders for sale
-  useEffect(()=>{
-    if (!isSale) return;
-    loadCcOrders();
-  }, [isSale]);
-
-  // Auto-refresh call-center orders every 15 seconds
-  useEffect(()=>{
-    if (!isSale) return;
-    const interval = setInterval(()=>{
-      loadCcOrders();
-    }, 15000);
-    return ()=> clearInterval(interval);
-  }, [isSale, loadCcOrders]);
-
-  useEffect(()=>{
-    let ignore = false;
-    const tick = async ()=>{
-      try {
-        const res = await shopAPI.getAllOrders();
-        if (ignore) return;
-        const data = Array.isArray(res.data) ? res.data : (res.data?.results || []);
-        const normalized: Order[] = normalizeOrders(data);
-        setItems(normalized);
-      } catch {}
-    };
-    const id = setInterval(tick, 10000);
-    return ()=>{ ignore = true; clearInterval(id); };
-  }, []);
-
-  useEffect(()=>{
-    let ignore = false;
-    const loadServerTime = async ()=>{
-      try {
-        const res = await apiClient.get('/course/time/now');
-        if (ignore) return;
-        const payload = res?.data;
-        const iso = typeof payload === 'string' ? payload : (payload?.now || payload?.data || payload?.time);
-        if (iso) setServerNow(new Date(iso));
-      } catch {
-        // ignore
-      }
-    };
-    loadServerTime();
-    const t = setInterval(loadServerTime, 60000);
-    return ()=>{ ignore = true; clearInterval(t); };
-  }, []);
-
-  const formatDateTime = (iso?: string) => {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '—';
-    return d.toLocaleString('ru-RU', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-  };
-
-  const timeColor = (iso?: string) => {
-    if (!iso || !serverNow) return '#475569';
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '#475569';
-    const diffMin = Math.abs((serverNow.getTime() - d.getTime()) / 60000);
-    if (diffMin <= 10) return '#16a34a';
-    if (diffMin <= 20) return '#f59e0b';
-    if (diffMin > 20) return '#dc2626';
-    return '#475569';
-  };
-
   return (
-    <div className={s.panel}>
-      {/* Page header with modern styling */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 14px',
-          marginBottom: 12,
-          borderRadius: 12,
-          background: 'linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%)',
-          border: '1px solid #e9d5ff',
-        }}
-      >
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      {/* HERO */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-purple-200 bg-gradient-to-br from-indigo-50 to-purple-50 p-4">
         <div>
-          <div style={{ fontWeight: 900, fontSize: 18, color: '#312e81' }}>
-            {t('admin.ordersPage.hero.title')}
+          <div className="text-lg font-black text-indigo-900">
+            {t("admin.ordersPage.hero.title")}
           </div>
-          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
-            {t('admin.ordersPage.hero.subtitle')}
+          <div className="mt-1 text-xs text-slate-500">
+            {t("admin.ordersPage.hero.subtitle")}
           </div>
         </div>
         {isSale && (
-          <span
-            style={{
-              padding: '6px 10px',
-              borderRadius: 999,
-              fontSize: 12,
-              fontWeight: 800,
-              background: '#ecfeff',
-              color: '#155e75',
-              border: '1px solid #a5f3fc',
-            }}
-          >
-            {t('admin.ordersPage.hero.sale')}
+          <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-extrabold text-cyan-800">
+            {t("admin.ordersPage.hero.sale")}
           </span>
         )}
       </div>
-      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12, gap:12, flexWrap:'wrap'}}>
-        <div style={{fontWeight:700}}>{t('admin.ordersPage.title')}</div>
-        <div style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center'}}>
-          <select className={s.input} value={status} onChange={(e)=>setStatus(e.target.value)} style={{height:32, borderRadius:10}}>
-            <option value="">{t('admin.ordersPage.filters.statusAll')}</option>
-            <option value="pending">{t('admin.ordersPage.statuses.pending')}</option>
-            <option value="accepted">{t('admin.ordersPage.statuses.accepted')}</option>
-            <option value="packing">{t('admin.ordersPage.statuses.packing')}</option>
-            <option value="packed">{t('admin.ordersPage.statuses.packed')}</option>
-            <option value="processing">{t('admin.ordersPage.statuses.processing')}</option>
-            <option value="shipped">{t('admin.ordersPage.statuses.shipped')}</option>
-            <option value="delivered">{t('admin.ordersPage.statuses.delivered')}</option>
-            <option value="cancelled">{t('admin.ordersPage.statuses.cancelled')}</option>
-            <option value="refunded">{t('admin.ordersPage.statuses.refunded')}</option>
-            <option value="paid">{t('admin.ordersPage.statuses.paid')}</option>
+
+      {/* FILTERS */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="font-bold text-slate-900">{t("admin.ordersPage.title")}</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className={selectBase + " h-8 rounded-xl px-3 text-sm"}
+            value={status}
+            onChange={(e) => {
+              setOrdersPage(1);
+              setStatus(e.target.value);
+            }}
+          >
+            <option value="">{t("admin.ordersPage.filters.statusAll")}</option>
+            {(
+              [
+                "pending",
+                "accepted",
+                "packing",
+                "packed",
+                "processing",
+                "shipped",
+                "delivered",
+                "cancelled",
+                "refunded",
+                "paid",
+              ] as const
+            ).map((st) => (
+              <option key={st} value={st}>
+                {t(`admin.ordersPage.statuses.${st}`)}
+              </option>
+            ))}
           </select>
-          <input className={s.input} placeholder={t('admin.ordersPage.filters.searchPlaceholder')} value={q} onChange={(e)=>setQ(e.target.value)} style={{minWidth:240}} />
+
+          <input
+            className={inputBase + " h-8 min-w-[240px] rounded-xl"}
+            placeholder={t("admin.ordersPage.filters.searchPlaceholder")}
+            value={q}
+            onChange={(e) => {
+              setOrdersPage(1);
+              setQ(e.target.value);
+            }}
+          />
         </div>
       </div>
+
+      {/* NOTICE */}
       {notice && (
-        <div style={{
-          marginBottom: 12,
-          padding: '10px 12px',
-          borderRadius: 12,
-          border: notice.type==='success' ? '1px solid #86efac' : '1px solid #fecaca',
-          background: notice.type==='success' ? '#ecfdf5' : '#fef2f2',
-          color: notice.type==='success' ? '#065f46' : '#7f1d1d',
-          fontWeight: 600
-        }}>{notice.message}</div>
-      )}
-      {loading && (
-        <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
-          {t('admin.ordersPage.loading')}
-        </div>
-      )}
-      {/* Desktop Table View */}
-      <div className={s.tableWrapper} style={{overflowX:'auto'}}>
-        <table className={s.table}>
-          <thead>
-            <tr style={{background:'#f8fafc', position:'sticky', top:0, zIndex:1}}>
-              <th>{t('admin.ordersPage.table.customer')}</th>
-              <th>{t('admin.ordersPage.table.status')}</th>
-              <th>{t('admin.ordersPage.table.city')}</th>
-              <th>{t('admin.ordersPage.table.time')}</th>
-              <th>{t('admin.ordersPage.table.action')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && Array.from({length: Math.min(ordersLimit, 10)}).map((_, i)=> (
-              <tr key={`sk-${i}`}>
-                <td colSpan={5}>
-                  <div style={{display:'grid', gridTemplateColumns:'1fr 120px 140px 160px 140px', gap:12}}>
-                    {Array.from({length:5}).map((__, j)=> (
-                      <div key={j} style={{height:16, background:'#e5e7eb', borderRadius:8}} />
-                    ))}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {!loading && pagedOrders.map(o => (
-              <tr key={o.id}>
-                <td>{o.customer}</td>
-                <td>{renderStatusBadge(o.status)}</td>
-                <td>{o.location || '-'}</td>
-                <td style={{textAlign:'center', color: timeColor(o.created_at), fontVariantNumeric: 'tabular-nums'}}>
-                  {formatDateTime(o.created_at)}
-                </td>
-                <td style={{textAlign:'center'}}>
-                  {isSale && (o.status === 'pending' || !o.status) && (
-                    <button
-                      className={`${s.btn}`}
-                      style={{
-                        height:32, 
-                        padding:'0 16px', 
-                        borderRadius:12,
-                        background:'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                        color:'#fff', 
-                        border:'none', 
-                        boxShadow:'0 4px 12px rgba(16, 185, 129, 0.3)',
-                        display:'inline-flex', 
-                        alignItems:'center', 
-                        justifyContent:'center',
-                        gap:8, 
-                        fontWeight:700,
-                        transition:'all 0.2s ease',
-                        cursor:'pointer'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
-                        e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
-                        e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-                      }}
-                      onClick={async ()=>{
-                        try {
-                          await shopAPI.takeOrderCallCenter(o.id);
-                          setNotice({ type: 'success', message: t('admin.ordersPage.cc.takeSuccess') });
-                          setTimeout(()=> setNotice(null), 2000);
-                          // Обновить вторую таблицу после успешного действия
-                          await loadCcOrders();
-                          // Также обновить первую таблицу
-                          const res = await shopAPI.getAllOrders();
-                          const data = Array.isArray(res.data) ? res.data : (res.data?.results || []);
-                          const normalized: Order[] = normalizeOrders(data);
-                          setItems(normalized);
-                        } catch (e:any) {
-                          const msg = e?.response?.data?.detail || e?.message || t('common.forms.error');
-                          setNotice({ type:'error', message: msg });
-                          setTimeout(()=> setNotice(null), 3000);
-                        }
-                      }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      {t('admin.ordersPage.cc.take')}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      
-      {/* Mobile Card View */}
-      <div className={s.mobileCards}>
-        {loading && Array.from({length: Math.min(ordersLimit, 5)}).map((_, i)=> (
-          <div key={`mobile-sk-${i}`} className={s.orderCardMobile}>
-            <div style={{height:60, background:'#e5e7eb', borderRadius:12}} />
-          </div>
-        ))}
-        {!loading && pagedOrders.map(o => (
-          <div key={o.id} className={s.orderCardMobile}>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8}}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:14, fontWeight:700, marginBottom:4}}>{o.customer}</div>
-                <div style={{fontSize:11, color:'#64748b'}}>{o.location || '-'}</div>
-              </div>
-              {renderStatusBadge(o.status)}
-            </div>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
-              <div style={{fontSize:11, color: timeColor(o.created_at), fontVariantNumeric: 'tabular-nums'}}>
-                {formatDateTime(o.created_at)}
-              </div>
-            </div>
-            {isSale && (o.status === 'pending' || !o.status) && (
-              <button
-                className={`${s.btn}`}
-                style={{
-                  width:'100%',
-                  height:36, 
-                  padding:'0 12px', 
-                  borderRadius:10,
-                  background:'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  color:'#fff', 
-                  border:'none', 
-                  boxShadow:'0 2px 8px rgba(16, 185, 129, 0.3)',
-                  display:'inline-flex', 
-                  alignItems:'center', 
-                  justifyContent:'center',
-                  gap:6, 
-                  fontWeight:600,
-                  fontSize:13,
-                  cursor:'pointer'
-                }}
-                onClick={async ()=>{
-                  try {
-                    await shopAPI.takeOrderCallCenter(o.id);
-                    setNotice({ type: 'success', message: t('admin.ordersPage.cc.takeSuccess') });
-                    setTimeout(()=> setNotice(null), 2000);
-                    await loadCcOrders();
-                    const res = await shopAPI.getAllOrders();
-                    const data = Array.isArray(res.data) ? res.data : (res.data?.results || []);
-                    const normalized: Order[] = normalizeOrders(data);
-                    setItems(normalized);
-                  } catch (e:any) {
-                    const msg = e?.response?.data?.detail || e?.message || t('common.forms.error');
-                    setNotice({ type:'error', message: msg });
-                    setTimeout(()=> setNotice(null), 3000);
-                  }
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                {t('admin.ordersPage.cc.take')}
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-      {!loading && (
-        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8}}>
-          <div style={{fontSize:12, color:'#64748b'}}>{t('admin.ordersPage.pagination.page', { page: ordersPage, total: Math.max(1, Math.ceil(filtered.length / ordersLimit)) })}</div>
-          <div style={{display:'flex', gap:8, alignItems:'center'}}>
-            <select className={s.input} value={ordersLimit} onChange={(e)=>{ setOrdersPage(1); setOrdersLimit(Number(e.target.value)||20); }}>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-            <div className={s.actions}>
-              <button className={`${s.btn} ${s.muted}`} disabled={ordersPage<=1} onClick={()=>setOrdersPage(p=>Math.max(1,p-1))}>{t('admin.ordersPage.pagination.prev')}</button>
-              <button className={`${s.btn} ${s.muted}`} disabled={ordersPage>=Math.ceil(filtered.length/ordersLimit)} onClick={()=>setOrdersPage(p=>Math.min(Math.ceil(filtered.length/ordersLimit)||1,p+1))}>{t('admin.ordersPage.pagination.next')}</button>
-            </div>
-          </div>
+        <div
+          className={[
+            "mb-3 rounded-2xl border px-3 py-2 text-sm font-semibold",
+            notice.type === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-red-200 bg-red-50 text-red-900",
+          ].join(" ")}
+        >
+          {notice.message}
         </div>
       )}
 
-      {isSale && (
-        <div style={{marginTop:16}}>
-          <style>{`
-            @keyframes spin {
-              from { transform: rotate(0deg); }
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
-          <div style={{
-            display:'flex', alignItems:'center', justifyContent:'space-between',
-            marginBottom:8
-          }}>
-            <div style={{fontWeight:900}}>{t('admin.ordersPage.cc.title')}</div>
-            <div style={{display:'flex', gap:8, alignItems:'center'}}>
-              <button
-                className={s.btn}
-                onClick={loadCcOrders}
-                disabled={ccLoading}
-                style={{
-                  height:32,
-                  padding:'0 12px',
-                  borderRadius:10,
-                  background: ccLoading ? '#e5e7eb' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                  color:'#fff',
-                  border:'none',
-                  boxShadow: ccLoading ? 'none' : '0 2px 8px rgba(59, 130, 246, 0.3)',
-                  display:'inline-flex',
-                  alignItems:'center',
-                  justifyContent:'center',
-                  gap:6,
-                  fontWeight:600,
-                  cursor: ccLoading ? 'not-allowed' : 'pointer',
-                  transition:'all 0.2s ease',
-                  opacity: ccLoading ? 0.6 : 1
-                }}
-                onMouseEnter={(e) => {
-                  if (!ccLoading) {
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!ccLoading) {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.3)';
-                  }
-                }}
-                title="Обновить данные"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{
-                  animation: ccLoading ? 'spin 1s linear infinite' : 'none'
-                }}>
-                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                {ccLoading ? 'Обновление...' : 'Обновить'}
-              </button>
-              <select
-                className={s.input}
-                value={ccStatus}
-                onChange={(e)=>{ setCcPage(1); setCcStatus(e.target.value); }}
-                style={{height:32, borderRadius:10}}
-              >
-                <option value="">{t('admin.ordersPage.cc.statusAll')}</option>
-                <option value="pending">{t('admin.ordersPage.cc.statuses.pending')}</option>
-                <option value="accepted">{t('admin.ordersPage.cc.statuses.accepted')}</option>
-                <option value="packing">{t('admin.ordersPage.cc.statuses.packing')}</option>
-                <option value="packed">{t('admin.ordersPage.cc.statuses.packed')}</option>
-                <option value="processing">{t('admin.ordersPage.cc.statuses.processing')}</option>
-                <option value="shipped">{t('admin.ordersPage.cc.statuses.shipped')}</option>
-                <option value="delivered">{t('admin.ordersPage.cc.statuses.delivered')}</option>
-                <option value="cancelled">{t('admin.ordersPage.cc.statuses.cancelled')}</option>
-                <option value="refunded">{t('admin.ordersPage.cc.statuses.refunded')}</option>
-                <option value="paid">{t('admin.ordersPage.cc.statuses.paid')}</option>
-              </select>
-            </div>
-          </div>
-          {ccLoading && (
-            <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
-              {t('admin.ordersPage.loading')}
-            </div>
-          )}
-          <div className={s.tableWrapper} style={{overflowX:'auto'}}>
-          <table className={s.table}>
-            <thead>
-              <tr style={{background:'#f8fafc', position:'sticky', top:0, zIndex:1}}>
-                <th 
-                  style={{cursor:'pointer', userSelect:'none'}}
-                  onClick={()=>{
-                    if (ccSortColumn === 'order') {
-                      setCcSortDirection(ccSortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      setCcSortColumn('order');
-                      setCcSortDirection('asc');
-                    }
-                  }}
-                >
-                  <div style={{display:'flex', alignItems:'center', gap:6}}>
-                    {t('admin.ordersPage.cc.table.order')}
-                    {ccSortColumn === 'order' && (
-                      <span>{ccSortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th 
-                  style={{cursor:'pointer', userSelect:'none'}}
-                  onClick={()=>{
-                    if (ccSortColumn === 'fullName') {
-                      setCcSortDirection(ccSortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      setCcSortColumn('fullName');
-                      setCcSortDirection('asc');
-                    }
-                  }}
-                >
-                  <div style={{display:'flex', alignItems:'center', gap:6}}>
-                    {t('admin.ordersPage.cc.table.fullName')} / {t('admin.ordersPage.cc.table.phone')}
-                    {ccSortColumn === 'fullName' && (
-                      <span>{ccSortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th 
-                  style={{cursor:'pointer', userSelect:'none'}}
-                  onClick={()=>{
-                    if (ccSortColumn === 'city') {
-                      setCcSortDirection(ccSortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      setCcSortColumn('city');
-                      setCcSortDirection('asc');
-                    }
-                  }}
-                >
-                  <div style={{display:'flex', alignItems:'center', gap:6}}>
-                    {t('admin.ordersPage.cc.table.city')} / {t('admin.ordersPage.cc.table.region')}
-                    {ccSortColumn === 'city' && (
-                      <span>{ccSortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th 
-                  style={{cursor:'pointer', userSelect:'none'}}
-                  onClick={()=>{
-                    if (ccSortColumn === 'total') {
-                      setCcSortDirection(ccSortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      setCcSortColumn('total');
-                      setCcSortDirection('asc');
-                    }
-                  }}
-                >
-                  <div style={{display:'flex', alignItems:'center', gap:6}}>
-                    {t('admin.ordersPage.cc.table.total')}
-                    {ccSortColumn === 'total' && (
-                      <span>{ccSortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th 
-                  style={{cursor:'pointer', userSelect:'none'}}
-                  onClick={()=>{
-                    if (ccSortColumn === 'status') {
-                      setCcSortDirection(ccSortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      setCcSortColumn('status');
-                      setCcSortDirection('asc');
-                    }
-                  }}
-                >
-                  <div style={{display:'flex', alignItems:'center', gap:6}}>
-                    {t('admin.ordersPage.cc.table.status')}
-                    {ccSortColumn === 'status' && (
-                      <span>{ccSortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th 
-                  style={{cursor:'pointer', userSelect:'none'}}
-                  onClick={()=>{
-                    if (ccSortColumn === 'time') {
-                      setCcSortDirection(ccSortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      setCcSortColumn('time');
-                      setCcSortDirection('desc');
-                    }
-                  }}
-                >
-                  <div style={{display:'flex', alignItems:'center', gap:6}}>
-                    {t('admin.ordersPage.cc.table.time')}
-                    {ccSortColumn === 'time' && (
-                      <span>{ccSortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th>{t('admin.ordersPage.cc.table.comment')} / {t('admin.ordersPage.cc.table.schedule')}</th>
-                <th>{t('admin.ordersPage.cc.table.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ccLoading && Array.from({length: Math.min(ccLimit, 8)}).map((_, i)=> (
-                <tr key={`cc-sk-${i}`}>
-                  <td colSpan={8}>
-                    <div style={{display:'grid', gridTemplateColumns:'140px 180px 180px 100px 120px 140px 240px 140px', gap:12}}>
-                      {Array.from({length:8}).map((__, j)=> (
-                        <div key={j} style={{height:16, background:'#e5e7eb', borderRadius:8}} />
+      {loading && (
+        <div className="mb-2 text-xs text-slate-500">{t("admin.ordersPage.loading")}</div>
+      )}
+
+      {/* DESKTOP TABLE */}
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-3 py-3 text-center">{t("admin.ordersPage.table.customer")}</th>
+              <th className="px-3 py-3 text-center">{t("admin.ordersPage.table.status")}</th>
+              <th className="px-3 py-3 text-center">{t("admin.ordersPage.table.city")}</th>
+              <th className="px-3 py-3 text-center">{t("admin.ordersPage.table.time")}</th>
+              <th className="px-3 py-3 text-center">{t("admin.ordersPage.table.action")}</th>
+            </tr>
+          </thead>
+
+          <tbody className="text-sm">
+            {loading &&
+              Array.from({ length: Math.min(ordersLimit, 10) }).map((_, i) => (
+                <tr key={`sk-${i}`} className="border-t border-slate-200">
+                  <td colSpan={5} className="px-3 py-3">
+                    <div className="grid grid-cols-5 gap-3">
+                      {Array.from({ length: 5 }).map((__, j) => (
+                        <div key={j} className="h-4 rounded-lg bg-slate-200" />
                       ))}
                     </div>
                   </td>
                 </tr>
               ))}
-              {!ccLoading && (filteredCc || []).slice((ccPage-1)*ccLimit, (ccPage-1)*ccLimit + ccLimit).map((o:any)=> (
-                <tr key={o.id}>
-                  <td>{o.order_number || '—'}</td>
-                  <td>
-                    <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                      <div style={{fontWeight:600, fontSize:14}}>{o.full_name || '—'}</div>
-                      <div style={{fontSize:12, color:'#64748b'}}>{o.client_phone || '—'}</div>
-                    </div>
+
+            {!loading &&
+              pagedOrders.map((o, idx) => (
+                <tr
+                  key={o.id}
+                  className={[
+                    "border-t border-slate-200",
+                    idx % 2 === 1 ? "bg-slate-50/40" : "",
+                    "hover:bg-slate-50",
+                  ].join(" ")}
+                >
+                  <td className="px-3 py-3 text-center">{o.customer}</td>
+                  <td className="px-3 py-3 text-center">
+                    <StatusBadge value={o.status} />
                   </td>
-                  <td>
-                    <div style={{display:'flex', flexDirection:'column', gap:6}}>
-                      <select
-                        className={s.input}
-                        value={(o.city || '').toLowerCase()}
-                        onChange={(e)=> setCcOrders(prev => prev.map(x => x.id===o.id ? { ...x, city: e.target.value } : x))}
-                        style={{height:32, borderRadius:10, width:'100%'}}
-                      >
-                        <option value="">—</option>
-                        {LOCATION_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
-                        ))}
-                      </select>
-                      <input
-                        className={s.input}
-                        placeholder={t('admin.ordersPage.cc.regionPlaceholder')}
-                        value={o.order_region || ''}
-                        onChange={(e)=> setCcOrders(prev => prev.map(x => x.id===o.id ? { ...x, order_region: e.target.value } : x))}
-                        style={{height:32, borderRadius:10, padding:'0 10px', border:'1px solid #e5e7eb', background:'#fff', width:'100%'}}
-                      />
-                    </div>
+                  <td className="px-3 py-3 text-center">{o.location || "—"}</td>
+                  <td
+                    className={[
+                      "px-3 py-3 text-center font-mono text-xs",
+                      timeClass(o.created_at),
+                    ].join(" ")}
+                  >
+                    {formatDateTime(o.created_at)}
                   </td>
-                  <td>{Number(o.total_price||0).toLocaleString()}</td>
-                  <td>{renderCcStatus(o.status)}</td>
-                  <td>{o.created_at ? new Date(o.created_at).toLocaleString() : '—'}</td>
-                  <td>
-                    <div style={{display:'flex', flexDirection:'column', gap:6}}>
-                      <input
-                        className={s.input}
-                        placeholder={t('admin.ordersPage.cc.commentPlaceholder')}
-                        value={ccComments[o.id] ?? (o.order_comment || '')}
-                        onChange={(e)=> setCcComments(prev=> ({...prev, [o.id]: e.target.value}))}
-                        style={{height:32, borderRadius:10, width:'100%'}}
-                      />
-                      <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                        <input
-                          className={s.input}
-                          type="datetime-local"
-                          value={ccSchedule[o.id] || ''}
-                          onChange={(e)=> setCcSchedule(prev=> ({...prev, [o.id]: e.target.value}))}
-                          style={{height:32, borderRadius:10, width:'100%'}}
-                        />
-                        {(() => {
-                          const target = getScheduleTarget(o);
-                          if (!target) return null;
-                          const nowTs = Date.now();
-                          const diff = target.getTime() - nowTs;
-                          const overdue = diff <= 0;
-                          const color = overdue ? '#dc2626' : (diff <= 5*60*1000 ? '#f59e0b' : '#16a34a');
-                          return (
-                            <span style={{
-                              display:'inline-block', padding:'2px 8px',
-                              borderRadius:999, fontSize:12, fontWeight:800,
-                              background:'#f8fafc', border:'1px solid #e5e7eb', color,
-                              alignSelf:'flex-start'
-                            }} title={target.toLocaleString()}>
-                              ⏳ {formatRemaining(diff)}
-                            </span>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{display:'flex', gap:8, alignItems:'center', justifyContent:'center'}}>
+                  <td className="px-3 py-3 text-center">
+                    {isSale && (o.status === "pending" || !o.status) && (
                       <button
-                        className={s.btn}
-                        title="Qabul qilish"
-                        style={{
-                          width:40,
-                          height:40, 
-                          borderRadius:10,
-                          background:'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                          color:'#fff', 
-                          border:'none',
-                          boxShadow:'0 2px 8px rgba(16, 185, 129, 0.3)',
-                          transition:'all 0.2s ease',
-                          cursor:'pointer',
-                          display:'inline-flex',
-                          alignItems:'center',
-                          justifyContent:'center',
-                          padding:0
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.3)';
-                        }}
-                        onClick={async ()=>{
+                        className={btnBase + " h-8 " + btnGreen}
+                        onClick={async () => {
                           try {
-                            const payload = {
-                              city: (o.city||'') || undefined,
-                              region: (o.order_region||'') || undefined,
-                              order_comment: (ccComments[o.id] || '').trim() || undefined,
-                              status: 'accepted',
-                            };
-                            await shopAPI.updateOrderLocation(o.id, payload);
-                            setNotice({ type:'success', message:'Qabul qilindi (accepted)'});
-                            setCcOrders(prev => prev.map(x => x.id===o.id ? { ...x, status:'accepted' } : x));
-                            setTimeout(()=> setNotice(null), 2000);
-                          } catch(e:any) {
-                            const msg = e?.response?.data?.detail || e?.message || 'Xatolik';
-                            setNotice({ type:'error', message: msg });
-                            setTimeout(()=> setNotice(null), 3000);
+                            await shopAPI.takeOrderCallCenter(o.id);
+                            setNotice({
+                              type: "success",
+                              message: t("admin.ordersPage.cc.takeSuccess"),
+                            });
+                            setTimeout(() => setNotice(null), 2000);
+
+                            await loadCcOrders();
+
+                            const res = await shopAPI.getAllOrders();
+                            const data = Array.isArray(res.data)
+                              ? res.data
+                              : res.data?.results || [];
+                            setItems(normalizeOrders(data));
+                          } catch (e: any) {
+                            const msg =
+                              e?.response?.data?.detail ||
+                              e?.message ||
+                              t("common.forms.error");
+                            setNotice({ type: "error", message: msg });
+                            setTimeout(() => setNotice(null), 3000);
                           }
                         }}
                       >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M20 6L9 17l-5-5"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
                         </svg>
+                        {t("admin.ordersPage.cc.take")}
                       </button>
-                      <button
-                        className={s.btn}
-                        title="Rad etish"
-                        style={{
-                          width:40,
-                          height:40,
-                          borderRadius:10,
-                          background:'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                          color:'#fff',
-                          border:'none',
-                          boxShadow:'0 2px 8px rgba(239, 68, 68, 0.3)',
-                          transition:'all 0.2s ease',
-                          cursor:'pointer',
-                          display:'inline-flex',
-                          alignItems:'center',
-                          justifyContent:'center',
-                          padding:0
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.4)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(239, 68, 68, 0.3)';
-                        }}
-                        onClick={async ()=>{
-                          try {
-                            const payload = {
-                              city: (o.city||'') || undefined,
-                              region: (o.order_region||'') || undefined,
-                              order_comment: (ccComments[o.id] || '').trim() || undefined,
-                              status: 'cancelled',
-                            };
-                            await shopAPI.updateOrderLocation(o.id, payload);
-                            setNotice({ type:'success', message:'Rad etildi (cancelled)'});
-                            setCcOrders(prev => prev.map(x => x.id===o.id ? { ...x, status:'cancelled' } : x));
-                            setTimeout(()=> setNotice(null), 2000);
-                          } catch(e:any) {
-                            const msg = e?.response?.data?.detail || e?.message || 'Xatolik';
-                            setNotice({ type:'error', message: msg });
-                            setTimeout(()=> setNotice(null), 3000);
-                          }
-                        }}
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                      <button
-                        className={s.btn}
-                        title="Kechiktirish"
-                        style={{
-                          width:40,
-                          height:40,
-                          borderRadius:10,
-                          background:'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                          color:'#fff',
-                          border:'none',
-                          boxShadow:'0 2px 8px rgba(245, 158, 11, 0.3)',
-                          transition:'all 0.2s ease',
-                          cursor:'pointer',
-                          display:'inline-flex',
-                          alignItems:'center',
-                          justifyContent:'center',
-                          padding:0
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.4)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(245, 158, 11, 0.3)';
-                        }}
-                        onClick={async ()=>{
-                          try {
-                            const schedule = (ccSchedule[o.id] || '').trim();
-                            const baseComment = (ccComments[o.id] || '').trim();
-                            const iso = schedule ? new Date(schedule).toISOString() : '';
-                            const human = schedule ? new Date(schedule).toLocaleString() : '';
-                            const composed = schedule
-                              ? `${baseComment ? baseComment + ' | ' : ''}Reja: ${human} [reja_at:${iso}]`
-                              : (baseComment || undefined);
-                            const payload = {
-                              city: (o.city||'') || undefined,
-                              region: (o.order_region||'') || undefined,
-                              order_comment: composed,
-                              status: 'processing',
-                            };
-                            await shopAPI.updateOrderLocation(o.id, payload);
-                            setNotice({ type:'success', message:'Kechiktirildi (processing)'});
-                            setCcOrders(prev => prev.map(x => x.id===o.id ? { ...x, status:'processing' } : x));
-                            setTimeout(()=> setNotice(null), 2000);
-                          } catch(e:any) {
-                            const msg = e?.response?.data?.detail || e?.message || 'Xatolik';
-                            setNotice({ type:'error', message: msg });
-                            setTimeout(()=> setNotice(null), 3000);
-                          }
-                        }}
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                          <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                        </svg>
-                      </button>
-                    </div>
+                    )}
                   </td>
                 </tr>
               ))}
-              {(!filteredCc || filteredCc.length===0) && (
-                <tr><td colSpan={8} style={{textAlign:'center', color:'#64748b'}}>Hali buyurtmalar yo'q</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* MOBILE CARDS */}
+      <div className="md:hidden">
+        {loading &&
+          Array.from({ length: Math.min(ordersLimit, 5) }).map((_, i) => (
+            <div
+              key={`m-sk-${i}`}
+              className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+            >
+              <div className="h-14 rounded-xl bg-slate-200" />
+            </div>
+          ))}
+
+        {!loading &&
+          pagedOrders.map((o) => (
+            <div
+              key={o.id}
+              className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+            >
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-bold text-slate-900">
+                    {o.customer}
+                  </div>
+                  <div className="text-xs text-slate-500">{o.location || "—"}</div>
+                </div>
+                <StatusBadge value={o.status} />
+              </div>
+
+              <div className={["mb-2 text-xs font-mono", timeClass(o.created_at)].join(" ")}>
+                {formatDateTime(o.created_at)}
+              </div>
+
+              {isSale && (o.status === "pending" || !o.status) && (
+                <button
+                  className={btnBase + " h-9 w-full " + btnGreen}
+                  onClick={async () => {
+                    try {
+                      await shopAPI.takeOrderCallCenter(o.id);
+                      setNotice({
+                        type: "success",
+                        message: t("admin.ordersPage.cc.takeSuccess"),
+                      });
+                      setTimeout(() => setNotice(null), 2000);
+
+                      await loadCcOrders();
+
+                      const res = await shopAPI.getAllOrders();
+                      const data = Array.isArray(res.data) ? res.data : res.data?.results || [];
+                      setItems(normalizeOrders(data));
+                    } catch (e: any) {
+                      const msg = e?.response?.data?.detail || e?.message || t("common.forms.error");
+                      setNotice({ type: "error", message: msg });
+                      setTimeout(() => setNotice(null), 3000);
+                    }
+                  }}
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M20 6L9 17l-5-5"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  {t("admin.ordersPage.cc.take")}
+                </button>
               )}
-            </tbody>
-          </table>
+            </div>
+          ))}
+      </div>
+
+      {/* PAGINATION */}
+      {!loading && (
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs text-slate-500">
+            {t("admin.ordersPage.pagination.page", {
+              page: ordersPage,
+              total: Math.max(1, Math.ceil(filtered.length / ordersLimit)),
+            })}
           </div>
-          {!ccLoading && filteredCc && filteredCc.length>0 && (
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8}}>
-              <div style={{fontSize:12, color:'#64748b'}}>Page {ccPage} of {Math.max(1, Math.ceil(filteredCc.length / ccLimit))}</div>
-              <div style={{display:'flex', gap:8, alignItems:'center'}}>
-                <select className={s.input} value={ccLimit} onChange={(e)=>{ setCcPage(1); setCcLimit(Number(e.target.value)||20); }}>
+
+          <div className="flex items-center gap-2">
+            <select
+              className={selectBase}
+              value={ordersLimit}
+              onChange={(e) => {
+                setOrdersPage(1);
+                setOrdersLimit(Number(e.target.value) || 20);
+              }}
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+
+            <div className="flex gap-2">
+              <button
+                className={btnBase + " h-10 " + btnMuted}
+                disabled={ordersPage <= 1}
+                onClick={() => setOrdersPage((p) => Math.max(1, p - 1))}
+              >
+                {t("admin.ordersPage.pagination.prev")}
+              </button>
+              <button
+                className={btnBase + " h-10 " + btnMuted}
+                disabled={ordersPage >= Math.ceil(filtered.length / ordersLimit)}
+                onClick={() =>
+                  setOrdersPage((p) =>
+                    Math.min(Math.ceil(filtered.length / ordersLimit) || 1, p + 1)
+                  )
+                }
+              >
+                {t("admin.ordersPage.pagination.next")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CALL-CENTER BLOCK (SALE ONLY) */}
+      {isSale && (
+        <div className="mt-5">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="font-black text-slate-900">{t("admin.ordersPage.cc.title")}</div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                className={btnBase + " h-10 " + btnBlue}
+                onClick={loadCcOrders}
+                disabled={ccLoading}
+                title="Обновить данные"
+              >
+                <svg
+                  className={ccLoading ? "animate-spin" : ""}
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                {ccLoading ? "Обновление..." : "Обновить"}
+              </button>
+
+              <select
+                className={selectBase}
+                value={ccStatus}
+                onChange={(e) => {
+                  setCcPage(1);
+                  setCcStatus(e.target.value);
+                }}
+              >
+                <option value="">{t("admin.ordersPage.cc.statusAll")}</option>
+                {(
+                  [
+                    "pending",
+                    "accepted",
+                    "packing",
+                    "packed",
+                    "processing",
+                    "shipped",
+                    "delivered",
+                    "cancelled",
+                    "refunded",
+                    "paid",
+                  ] as const
+                ).map((st) => (
+                  <option key={st} value={st}>
+                    {t(`admin.ordersPage.cc.statuses.${st}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {ccLoading && (
+            <div className="mb-2 text-xs text-slate-500">{t("admin.ordersPage.loading")}</div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  {[
+                    { key: "order", label: t("admin.ordersPage.cc.table.order") },
+                    {
+                      key: "fullName",
+                      label:
+                        t("admin.ordersPage.cc.table.fullName") +
+                        " / " +
+                        t("admin.ordersPage.cc.table.phone"),
+                    },
+                    {
+                      key: "city",
+                      label:
+                        t("admin.ordersPage.cc.table.city") +
+                        " / " +
+                        t("admin.ordersPage.cc.table.region"),
+                    },
+                    { key: "total", label: t("admin.ordersPage.cc.table.total") },
+                    { key: "status", label: t("admin.ordersPage.cc.table.status") },
+                    { key: "time", label: t("admin.ordersPage.cc.table.time") },
+                  ].map((h) => (
+                    <th
+                      key={h.key}
+                      className="cursor-pointer select-none px-3 py-3 text-center"
+                      onClick={() => {
+                        if (ccSortColumn === h.key) {
+                          setCcSortDirection(ccSortDirection === "asc" ? "desc" : "asc");
+                        } else {
+                          setCcSortColumn(h.key);
+                          setCcSortDirection(h.key === "time" ? "desc" : "asc");
+                        }
+                      }}
+                    >
+                      <div className="inline-flex items-center gap-2">
+                        {h.label}
+                        {ccSortColumn === h.key && (
+                          <span className="text-slate-700">
+                            {ccSortDirection === "asc" ? "↑" : "↓"}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  ))}
+                  <th className="px-3 py-3 text-center">
+                    {t("admin.ordersPage.cc.table.comment")} / {t("admin.ordersPage.cc.table.schedule")}
+                  </th>
+                  <th className="px-3 py-3 text-center">{t("admin.ordersPage.cc.table.actions")}</th>
+                </tr>
+              </thead>
+
+              <tbody className="text-sm">
+                {!ccLoading &&
+                  (filteredCc || [])
+                    .slice((ccPage - 1) * ccLimit, (ccPage - 1) * ccLimit + ccLimit)
+                    .map((o: any, idx: number) => {
+                      const target = getScheduleTarget(o);
+                      const diff = target ? target.getTime() - Date.now() : null;
+                      const overdue = diff !== null && diff <= 0;
+                      const urgent = diff !== null && diff > 0 && diff <= 5 * 60 * 1000;
+
+                      const timerColor = overdue
+                        ? "text-red-600"
+                        : urgent
+                        ? "text-amber-600"
+                        : "text-emerald-600";
+
+                      return (
+                        <tr
+                          key={o.id}
+                          className={[
+                            "border-t border-slate-200",
+                            idx % 2 === 1 ? "bg-slate-50/40" : "",
+                            "hover:bg-slate-50",
+                          ].join(" ")}
+                        >
+                          <td className="px-3 py-3 text-center">{o.order_number || "—"}</td>
+
+                          <td className="px-3 py-3">
+                            <div className="flex flex-col gap-1 text-center">
+                              <div className="text-sm font-semibold text-slate-900">
+                                {o.full_name || "—"}
+                              </div>
+                              <div className="text-xs text-slate-500">{o.client_phone || "—"}</div>
+                            </div>
+                          </td>
+
+                          <td className="px-3 py-3">
+                            <div className="flex flex-col gap-2">
+                              <select
+                                className={selectBase}
+                                value={(o.city || "").toLowerCase()}
+                                onChange={(e) =>
+                                  setCcOrders((prev) =>
+                                    prev.map((x) => (x.id === o.id ? { ...x, city: e.target.value } : x))
+                                  )
+                                }
+                              >
+                                <option value="">—</option>
+                                {LOCATION_OPTIONS.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {t(opt.labelKey)}
+                                  </option>
+                                ))}
+                              </select>
+
+                              <input
+                                className={inputBase}
+                                placeholder={t("admin.ordersPage.cc.regionPlaceholder")}
+                                value={o.order_region || ""}
+                                onChange={(e) =>
+                                  setCcOrders((prev) =>
+                                    prev.map((x) =>
+                                      x.id === o.id ? { ...x, order_region: e.target.value } : x
+                                    )
+                                  )
+                                }
+                              />
+                            </div>
+                          </td>
+
+                          <td className="px-3 py-3 text-center">
+                            {Number(o.total_price || 0).toLocaleString()}
+                          </td>
+
+                          <td className="px-3 py-3 text-center">
+                            <StatusBadge value={o.status} />
+                          </td>
+
+                          <td className="px-3 py-3 text-center text-xs text-slate-600">
+                            {o.created_at ? new Date(o.created_at).toLocaleString() : "—"}
+                          </td>
+
+                          <td className="px-3 py-3">
+                            <div className="flex flex-col gap-2">
+                              <input
+                                className={inputBase}
+                                placeholder={t("admin.ordersPage.cc.commentPlaceholder")}
+                                value={ccComments[o.id] ?? (o.order_comment || "")}
+                                onChange={(e) =>
+                                  setCcComments((prev) => ({ ...prev, [o.id]: e.target.value }))
+                                }
+                              />
+
+                              <div className="flex flex-col gap-1">
+                                <input
+                                  className={inputBase}
+                                  type="datetime-local"
+                                  value={ccSchedule[o.id] || ""}
+                                  onChange={(e) =>
+                                    setCcSchedule((prev) => ({ ...prev, [o.id]: e.target.value }))
+                                  }
+                                />
+                                {target && diff !== null && (
+                                  <span
+                                    className={[
+                                      "inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-extrabold",
+                                      timerColor,
+                                    ].join(" ")}
+                                    title={target.toLocaleString()}
+                                  >
+                                    ⏳ {formatRemaining(diff)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="px-3 py-3">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                className={btnBase + " h-10 w-10 p-0 " + btnGreen}
+                                title="Qabul qilish"
+                                onClick={async () => {
+                                  try {
+                                    const payload = {
+                                      city: (o.city || "") || undefined,
+                                      region: (o.order_region || "") || undefined,
+                                      order_comment: (ccComments[o.id] || "").trim() || undefined,
+                                      status: "accepted",
+                                    };
+                                    await shopAPI.updateOrderLocation(o.id, payload);
+                                    setNotice({ type: "success", message: "Qabul qilindi (accepted)" });
+                                    setCcOrders((prev) =>
+                                      prev.map((x) => (x.id === o.id ? { ...x, status: "accepted" } : x))
+                                    );
+                                    setTimeout(() => setNotice(null), 2000);
+                                  } catch (e: any) {
+                                    const msg = e?.response?.data?.detail || e?.message || "Xatolik";
+                                    setNotice({ type: "error", message: msg });
+                                    setTimeout(() => setNotice(null), 3000);
+                                  }
+                                }}
+                              >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                  <path
+                                    d="M20 6L9 17l-5-5"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              </button>
+
+                              <button
+                                className={btnBase + " h-10 w-10 p-0 " + btnRed}
+                                title="Rad etish"
+                                onClick={async () => {
+                                  try {
+                                    const payload = {
+                                      city: (o.city || "") || undefined,
+                                      region: (o.order_region || "") || undefined,
+                                      order_comment: (ccComments[o.id] || "").trim() || undefined,
+                                      status: "cancelled",
+                                    };
+                                    await shopAPI.updateOrderLocation(o.id, payload);
+                                    setNotice({ type: "success", message: "Rad etildi (cancelled)" });
+                                    setCcOrders((prev) =>
+                                      prev.map((x) => (x.id === o.id ? { ...x, status: "cancelled" } : x))
+                                    );
+                                    setTimeout(() => setNotice(null), 2000);
+                                  } catch (e: any) {
+                                    const msg = e?.response?.data?.detail || e?.message || "Xatolik";
+                                    setNotice({ type: "error", message: msg });
+                                    setTimeout(() => setNotice(null), 3000);
+                                  }
+                                }}
+                              >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                  <path
+                                    d="M18 6L6 18M6 6l12 12"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              </button>
+
+                              <button
+                                className={btnBase + " h-10 w-10 p-0 " + btnAmber}
+                                title="Kechiktirish"
+                                onClick={async () => {
+                                  try {
+                                    const schedule = (ccSchedule[o.id] || "").trim();
+                                    const baseComment = (ccComments[o.id] || "").trim();
+                                    const iso = schedule ? new Date(schedule).toISOString() : "";
+                                    const human = schedule ? new Date(schedule).toLocaleString() : "";
+                                    const composed = schedule
+                                      ? `${baseComment ? baseComment + " | " : ""}Reja: ${human} [reja_at:${iso}]`
+                                      : baseComment || undefined;
+
+                                    const payload = {
+                                      city: (o.city || "") || undefined,
+                                      region: (o.order_region || "") || undefined,
+                                      order_comment: composed,
+                                      status: "processing",
+                                    };
+                                    await shopAPI.updateOrderLocation(o.id, payload);
+                                    setNotice({ type: "success", message: "Kechiktirildi (processing)" });
+                                    setCcOrders((prev) =>
+                                      prev.map((x) => (x.id === o.id ? { ...x, status: "processing" } : x))
+                                    );
+                                    setTimeout(() => setNotice(null), 2000);
+                                  } catch (e: any) {
+                                    const msg = e?.response?.data?.detail || e?.message || "Xatolik";
+                                    setNotice({ type: "error", message: msg });
+                                    setTimeout(() => setNotice(null), 3000);
+                                  }
+                                }}
+                              >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                                  <path
+                                    d="M12 6v6l4 2"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                {!ccLoading && (!filteredCc || filteredCc.length === 0) && (
+                  <tr className="border-t border-slate-200">
+                    <td colSpan={8} className="px-3 py-6 text-center text-sm text-slate-500">
+                      Hali buyurtmalar yo&apos;q
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {!ccLoading && filteredCc && filteredCc.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="text-xs text-slate-500">
+                Page {ccPage} of {Math.max(1, Math.ceil(filteredCc.length / ccLimit))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  className={selectBase}
+                  value={ccLimit}
+                  onChange={(e) => {
+                    setCcPage(1);
+                    setCcLimit(Number(e.target.value) || 20);
+                  }}
+                >
                   <option value={10}>10</option>
                   <option value={20}>20</option>
                   <option value={50}>50</option>
                   <option value={100}>100</option>
                 </select>
-                <div className={s.actions}>
-                  <button className={`${s.btn} ${s.muted}`} disabled={ccPage<=1} onClick={()=>setCcPage(p=>Math.max(1,p-1))}>Prev</button>
-                  <button className={`${s.btn} ${s.muted}`} disabled={ccPage>=Math.ceil((filteredCc.length||0)/ccLimit)} onClick={()=>setCcPage(p=>Math.min(Math.ceil((filteredCc.length||0)/ccLimit)||1,p+1))}>Next</button>
+
+                <div className="flex gap-2">
+                  <button
+                    className={btnBase + " h-10 " + btnMuted}
+                    disabled={ccPage <= 1}
+                    onClick={() => setCcPage((p) => Math.max(1, p - 1))}
+                  >
+                    Prev
+                  </button>
+                  <button
+                    className={btnBase + " h-10 " + btnMuted}
+                    disabled={ccPage >= Math.ceil((filteredCc.length || 0) / ccLimit)}
+                    onClick={() =>
+                      setCcPage((p) =>
+                        Math.min(Math.ceil((filteredCc.length || 0) / ccLimit) || 1, p + 1)
+                      )
+                    }
+                  >
+                    Next
+                  </button>
                 </div>
               </div>
             </div>
@@ -1077,4 +1141,3 @@ export default function Orders() {
     </div>
   );
 }
-

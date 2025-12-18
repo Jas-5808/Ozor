@@ -449,7 +449,7 @@ export function Profile() {
   }, [debouncedSearchQuery]);
 
   // Хук для бесконечной прокрутки в Market
-  const marketSentinelRef = useInfiniteScroll({
+  const { ref: marketSentinelRef } = useInfiniteScroll({
     hasMore: marketHasMore,
     loading: productsLoading,
     onLoadMore: loadMoreMarket,

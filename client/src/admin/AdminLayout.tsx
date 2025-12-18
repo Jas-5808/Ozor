@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-// @ts-ignore
-import s from './AdminLayout.module.scss';
 import AdminLanguageSwitcher from './components/AdminLanguageSwitcher';
 
 const iconProps = {
@@ -133,17 +131,9 @@ const NAV_ITEMS: Array<{ to: string; labelKey: string; icon: NavIconKey; roles: 
   { to: '/admin/audit', labelKey: 'admin.nav.audit', icon: 'audit', roles: ['admin'] },
 ];
 
-const QUICK_FILTERS = [
-  { id: 'all', labelKey: 'admin.filters.all' },
-  { id: 'pending', labelKey: 'admin.filters.pending' },
-  { id: 'packing', labelKey: 'admin.filters.packing' },
-  { id: 'ready', labelKey: 'admin.filters.ready' },
-];
-
 export default function AdminLayout() {
   const { t } = useTranslation();
   const { profile, logout } = useAuth();
-  const [activeFilter, setActiveFilter] = useState('all');
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -220,37 +210,77 @@ export default function AdminLayout() {
     setIsSidebarExpanded(false);
   };
 
+  const rootClasses = [
+    'min-h-screen grid grid-cols-1 transition-[grid-template-columns] duration-300 relative',
+    isSidebarExpanded ? 'md:grid-cols-[260px_1fr]' : 'md:grid-cols-[80px_1fr]',
+    isDarkTheme ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900',
+    isMobileMenuOpen && 'overflow-hidden',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const sidebarClasses = [
+    'bg-gradient-to-b from-emerald-900 via-emerald-800 to-teal-700 text-emerald-50 p-6 flex flex-col gap-6 transition-all duration-300 overflow-hidden relative z-20',
+    isSidebarExpanded ? 'md:w-[260px]' : 'md:w-[80px]',
+    isMobile
+      ? `fixed left-0 top-0 h-full w-[260px] transform ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const navLinkBase =
+    'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-colors';
+  const navLinkActive = isDarkTheme
+    ? 'bg-emerald-600 text-white shadow'
+    : 'bg-emerald-100 text-emerald-900 shadow-sm';
+  const navLinkInactive = 'text-emerald-50/80 hover:bg-emerald-900/30 hover:text-white';
+
+  const mainClasses = [
+    'flex-1 p-4 md:p-6',
+    isDarkTheme ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-900',
+  ].join(' ');
+
   return (
-    <div className={`${s.root} ${isDarkTheme ? s.rootDark : ''} ${isSidebarExpanded ? s.rootExpanded : s.rootCollapsed} ${isMobileMenuOpen ? s.mobileMenuOpen : ''}`}>
+    <div className={rootClasses}>
       {isMobile && isMobileMenuOpen && (
-        <div className={s.overlay} onClick={closeMobileMenu} />
+        <div className="fixed inset-0 z-10 bg-black/50" onClick={closeMobileMenu} />
       )}
-      <aside 
-        className={`${s.sidebar} ${isSidebarExpanded ? s.sidebarExpanded : s.sidebarCollapsed} ${isMobileMenuOpen ? s.sidebarMobileOpen : ''}`}
+
+      <aside
+        className={sidebarClasses}
         onMouseEnter={handleSidebarMouseEnter}
         onMouseLeave={handleSidebarMouseLeave}
       >
-        <div className={s.sidebarHeader}>
-            <div className={s.brand}>
-              <span className={s.logo}>OZ</span>
-              {(isSidebarExpanded || isMobile) && (
-                <div>
-                  <p>{t('admin.brand.title')}</p>
-                  <small>{t('admin.brand.subtitle')}</small>
-                </div>
-              )}
-            </div>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white/20 text-lg font-extrabold">
+              OZ
+            </span>
+            {(isSidebarExpanded || isMobile) && (
+              <div className="leading-tight">
+                <p className="font-bold">{t('admin.brand.title')}</p>
+                <small className="text-emerald-100/80">{t('admin.brand.subtitle')}</small>
+              </div>
+            )}
+          </div>
+
           {(isSidebarExpanded || isMobile) && (
-            <div className={s.userCard}>
-              <div className={s.avatar}>{(profile?.first_name || 'A').slice(0, 1)}</div>
-              <div>
-                  <p className={s.userName}>{profile?.first_name || 'Admin'}</p>
-                  <small>{t(`admin.roles.${normalizedRole}`, normalizedRole)}</small>
+            <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-3 py-2">
+              <div className="grid h-10 w-10 place-items-center rounded-full bg-white/20 text-base font-bold">
+                {(profile?.first_name || 'A').slice(0, 1)}
+              </div>
+              <div className="leading-tight">
+                <p className="font-semibold">{profile?.first_name || 'Admin'}</p>
+                <small className="text-emerald-100/80">
+                  {t(`admin.roles.${normalizedRole}`, normalizedRole)}
+                </small>
               </div>
             </div>
           )}
         </div>
-        <nav className={s.nav}>
+
+        <nav className="flex-1 space-y-1">
           {navigation.map((item) => {
             const Icon = NAV_ICON_MAP[item.icon];
             return (
@@ -259,7 +289,7 @@ export default function AdminLayout() {
                 to={item.to}
                 end={item.to === '/admin'}
                 className={({ isActive }) =>
-                  isActive ? `${s.navLink} ${s.navLinkActive}` : s.navLink
+                  [navLinkBase, isActive ? navLinkActive : navLinkInactive].join(' ')
                 }
                 title={!isSidebarExpanded ? t(item.labelKey) : undefined}
                 onClick={() => {
@@ -268,7 +298,7 @@ export default function AdminLayout() {
                   }
                 }}
               >
-                <span className={s.navIcon}>
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-white">
                   <Icon />
                 </span>
                 {(isSidebarExpanded || isMobile) && <span>{t(item.labelKey)}</span>}
@@ -276,76 +306,87 @@ export default function AdminLayout() {
             );
           })}
         </nav>
+
         {(isSidebarExpanded || isMobile) && (
-          <div className={s.sidebarFooter}>
-            <div className={s.sidebarStat}>
-                <p>{t('admin.sidebar.processing')}</p>
-                <strong>{t('admin.sidebar.processingCount', { count: 12 })}</strong>
-              </div>
-              <div className={s.sidebarStat}>
-                <p>{t('admin.sidebar.newProducts')}</p>
-                <strong>{t('admin.sidebar.newProductsCount', { count: 8 })}</strong>
-              </div>
-              <button className={s.logout} onClick={logout}>
-                {t('admin.sidebar.logout')}
-              </button>
+          <div className="space-y-3 rounded-2xl bg-white/10 px-3 py-3 text-sm">
+            <div className="flex items-center justify-between">
+              <p>{t('admin.sidebar.processing')}</p>
+              <strong className="text-white">{t('admin.sidebar.processingCount', { count: 12 })}</strong>
             </div>
+            <div className="flex items-center justify-between">
+              <p>{t('admin.sidebar.newProducts')}</p>
+              <strong className="text-white">{t('admin.sidebar.newProductsCount', { count: 8 })}</strong>
+            </div>
+            <button
+              className="w-full rounded-xl bg-white/15 px-3 py-2 text-left font-semibold text-white transition hover:bg-white/25"
+              onClick={logout}
+            >
+              {t('admin.sidebar.logout')}
+            </button>
+          </div>
         )}
       </aside>
 
-      <div className={s.body}>
-        <header className={s.toolbar}>
-          {isMobile && (
-            <button 
-              className={s.burgerButton}
-              onClick={toggleMobileMenu}
-              aria-label="Toggle menu"
-            >
-              <BurgerIcon />
-            </button>
-          )}
-          <div className={s.search}>
-            <SearchIcon />
-            <input type="search" placeholder={t('admin.toolbar.searchPlaceholder')} />
-          </div>
-          <div className={s.filters}>
-            {QUICK_FILTERS.map((chip) => (
+      <div className="flex min-h-screen flex-col bg-white/70 backdrop-blur">
+        <header
+          className={`sticky top-0 z-10 flex items-center justify-between gap-3 border-b px-4 py-3 ${
+            isDarkTheme ? 'bg-slate-900/80 border-slate-800 text-slate-100' : 'bg-white/80 border-slate-200'
+          }`}
+        >
+          <div className="flex items-center gap-3 flex-1">
+            {isMobile && (
               <button
-                key={chip.id}
-                type="button"
-                onClick={() => setActiveFilter(chip.id)}
-                className={
-                  activeFilter === chip.id ? `${s.filterChip} ${s.filterChipActive}` : s.filterChip
-                }
+                className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
+                onClick={toggleMobileMenu}
+                aria-label="Toggle menu"
               >
-                {t(chip.labelKey)}
+                <BurgerIcon />
               </button>
-            ))}
+            )}
+            <div
+              className={`flex items-center gap-2 rounded-xl border px-3 py-2 flex-1 max-w-xl ${
+                isDarkTheme ? 'bg-slate-900/70 border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-700'
+              }`}
+            >
+              <SearchIcon />
+              <input
+                type="search"
+                placeholder={t('admin.toolbar.searchPlaceholder')}
+                className="w-full bg-transparent outline-none placeholder:text-slate-400 text-sm"
+              />
+            </div>
           </div>
-          <div className={s.toolbarActions}>
+
+          <div className="flex items-center gap-2">
             <AdminLanguageSwitcher />
             <button
-              className={s.iconButton}
+              className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
               type="button"
-              title={
-                isDarkTheme ? t('admin.toolbar.themeLight') : t('admin.toolbar.themeDark')
-              }
+              title={isDarkTheme ? t('admin.toolbar.themeLight') : t('admin.toolbar.themeDark')}
               aria-pressed={isDarkTheme}
               onClick={toggleTheme}
             >
               <ThemeIcon />
             </button>
-            <button className={s.iconButton} type="button" title={t('admin.toolbar.notifications')}>
+            <button
+              className="relative grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
+              type="button"
+              title={t('admin.toolbar.notifications')}
+            >
               <BellIcon />
-              <span className={s.badgeDot} />
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-orange-500" />
             </button>
-            <button className={s.iconButton} type="button" title={t('admin.toolbar.quickAdd')}>
+            <button
+              className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
+              type="button"
+              title={t('admin.toolbar.quickAdd')}
+            >
               <AddIcon />
             </button>
           </div>
         </header>
 
-        <main className={s.main}>
+        <main className={mainClasses}>
           <Outlet />
         </main>
       </div>

@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-// @ts-ignore
-import s from '../AdminLayout.module.scss';
 import { shopAPI } from '../../services/api';
 
 export default function Dashboard() {
@@ -105,16 +103,17 @@ export default function Dashboard() {
     return ()=>{ ignore = true; };
   }, []);
 
-  const badge = (status: string) => {
-    const map: Record<string, string> = {
-      pending: `${s.badge} ${s.badgeInfo}`,
-      cancelled: `${s.badge} ${s.badgeCancelled}`,
-      delivered: `${s.badge} ${s.badgePaid}`,
-      confirmed: `${s.badge} ${s.badgeActive}`,
-      packing: `${s.badge} ${s.badgePending}`,
-    };
-    return map[status] || s.badge;
-  };
+  const badgeClass = useMemo(() => {
+    const base = 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold';
+    return {
+      pending: `${base} bg-amber-100 text-amber-800`,
+      cancelled: `${base} bg-rose-100 text-rose-700`,
+      delivered: `${base} bg-emerald-100 text-emerald-700`,
+      confirmed: `${base} bg-blue-100 text-blue-700`,
+      packing: `${base} bg-indigo-100 text-indigo-700`,
+      default: `${base} bg-slate-100 text-slate-700`,
+    } as Record<string, string>;
+  }, []);
 
   const statusBoard = [
     { label: t('admin.dashboard.orderStatuses.pending'), value: ordersStats.pending, color: '#f97316', accent: '#ffedd5' },
@@ -123,112 +122,113 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className={s.dashboard}>
-      <section className={s.hero}>
-        <div>
-          <p className={s.heroEyebrow}>{t('admin.dashboard.hero.eyebrow')}</p>
-          <h1>{t('admin.dashboard.hero.title')}</h1>
-          <p>{t('admin.dashboard.hero.subtitle')}</p>
-        </div>
-        <div className={s.heroStats}>
+    <div className="space-y-4 p-4 md:p-6">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <span>{t('admin.dashboard.hero.orders')} </span>
-            <strong>{ordersStats.total}</strong>
+            <p className="text-sm font-semibold text-emerald-700">{t('admin.dashboard.hero.eyebrow')}</p>
+            <h1 className="text-2xl font-extrabold text-slate-900">{t('admin.dashboard.hero.title')}</h1>
+            <p className="text-slate-500">{t('admin.dashboard.hero.subtitle')}</p>
           </div>
-          <div>
-            <span>{t('admin.dashboard.hero.avg')} </span>
-            <strong>{ordersStats.avg.toLocaleString()} {t('common.currency')}</strong>
-          </div>
-          <div>
-            <span>{t('admin.dashboard.hero.inventory')} </span>
-            <strong>{warehouseStats.amount.toLocaleString()} {t('common.currency')}</strong>
-          </div>
-        </div>
-      </section>
-
-      <section className={s.panelRow}>
-        <div className={s.panel}>
-          <div className={s.panelHeader}>
-            <span>{t('admin.dashboard.warehouse.title')}</span>
-            <small>{t('admin.dashboard.warehouse.subtitle')}</small>
-          </div>
-          <div className={s.statusBoard}>
-            <div>
-              <p>{t('admin.dashboard.warehouse.total')}</p>
-              <strong>{warehouseStats.total}</strong>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 w-full md:w-auto">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+              <p className="text-slate-500">{t('admin.dashboard.hero.orders')}</p>
+              <strong className="text-lg text-slate-900">{ordersStats.total}</strong>
             </div>
-            <div>
-              <p>{t('admin.dashboard.warehouse.low')}</p>
-              <strong>{warehouseStats.low}</strong>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+              <p className="text-slate-500">{t('admin.dashboard.hero.avg')}</p>
+              <strong className="text-lg text-slate-900">{ordersStats.avg.toLocaleString()} {t('common.currency')}</strong>
             </div>
-            <div>
-              <p>{t('admin.dashboard.warehouse.outOfStock')}</p>
-              <strong>{warehouseStats.out}</strong>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+              <p className="text-slate-500">{t('admin.dashboard.hero.inventory')}</p>
+              <strong className="text-lg text-slate-900">{warehouseStats.amount.toLocaleString()} {t('common.currency')}</strong>
             </div>
           </div>
         </div>
       </section>
 
-      <section className={s.panelRow}>
-        <div className={`${s.panel} ${s.splitPanel}`}>
-          <div className={s.panelHeader}>
-            <span>{t('admin.dashboard.orders.title')}</span>
-            <small>{t('admin.dashboard.orders.subtitle')}</small>
+      <section className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <span className="block text-sm font-semibold text-slate-900">{t('admin.dashboard.warehouse.title')}</span>
+              <small className="text-slate-500">{t('admin.dashboard.warehouse.subtitle')}</small>
+            </div>
           </div>
-          <div className={s.statusList}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-xl bg-slate-50 p-3">
+              <p className="text-slate-500 text-sm">{t('admin.dashboard.warehouse.total')}</p>
+              <strong className="text-xl">{warehouseStats.total}</strong>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-3">
+              <p className="text-slate-500 text-sm">{t('admin.dashboard.warehouse.low')}</p>
+              <strong className="text-xl">{warehouseStats.low}</strong>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-3">
+              <p className="text-slate-500 text-sm">{t('admin.dashboard.warehouse.outOfStock')}</p>
+              <strong className="text-xl">{warehouseStats.out}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <span className="block text-sm font-semibold text-slate-900">{t('admin.dashboard.orders.title')}</span>
+              <small className="text-slate-500">{t('admin.dashboard.orders.subtitle')}</small>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {statusBoard.map((card) => (
               <article
                 key={card.label}
-                style={{ background: card.accent }}
-                className={s.statusCard}
+                className="rounded-xl p-3 text-sm font-semibold shadow-sm"
+                style={{ background: card.accent, color: card.color }}
               >
-                <p>{card.label}</p>
-                <strong>{card.value}</strong>
+                <p className="text-slate-700">{card.label}</p>
+                <strong className="text-lg" style={{ color: card.color }}>{card.value}</strong>
               </article>
             ))}
           </div>
         </div>
-        <div className={`${s.panel} ${s.splitPanel}`}>
-          <div className={s.panelHeader}>
-            <span>{t('admin.dashboard.sales.title')}</span>
-            <small>{t('admin.dashboard.sales.subtitle')}</small>
-          </div>
-          <div className={s.chartPlaceholder}>{t('admin.dashboard.sales.placeholder')}</div>
-        </div>
       </section>
 
-      <section className={s.panel}>
-        <div className={s.panelHeader}>
-          <span>{t('admin.dashboard.recent.title')}</span>
-          {loading && <small>{t('admin.dashboard.recent.loading')}</small>}
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <span className="block text-sm font-semibold text-slate-900">{t('admin.dashboard.recent.title')}</span>
+            {loading && <small className="text-slate-500">{t('admin.dashboard.recent.loading')}</small>}
+          </div>
         </div>
-        <table className={s.table}>
-          <thead>
-            <tr>
-              <th>{t('admin.dashboard.recent.table.order')}</th>
-              <th>{t('admin.dashboard.recent.table.client')}</th>
-              <th>{t('admin.dashboard.recent.table.status')}</th>
-              <th>{t('admin.dashboard.recent.table.amount')}</th>
-              <th>{t('admin.dashboard.recent.table.date')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recent.map((r) => (
-              <tr key={r.id}>
-                <td>
-                  #{r.id}
-                  <div style={{ opacity: 0.65, fontSize: 12 }}>{r.name}</div>
-                </td>
-                <td>{r.client}</td>
-                <td>
-                  <span className={badge(r.statusCode)}>{r.status}</span>
-                </td>
-                <td>{r.sum.toLocaleString()}</td>
-                <td>{r.date}</td>
+        <div className="overflow-hidden rounded-xl border border-slate-200">
+          <table className="w-full border-collapse text-left text-sm">
+            <thead className="bg-slate-100 text-slate-600">
+              <tr>
+                <th className="px-3 py-2">{t('admin.dashboard.recent.table.order')}</th>
+                <th className="px-3 py-2">{t('admin.dashboard.recent.table.client')}</th>
+                <th className="px-3 py-2">{t('admin.dashboard.recent.table.status')}</th>
+                <th className="px-3 py-2">{t('admin.dashboard.recent.table.amount')}</th>
+                <th className="px-3 py-2">{t('admin.dashboard.recent.table.date')}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {recent.map((r) => (
+                <tr key={r.id} className="border-t border-slate-200">
+                  <td className="px-3 py-2">
+                    <div className="font-semibold text-slate-900">#{r.id}</div>
+                    <div className="text-[12px] text-slate-500">{r.name}</div>
+                  </td>
+                  <td className="px-3 py-2">{r.client}</td>
+                  <td className="px-3 py-2">
+                    <span className={badgeClass[r.statusCode] || badgeClass.default}>{r.status}</span>
+                  </td>
+                  <td className="px-3 py-2">{r.sum.toLocaleString()}</td>
+                  <td className="px-3 py-2">{r.date}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   );
