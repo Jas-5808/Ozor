@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef, FormEvent, useCallback } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import cn from "./style.module.scss";
 import { formatPrice, getProductImageUrl, storage } from "../utils/helpers";
 import { Product as ProductType, ProductDetail } from "../types";
 import { shopAPI } from "../services/api";
@@ -894,70 +895,40 @@ export function Product() {
       <div className="mx-auto w-full max-w-[1240px] px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 md:gap-6">
           {/* Gallery */}
-          <section className="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-            <div className="flex gap-3 p-3 md:p-4 items-start">
-              {galleryImages.length > 1 && (
-                <div className="relative flex flex-col gap-1.5 max-h-[520px] sm:max-h-[840px] w-[88px] overflow-hidden px-1.5 py-3 sm:w-[96px] md:w-[104px] xl:w-[120px]">
-                  {(thumbCanScrollUp || thumbCanScrollDown) && (
-                    <button
-                      type="button"
-                      aria-label={t("product.lightbox.prev")}
-                      className={`absolute top-2 left-1/2 -translate-x-1/2 w-11 h-11 rounded-[16px] border border-slate-200 bg-white/90 backdrop-blur-sm shadow-md grid place-items-center text-slate-800 transition ${
-                        !thumbCanScrollUp ? "opacity-40 cursor-not-allowed" : "hover:shadow-lg"
-                      }`}
-                      onClick={() => scrollThumbs(-160)}
-                      disabled={!thumbCanScrollUp}
-                    >
-                      ↑
-                    </button>
-                  )}
-
-                    <div
-                      className="flex flex-col gap-2 max-h-full overflow-y-auto overscroll-contain scroll-smooth pr-1 touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                      ref={thumbsScrollRef}
-                    >
-                    {galleryImages.map((img, i) => (
-                      <button
-                        id={`thumb-${i}`}
-                        key={i}
-                          className={`w-full h-[68px] sm:h-[80px] md:h-[92px] xl:h-[408px] rounded-[16px] border-2 bg-white shadow-sm grid place-items-center transition relative ${
-                          i === lightboxIndex ? "border-emerald-600 shadow-md" : "border-slate-200 hover:-translate-y-0.5 hover:shadow-md"
-                        }`}
-                        type="button"
-                        aria-label={t("product.lightbox.preview", { index: i + 1 })}
-                        onClick={() => setLightboxIndex(i)}
-                      >
-                        <img src={img} alt="" className="w-full h-full object-cover rounded-[12px]" />
-                      </button>
-                    ))}
-                  </div>
-
-                  {(thumbCanScrollUp || thumbCanScrollDown) && (
-                    <button
-                      type="button"
-                      aria-label={t("product.lightbox.next")}
-                      className={`absolute bottom-2 left-1/2 -translate-x-1/2 w-11 h-11 rounded-[16px] border border-slate-200 bg-white/90 backdrop-blur-sm shadow-md grid place-items-center text-slate-800 transition ${
-                        !thumbCanScrollDown ? "opacity-40 cursor-not-allowed" : "hover:shadow-lg"
-                      }`}
-                      onClick={() => scrollThumbs(160)}
-                      disabled={!thumbCanScrollDown}
-                    >
-                      ↓
-                    </button>
-                  )}
-                </div>
-              )}
-
-              <div className="flex-1">
-                <img
-                  src={galleryImages[Math.min(lightboxIndex, galleryImages.length - 1)] || getProductImageUrl(product.main_image)}
-                  alt={product.product_name}
-                  className="w-full max-h-[520px] sm:max-h-[960px] rounded-3xl object-contain cursor-zoom-in"
-                  onClick={() => openLightbox(Math.min(lightboxIndex, galleryImages.length - 1))}
-                />
-              </div>
+          <div className="flex flex-col gap-3 md:gap-4 md:p-4">
+            <div className="w-full">
+              <img
+                src={galleryImages[Math.min(lightboxIndex, galleryImages.length - 1)] || getProductImageUrl(product.main_image)}
+                alt={product.product_name}
+                className="w-full max-h-[520px] sm:max-h-[560px] md:max-h-[620px] lg:max-h-[720px] xl:max-h-[820px] rounded-3xl object-contain cursor-zoom-in"
+                onClick={() => openLightbox(Math.min(lightboxIndex, galleryImages.length - 1))}
+              />
             </div>
-          </section>
+
+            {galleryImages.length > 1 && (
+              <div className="w-full">
+                <div
+                  className="flex w-full  overflow-x-auto overflow-y-hidden scroll-smooth pb-1 pr-1 touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  ref={thumbsScrollRef}
+                >
+                  {galleryImages.map((img, i) => (
+                    <button
+                      id={`thumb-${i}`}
+                      key={i}
+                      className={`shrink-0 w-[72px]  sm:w-[72px]  md:w-[80px]  lg:w-[88px]  xl:w-[96px]  rounded-[16px] border-2 bg-white shadow-sm grid place-items-center transition relative ${
+                        i === lightboxIndex ? "border-emerald-600 shadow-md" : "border-slate-200 hover:-translate-y-0.5 hover:shadow-md"
+                      }`}
+                      type="button"
+                      aria-label={t("product.lightbox.preview", { index: i + 1 })}
+                      onClick={() => setLightboxIndex(i)}
+                    >
+                      <img src={img} alt="" className="w-full h-full object-cover rounded-[12px]" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Info + Aside */}
           <section className="space-y-4">
@@ -1529,8 +1500,8 @@ export function Product() {
         />
       )}
 
-      {/* Mobile bottom bar */}
-      {canBuy && (
+      {/* Mobile bottom bar (disabled per request) */}
+      {false && canBuy && (
         <div className="md:hidden fixed inset-x-0 z-40 flex gap-2 px-4" style={{ bottom: "73px" }}>
           <button
             type="button"
