@@ -23,23 +23,23 @@ export function BottomNavbar() {
 
   return (
     <div className="fixed bottom-0 inset-x-0 z-50 md:hidden">
-      <div className="mx-auto w-full max-w-[640px] px-4" style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}>
-        <div className="rounded-t-[24px] bg-gradient-to-b from-white to-white/95 backdrop-blur-xl border-t border-x border-gray-200/50 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-          <ul className="flex items-center justify-around gap-1 py-2">
+      <div className="mx-auto w-full max-w-[640px] px-3" style={{ paddingBottom: 'calc(0.35rem + env(safe-area-inset-bottom))' }}>
+        <div className="rounded-t-[20px] bg-gradient-to-b from-white to-white/95 backdrop-blur-xl border-t border-x border-gray-200/50 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+          <ul className="flex items-center justify-around gap-0.5 py-1.5">
             <li>
               <Link
                 to="/"
-                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all ${
+                className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl transition-all ${
                   isHomeActive 
                     ? 'text-[#003d32]' 
                     : 'text-gray-600 hover:text-[#003d32] active:scale-95'
                 }`}
                 aria-label={nav.home}
               >
-                <span className={`text-base font-extrabold tracking-tight ${isHomeActive ? '' : 'opacity-70'}`}>
+                <span className={`text-sm font-extrabold tracking-tight ${isHomeActive ? '' : 'opacity-70'}`}>
                   OZAR
                 </span>
-                <span className={`text-[10px] font-medium ${isHomeActive ? 'font-semibold' : ''}`}>
+                <span className={`text-[9px] font-medium ${isHomeActive ? 'font-semibold' : ''}`}>
                   {navShort.home}
                 </span>
               </Link>
@@ -47,7 +47,7 @@ export function BottomNavbar() {
             <li>
               <Link
                 to="/catalog"
-                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all ${
+                className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl transition-all ${
                   isCatalogActive 
                     ? 'text-[#003d32]' 
                     : 'text-gray-600 hover:text-[#003d32] active:scale-95'
@@ -55,8 +55,8 @@ export function BottomNavbar() {
                 aria-label={nav.catalog}
               >
                 <svg 
-                  width="24" 
-                  height="24" 
+                  width="20" 
+                  height="20" 
                   viewBox="0 0 24 24" 
                   fill={isCatalogActive ? "currentColor" : "none"} 
                   stroke="currentColor" 
@@ -68,7 +68,7 @@ export function BottomNavbar() {
                   <rect x="14" y="14" width="7" height="7"/>
                   <rect x="3" y="14" width="7" height="7"/>
                 </svg>
-                <span className={`text-[10px] font-medium ${isCatalogActive ? 'font-semibold' : ''}`}>
+                <span className={`text-[9px] font-medium ${isCatalogActive ? 'font-semibold' : ''}`}>
                   {navShort.catalog}
                 </span>
               </Link>
@@ -76,7 +76,7 @@ export function BottomNavbar() {
             <li className="relative">
               <Link
                 to="/cart"
-                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all relative ${
+                className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl transition-all relative ${
                   isCartActive 
                     ? 'text-[#003d32]' 
                     : 'text-gray-600 hover:text-[#003d32] active:scale-95'
@@ -84,8 +84,8 @@ export function BottomNavbar() {
                 aria-label={nav.cart}
               >
                 <svg 
-                  width="24" 
-                  height="24" 
+                  width="20" 
+                  height="20" 
                   viewBox="0 0 24 24" 
                   fill={isCartActive ? "currentColor" : "none"} 
                   stroke="currentColor" 
@@ -97,11 +97,11 @@ export function BottomNavbar() {
                   <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
                 </svg>
                 {cartCount > 0 && (
-                  <span className="absolute top-0 right-1 h-4 min-w-4 px-1 rounded-full bg-gradient-to-r from-[#003d32] to-[#04734b] text-[9px] leading-4 text-white text-center font-bold shadow-sm">
+                  <span className="absolute top-[-2px] right-0.5 h-4 min-w-4 px-1 rounded-full bg-gradient-to-r from-[#003d32] to-[#04734b] text-[8px] leading-4 text-white text-center font-bold shadow-sm">
                     {cartCount > 99 ? '99+' : cartCount}
                   </span>
                 )}
-                <span className={`text-[10px] font-medium ${isCartActive ? 'font-semibold' : ''}`}>
+                <span className={`text-[9px] font-medium ${isCartActive ? 'font-semibold' : ''}`}>
                   {navShort.cart}
                 </span>
               </Link>
@@ -109,7 +109,7 @@ export function BottomNavbar() {
             <li className="relative">
               <Link
                 to="/favorites"
-                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all relative ${
+                className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl transition-all relative ${
                   isFavoritesActive 
                     ? 'text-[#003d32]' 
                     : 'text-gray-600 hover:text-[#003d32] active:scale-95'
@@ -117,8 +117,8 @@ export function BottomNavbar() {
                 aria-label={nav.favorites}
               >
                 <svg 
-                  width="24" 
-                  height="24" 
+                  width="20" 
+                  height="20" 
                   viewBox="0 0 24 24" 
                   fill={isFavoritesActive ? "currentColor" : "none"} 
                   stroke="currentColor" 
@@ -132,7 +132,7 @@ export function BottomNavbar() {
                     {likedCount > 99 ? '99+' : likedCount}
                   </span>
                 )}
-                <span className={`text-[10px] font-medium ${isFavoritesActive ? 'font-semibold' : ''}`}>
+                <span className={`text-[9px] font-medium ${isFavoritesActive ? 'font-semibold' : ''}`}>
                   {navShort.favorites}
                 </span>
               </Link>
@@ -141,7 +141,7 @@ export function BottomNavbar() {
               <Link
                 to={isAuthenticated ? "/profile" : "/login"}
                 state={isAuthenticated ? undefined : { from: '/profile' }}
-                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all ${
+                className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-xl transition-all ${
                   isProfileActive 
                     ? 'text-[#003d32]' 
                     : 'text-gray-600 hover:text-[#003d32] active:scale-95'
@@ -149,8 +149,8 @@ export function BottomNavbar() {
                 aria-label={isAuthenticated ? auth.profile : auth.login}
               >
                 <svg 
-                  width="24" 
-                  height="24" 
+                  width="20" 
+                  height="20" 
                   viewBox="0 0 24 24" 
                   fill={isProfileActive ? "currentColor" : "none"} 
                   stroke="currentColor" 
@@ -160,7 +160,7 @@ export function BottomNavbar() {
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                   <circle cx="12" cy="7" r="4"/>
                 </svg>
-                <span className={`text-[10px] font-medium ${isProfileActive ? 'font-semibold' : ''}`}>
+                <span className={`text-[9px] font-medium ${isProfileActive ? 'font-semibold' : ''}`}>
                   {isAuthenticated ? navShort.profile : auth.login}
                 </span>
               </Link>

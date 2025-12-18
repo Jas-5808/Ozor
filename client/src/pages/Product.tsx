@@ -1,12 +1,10 @@
 import React, { useEffect, useMemo, useState, useRef, FormEvent, useCallback } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-// @ts-ignore – модуль стилей объявлен через d.ts
-import cn from "./style.module.scss";
 import { formatPrice, getProductImageUrl, storage } from "../utils/helpers";
 import { Product as ProductType, ProductDetail } from "../types";
 import { shopAPI } from "../services/api";
-import { uzbekistanLocations, getRegions, getCitiesByRegion } from "../data/uzbekistanLocations";
+import { uzbekistanLocations, getCitiesByRegion } from "../data/uzbekistanLocations";
 import { useApp } from "../context/AppContext";
 import ProductCard from "../components/ui/ProductCard";
 import PhoneInput from "../components/forms/PhoneInput";
@@ -22,62 +20,53 @@ type LocationState = { product?: ProductType };
 async function fetchAllProductVariants(productId: string): Promise<ProductDetail | null> {
   try {
     logger.debug("Loading product", { productId });
-    
-    // Используем новый API /api/v1/shop/product/{product_id}
+
     const response = await shopAPI.getProductById(productId);
     const productData: any = (response as any)?.data ?? response;
     logger.debug("Product API response", { productId, hasData: !!productData });
-    
-    if (!productData) {
+
+    if (!productData) return null;
+
+    // FIX (п.1): сравнение ID строго через String(...)
+    const requestedId = String(productId);
+    const receivedId = String(productData.id ?? productData.product_id ?? "");
+    if (receivedId && receivedId !== requestedId) {
+      logger.errorWithContext(new Error("Product ID mismatch"), {
+        context: "fetchAllProductVariants",
+        requested: requestedId,
+        received: receivedId,
+      });
       return null;
     }
 
-    // Проверяем, что загруженный продукт соответствует запрошенному ID
-    if (productData.id !== productId && productData.product_id !== productId) {
-      logger.errorWithContext(
-        new Error("Product ID mismatch"),
-        {
-          context: 'fetchAllProductVariants',
-          requested: productId,
-          received: productData.id || productData.product_id,
-        }
-      );
-      return null;
-    }
-
-    // Преобразуем атрибуты из формата API в нужный формат
     const allAttributes = (productData.attributes || []).map((attr: any) => ({
-      id: attr.id,
+      id: String(attr.id),
       name: attr.name,
-      unit: attr.unit || ''
+      unit: attr.unit || "",
     }));
 
-    // Преобразуем варианты из формата API в нужный формат
-    // В новом API: variants[].attribute_values может иметь attribute_name, нужно найти соответствующий attribute по имени
     const allVariants = (productData.variants || []).map((variant: any) => {
-      // Преобразуем attribute_values: если есть attribute_name, находим соответствующий attribute по имени
       const attributeValues = (variant.attribute_values || []).map((av: any) => {
-        // Если есть attribute_name, ищем соответствующий attribute
-        let attributeId = av.attribute_id || '';
+        let attributeId = av.attribute_id ? String(av.attribute_id) : "";
         if (!attributeId && av.attribute_name) {
-          const matchingAttr = (productData.attributes || []).find((attr: any) => 
-            attr.name === av.attribute_name || attr.id === av.attribute_name
+          const matchingAttr = (productData.attributes || []).find(
+            (attr: any) => String(attr.name) === String(av.attribute_name) || String(attr.id) === String(av.attribute_name)
           );
-          attributeId = matchingAttr?.id || av.attribute_name || '';
+          attributeId = matchingAttr?.id ? String(matchingAttr.id) : String(av.attribute_name || "");
         }
-        
+
         return {
-          id: av.id,
-          variant_id: variant.id,
+          id: String(av.id),
+          variant_id: String(variant.id),
           attribute_id: attributeId,
-          attribute_name: av.attribute_name || '',
-          value: av.value || ''
+          attribute_name: av.attribute_name || "",
+          value: av.value || "",
         };
       });
-      
+
       return {
-        id: variant.id,
-        product_id: variant.product_id || productData.id || productId,
+        id: String(variant.id),
+        product_id: String(variant.product_id || productData.id || productId),
         sku: variant.sku,
         price: variant.price,
         base_price: variant.base_price ?? variant.price ?? null,
@@ -87,18 +76,17 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
       };
     });
 
-    // Используем первый вариант как базовый для получения общей информации
     const firstVariant = productData.variants?.[0];
 
     const productDetail: ProductDetail = {
-      product_id: productData.id || productData.product_id || productId,
+      product_id: String(productData.id || productData.product_id || productId),
       product_name: productData.name || productData.product_name,
       product_description: productData.description || productData.product_description,
       category: productData.category,
       refferal_price: productData.refferal_price ?? 0,
-      main_image: productData.main_image || '',
-      variant_id: firstVariant?.id || '',
-      variant_sku: firstVariant?.sku || '',
+      main_image: productData.main_image || "",
+      variant_id: firstVariant?.id ? String(firstVariant.id) : "",
+      variant_sku: firstVariant?.sku || "",
       price: firstVariant?.price ?? 0,
       stock: firstVariant?.stock ?? 0,
       variant_attributes: firstVariant?.attribute_values || [],
@@ -114,7 +102,7 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
 
     return productDetail;
   } catch (error) {
-    logger.errorWithContext(error, { context: 'fetchAllProductVariants' });
+    logger.errorWithContext(error, { context: "fetchAllProductVariants" });
     throw error;
   }
 }
@@ -123,7 +111,7 @@ type QuickOrderSheetProps = {
   open: boolean;
   onClose: () => void;
   product: ProductDetail;
-  variant: ProductDetail['variants'][0] | null;
+  variant: ProductDetail["variants"][0] | null;
   name: string;
   phone: string;
   onNameChange: (value: string) => void;
@@ -159,22 +147,19 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
   if (!open) return null;
   const { t } = useTranslation();
 
-  const summaryImage =
-    getProductImageUrl(
-      (variant?.variant_media || []).find((m: any) => m?.is_main)?.file ||
-        variant?.variant_media?.[0]?.file ||
-        product.main_image
-    );
+  const summaryImage = getProductImageUrl(
+    (variant?.variant_media || []).find((m: any) => m?.is_main)?.file ||
+      variant?.variant_media?.[0]?.file ||
+      product.main_image
+  );
+
   const price = variant?.price ?? product.price ?? 0;
   const sku = variant?.sku || product.variant_sku || product.product_id;
   const inStock = (variant?.stock ?? product.stock ?? 0) > 0;
 
   return (
     <div className="fixed inset-0 z-[80] flex justify-end bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="h-full w-full max-w-md rounded-l-3xl bg-white shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="h-full w-full max-w-md rounded-l-3xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div>
             <p className="text-xs uppercase tracking-wide text-gray-400">{t("product.quickOrder.badge")}</p>
@@ -189,6 +174,7 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
             ×
           </button>
         </div>
+
         <div className="h-[calc(100%-72px)] overflow-y-auto px-6 py-5">
           <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4">
             <div className="flex gap-3">
@@ -202,7 +188,7 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
                 </span>
                 <div className="mt-2 flex items-center gap-2">
                   <span className="text-base font-bold text-gray-900">{formatPrice(price)}</span>
-                  <span className={`text-sm font-medium ${inStock ? 'text-emerald-600' : 'text-rose-500'}`}>
+                  <span className={`text-sm font-medium ${inStock ? "text-emerald-600" : "text-rose-500"}`}>
                     {inStock ? t("common.status.inStock") : t("common.status.outOfStock")}
                   </span>
                 </div>
@@ -265,11 +251,7 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
               </span>
             </label>
 
-            {error && (
-              <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600">
-                {error}
-              </div>
-            )}
+            {error && <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
             {feedback && (
               <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                 {feedback}
@@ -284,307 +266,244 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
             >
               {loading ? t("product.quickOrder.submitting") : t("product.quickOrder.submit")}
             </button>
-            <p className="text-center text-xs text-gray-500">
-              {t("product.quickOrder.note")}
-            </p>
+
+            <p className="text-center text-xs text-gray-500">{t("product.quickOrder.note")}</p>
           </form>
         </div>
       </div>
     </div>
   );
 };
+
 export function Product() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const { t } = useTranslation();
-  const referralCode = useMemo(()=> new URLSearchParams(location.search).get('ref') || '', [location.search]);
+
+  const referralCode = useMemo(() => new URLSearchParams(location.search).get("ref") || "", [location.search]);
+
   const routeState = (location.state ?? {}) as LocationState;
-  const variantIdFromQuery = useMemo(
-    () => new URLSearchParams(location.search).get("variant") || "",
-    [location.search]
-  );
+  const variantIdFromQuery = useMemo(() => new URLSearchParams(location.search).get("variant") || "", [location.search]);
   const variantIdFromState = useMemo(
     () => (routeState?.product?.variant_id ? String(routeState.product.variant_id) : ""),
     [routeState]
   );
-  const preferredVariantId = useMemo(
-    () => variantIdFromQuery || variantIdFromState,
-    [variantIdFromQuery, variantIdFromState]
-  );
+  const preferredVariantId = useMemo(() => variantIdFromQuery || variantIdFromState, [variantIdFromQuery, variantIdFromState]);
+
   const [fetchedProduct, setFetchedProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedVariant, setSelectedVariant] = useState<ProductDetail['variants'][0] | null>(null);
-  const [selectedInstallment, setSelectedInstallment] = useState<number>(12);
-  const [selectedVendor, setSelectedVendor] = useState<number>(0);
-  const [showComingSoonModal, setShowComingSoonModal] = useState(false);
+
+  const [selectedVariant, setSelectedVariant] = useState<ProductDetail["variants"][0] | null>(null);
+
   const [recentlyViewed, setRecentlyViewed] = useState<ProductType[]>([]);
+
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxZoom, setLightboxZoom] = useState(1);
-  const [activeTab, setActiveTab] = useState<'description' | 'characteristics' | 'comments'>('description');
+
+  const [activeTab, setActiveTab] = useState<"description" | "characteristics" | "comments">("description");
   const [comments] = useState<Array<{ id: string; author: string; text: string; createdAt: string }>>([]);
+
   const [phone, setPhone] = useState<string>("");
   const [name, setName] = useState<string>("");
+
   const [isQuickOrderOpen, setIsQuickOrderOpen] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(true);
+
   const [quickOrderLoading, setQuickOrderLoading] = useState(false);
   const [quickOrderError, setQuickOrderError] = useState<string | null>(null);
   const [quickOrderFeedback, setQuickOrderFeedback] = useState<string | null>(null);
+
   const [quickOrderRegion, setQuickOrderRegion] = useState<string>("");
   const [quickOrderCity, setQuickOrderCity] = useState<string>("");
+
   const productRef = useRef<HTMLDivElement>(null);
+
   const thumbsScrollRef = useRef<HTMLDivElement | null>(null);
   const [thumbCanScrollUp, setThumbCanScrollUp] = useState(false);
   const [thumbCanScrollDown, setThumbCanScrollDown] = useState(false);
-  const installmentSteps = [3, 6, 9, 12, 15, 18, 24, 33];
-  const INSTALLMENT_TRACK_PADDING = 28;
-  const INSTALLMENT_DOT_SIZE = 16;
-  const rawInstallmentIndex = installmentSteps.indexOf(selectedInstallment);
-  const activeInstallmentIndex = rawInstallmentIndex >= 0 ? rawInstallmentIndex : 0;
-  const installmentProgress =
-    installmentSteps.length > 1
-      ? activeInstallmentIndex / (installmentSteps.length - 1)
-      : 0;
-  const installmentProgressScale =
-    activeInstallmentIndex === 0 ? 0 : Math.min(1, Math.max(0, installmentProgress));
-  const installmentVendors = [
-    { name: "Payme nasiya", price: 178000 },
-    { name: "Iman", price: 187450 },
-  ];
-  const renderInstallmentSlider = () => (
-    <div className="px-1 pt-3 pb-1">
-      <div className="relative h-16">
-        <div
-          className="absolute top-7 h-[3px] rounded-full bg-slate-200"
-          style={{ left: INSTALLMENT_TRACK_PADDING, right: INSTALLMENT_TRACK_PADDING }}
-        />
-        <div
-          className="absolute top-7 h-[3px] rounded-full bg-[#ef3124] origin-left transition-transform"
-          style={{
-            left: INSTALLMENT_TRACK_PADDING,
-            right: INSTALLMENT_TRACK_PADDING,
-            transform: `scaleX(${installmentProgressScale})`,
-          }}
-        />
-        <div className="relative flex justify-between px-4 text-xs font-semibold text-slate-500">
-          {installmentSteps.map((months, index) => {
-            const isActive = selectedInstallment === months;
-            const isCompleted = index <= activeInstallmentIndex;
-            return (
-              <button
-                key={months}
-                onClick={() => setSelectedInstallment(months)}
-                className="relative flex w-8 flex-col items-center gap-2 focus:outline-none"
-              >
-                <span className={isActive ? "text-[#ef3124]" : ""}>{months}</span>
-                <span
-                  className={`grid place-items-center rounded-full transition ${
-                    isCompleted
-                      ? "bg-[#ef3124] text-white shadow-[0_4px_12px_rgba(239,49,36,0.35)]"
-                      : "bg-white text-slate-400 border border-slate-200"
-                  }`}
-                  style={{
-                    width: INSTALLMENT_DOT_SIZE,
-                    height: INSTALLMENT_DOT_SIZE,
-                  }}
-                >
-                <span className="sr-only">{t("product.months", { count: months })}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-  
+
   const productFromState = routeState?.product;
+
   const product = useMemo<ProductDetail | null>(() => {
     if (fetchedProduct) return fetchedProduct;
     if (productFromState) {
-      // Преобразуем базовый Product в ProductDetail
       return {
-        ...productFromState,
+        ...(productFromState as any),
         attributes: [],
-        variants: []
+        variants: [],
       };
     }
     return null;
   }, [productFromState, fetchedProduct]);
-  const { addToCart, updateCartItem, removeFromCart, state: appState } = useApp();
-  const locationLabel =
-    appState.location.data?.address ||
-    appState.location.data?.city ||
-    t("product.locationMissing");
-  const locationHint = appState.location.data?.city
-    ? t("product.locationCity", { city: appState.location.data.city })
-    : t("product.locationHint");
 
-  // Прокрутка вверх при открытии товара (особенно важно для мобильных)
+  const { addToCart, updateCartItem, removeFromCart, state: appState } = useApp();
+
+  const locationLabel = appState.location.data?.address || appState.location.data?.city || t("product.locationMissing");
+  const locationHint = appState.location.data?.city ? t("product.locationCity", { city: appState.location.data.city }) : t("product.locationHint");
+
+  // Прокрутка вверх при открытии товара
   useEffect(() => {
-    // Прокручиваем сразу при изменении id - мгновенно
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
-    
-    // Также прокручиваем после небольшой задержки для надежности
+
     const timer1 = setTimeout(() => {
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
     }, 50);
-    
+
     return () => clearTimeout(timer1);
   }, [id]);
-  
-  // Дополнительная прокрутка после загрузки продукта
+
   useEffect(() => {
     if (product && !loading) {
-      // Задержка для рендеринга контента, затем прокрутка к началу страницы
       const timer = setTimeout(() => {
-        // Прокручиваем строго к началу страницы
         window.scrollTo(0, 0);
         document.documentElement.scrollTop = 0;
         document.body.scrollTop = 0;
-        
-        // Дополнительная проверка через небольшую задержку
+
         setTimeout(() => {
           window.scrollTo(0, 0);
           document.documentElement.scrollTop = 0;
           document.body.scrollTop = 0;
         }, 100);
       }, 100);
-      
+
       return () => clearTimeout(timer);
     }
   }, [product, loading]);
 
-  // SEO
+  // SEO image
   const primaryImage = useMemo(() => {
     if (!product) return undefined;
-    
-    // Используем ту же логику что и для галереи
     const variantMedia = selectedVariant?.variant_media || [];
-    const hasVariantMedia = variantMedia && variantMedia.length > 0;
-    
-    if (hasVariantMedia) {
-      // Если есть variant_media, используем главное из них
+    if (variantMedia.length > 0) {
       const mainMedia = variantMedia.find((m: any) => m.is_main) || variantMedia[0];
       return mainMedia?.file ? getProductImageUrl(mainMedia.file) : undefined;
-    } else {
-      // Если нет variant_media, используем main_image
-      return product.main_image ? getProductImageUrl(product.main_image) : undefined;
     }
+    return product.main_image ? getProductImageUrl(product.main_image) : undefined;
   }, [selectedVariant, product]);
 
-  useSEO(useMemo(()=>{
-    const title = product ? `${product.product_name} — OZAR` : 'Tovar — OZAR';
-    const desc = product?.product_description ? product.product_description.slice(0, 200) : 'Tovar tavsifi.';
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const url = origin + (typeof window !== 'undefined' ? window.location.pathname + window.location.search : '');
-    const price = (selectedVariant?.price ?? product?.price ?? 0) || 0;
-    const inStock = selectedVariant ? (selectedVariant.stock > 0) : (product ? product.stock > 0 : false);
-    const jsonLd: any = product ? {
-      '@context': 'https://schema.org',
-      '@type': 'Product',
-      name: product.product_name,
-      description: product.product_description || '',
-      image: primaryImage ? [primaryImage] : undefined,
-      sku: selectedVariant?.sku || product.variant_sku,
-      offers: {
-        '@type': 'Offer',
-        priceCurrency: 'UZS',
-        price: String(price || 0),
-        availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-        url
-      }
-    } : undefined;
-    return {
-      title,
-      description: desc,
-      canonical: url,
-      openGraph: {
-        'og:type': 'product',
-        'og:title': title,
-        'og:description': desc,
-        'og:url': url,
-        ...(primaryImage ? { 'og:image': primaryImage } : {}),
-      },
-      twitter: {
-        'twitter:card': primaryImage ? 'summary_large_image' : 'summary',
-        'twitter:title': title,
-        'twitter:description': desc,
-        ...(primaryImage ? { 'twitter:image': primaryImage } : {}),
-      },
-      jsonLd
-    };
-  }, [product, selectedVariant, primaryImage]));
+  useSEO(
+    useMemo(() => {
+      const title = product ? `${product.product_name} — OZAR` : "Tovar — OZAR";
+      const desc = product?.product_description ? product.product_description.slice(0, 200) : "Tovar tavsifi.";
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const url = origin + (typeof window !== "undefined" ? window.location.pathname + window.location.search : "");
+      const price = (selectedVariant?.price ?? product?.price ?? 0) || 0;
+      const inStock = selectedVariant ? selectedVariant.stock > 0 : product ? product.stock > 0 : false;
 
+      const jsonLd: any =
+        product
+          ? {
+              "@context": "https://schema.org",
+              "@type": "Product",
+              name: product.product_name,
+              description: product.product_description || "",
+              image: primaryImage ? [primaryImage] : undefined,
+              sku: selectedVariant?.sku || product.variant_sku,
+              offers: {
+                "@type": "Offer",
+                priceCurrency: "UZS",
+                price: String(price || 0),
+                availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+                url,
+              },
+            }
+          : undefined;
+
+      return {
+        title,
+        description: desc,
+        canonical: url,
+        openGraph: {
+          "og:type": "product",
+          "og:title": title,
+          "og:description": desc,
+          "og:url": url,
+          ...(primaryImage ? { "og:image": primaryImage } : {}),
+        },
+        twitter: {
+          "twitter:card": primaryImage ? "summary_large_image" : "summary",
+          "twitter:title": title,
+          "twitter:description": desc,
+          ...(primaryImage ? { "twitter:image": primaryImage } : {}),
+        },
+        jsonLd,
+      };
+    }, [product, selectedVariant, primaryImage])
+  );
+
+  // FIX (п.3): безопасный toCityCode без ломания case у id
   const toCityCode = (value?: string): string => {
     if (!value) return "";
-    const v = value.trim().toLowerCase();
-    const byId = uzbekistanLocations.find(l => l.id === v);
-    if (byId) return byId.id;
-    const byName = uzbekistanLocations.find(l => l.name.toLowerCase() === v);
+    const v = value.trim();
+    const byIdExact = uzbekistanLocations.find((l) => l.id === v);
+    if (byIdExact) return byIdExact.id;
+
+    const vLower = v.toLowerCase();
+    const byIdLower = uzbekistanLocations.find((l) => String(l.id).toLowerCase() === vLower);
+    if (byIdLower) return byIdLower.id;
+
+    const byName = uzbekistanLocations.find((l) => l.name.toLowerCase() === vLower);
     return byName?.id || "";
   };
 
   const getRegionForCityOrRegion = (code?: string): string => {
     if (!code) return "";
-    const loc = uzbekistanLocations.find(l => l.id === code);
+    const loc = uzbekistanLocations.find((l) => l.id === code) || uzbekistanLocations.find((l) => String(l.id).toLowerCase() === String(code).toLowerCase());
     if (!loc) return "";
-    if (loc.type === 'city') return loc.parentId || "";
-    if (loc.type === 'region') return loc.id;
+    if (loc.type === "city") return loc.parentId || "";
+    if (loc.type === "region") return loc.id;
     return "";
   };
+
   useEffect(() => {
     let ignore = false;
     logger.debug("Product page useEffect", { id, hasProductFromState: !!productFromState });
+
     if (id) {
-      logger.debug("Loading product variants", { productId: id });
       setLoading(true);
       setError(null);
-      // Очищаем предыдущий продукт перед загрузкой нового
       setFetchedProduct(null);
       setSelectedVariant(null);
+
       fetchAllProductVariants(id)
-        .then((p) => { 
+        .then((p) => {
           logger.debug("Product loaded", { productId: p?.product_id });
+
           if (!ignore && p) {
-            // Критическая проверка: убеждаемся что загруженный продукт соответствует запрошенному ID
-            if (p.product_id !== id) {
-              const error = new Error("Product ID mismatch");
-              logger.errorWithContext(error, {
-                context: 'Product useEffect',
-                requested: id,
-                received: p.product_id,
+            // FIX (п.1): сравнение ID строго через String(...)
+            if (String(p.product_id) !== String(id)) {
+              const err = new Error("Product ID mismatch");
+              logger.errorWithContext(err, {
+                context: "Product useEffect",
+                requested: String(id),
+                received: String(p.product_id),
               });
-            setError(t("product.errors.loadTitle"));
+              setError(t("product.errors.loadTitle"));
               setLoading(false);
               return;
             }
-            
+
             setFetchedProduct(p);
-            // Автоматически выбираем первый доступный вариант
-            if (p?.variants && p.variants.length > 0) {
+
+            if (p.variants && p.variants.length > 0) {
               const preferredId = preferredVariantId?.trim();
               const preferredVariant = preferredId
-                ? p.variants.find(
-                    (v) =>
-                      v.id === preferredId ||
-                      (v as any).variant_id === preferredId ||
-                      v.sku === preferredId
-                  )
+                ? p.variants.find((v) => String(v.id) === preferredId || String((v as any).variant_id) === preferredId || String(v.sku) === preferredId)
                 : null;
-              // Сначала ищем вариант с ценой и в наличии
-              const availableVariant = p.variants.find(v => v.stock > 0 && v.price !== null && v.price !== undefined) || 
-                                     p.variants.find(v => v.price !== null && v.price !== undefined) || 
-                                     p.variants[0];
+
+              const availableVariant =
+                p.variants.find((v) => v.stock > 0 && v.price !== null && v.price !== undefined) ||
+                p.variants.find((v) => v.price !== null && v.price !== undefined) ||
+                p.variants[0];
+
               const variantToSelect = preferredVariant || availableVariant;
-              logger.debug("Variant selected", { variantId: variantToSelect?.id, preferredVariantId: preferredId });
               setSelectedVariant(variantToSelect);
-              // Сбрасываем индекс лайтбокса
               setLightboxIndex(0);
             }
           } else if (!ignore && !p) {
@@ -593,57 +512,35 @@ export function Product() {
         })
         .catch((e) => {
           const appError = handleApiError(e);
-          logger.errorWithContext(appError, { context: 'Product useEffect' });
+          logger.errorWithContext(appError, { context: "Product useEffect" });
           if (!ignore) {
             const errorMessage = getUserFriendlyMessage(appError) || ERROR_MESSAGES.UNKNOWN;
             setError(errorMessage);
           }
         })
-        .finally(() => { if (!ignore) setLoading(false); });
+        .finally(() => {
+          if (!ignore) setLoading(false);
+        });
     }
-    return () => { ignore = true; };
-  // depend only on id to avoid re-fetches
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    return () => {
+      ignore = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Сбор изображений для галереи/лайтбокса
+  // Галерея
   const galleryImages: string[] = useMemo(() => {
     if (!product) return [];
-    
-    // Проверяем наличие variant_media у выбранного варианта
+
     const variantMedia = selectedVariant?.variant_media || [];
-    const hasVariantMedia = variantMedia && variantMedia.length > 0;
-    
-    if (hasVariantMedia) {
-      // Если есть variant_media, используем только их, main_image не показываем
-      const mediaImages = variantMedia
-        .map((m: any) => m?.file)
-        .filter(Boolean)
-        .map((f: string) => getProductImageUrl(f));
-      
-      const images = Array.from(new Set(mediaImages.filter(Boolean)));
-      
-      logger.debug("Gallery images from variant_media", {
-        product_id: product.product_id,
-        variant_id: selectedVariant?.id,
-        images_count: images.length
-      });
-      
-      return images as string[];
-    } else {
-      // Если нет variant_media, показываем main_image
-      const main = product.main_image ? getProductImageUrl(product.main_image) : null;
-      
-      const images = main ? [main] : [];
-      
-      logger.debug("Gallery images from main_image", {
-        product_id: product.product_id,
-        variant_id: selectedVariant?.id,
-        images_count: images.length
-      });
-      
-      return images as string[];
+    if (variantMedia.length > 0) {
+      const mediaImages = variantMedia.map((m: any) => m?.file).filter(Boolean).map((f: string) => getProductImageUrl(f));
+      return Array.from(new Set(mediaImages.filter(Boolean))) as string[];
     }
+
+    const main = product.main_image ? getProductImageUrl(product.main_image) : null;
+    return main ? [main] : [];
   }, [selectedVariant, product]);
 
   const updateThumbScrollState = useCallback(() => {
@@ -654,13 +551,15 @@ export function Product() {
     setThumbCanScrollDown(scrollTop + clientHeight < scrollHeight - 4);
   }, []);
 
-  const scrollThumbs = useCallback((delta: number) => {
-    const el = thumbsScrollRef.current;
-    if (!el) return;
-    el.scrollBy({ top: delta, behavior: "smooth" });
-    // Обновляем состояние после анимации скролла
-    setTimeout(updateThumbScrollState, 200);
-  }, [updateThumbScrollState]);
+  const scrollThumbs = useCallback(
+    (delta: number) => {
+      const el = thumbsScrollRef.current;
+      if (!el) return;
+      el.scrollBy({ top: delta, behavior: "smooth" });
+      setTimeout(updateThumbScrollState, 200);
+    },
+    [updateThumbScrollState]
+  );
 
   useEffect(() => {
     const el = thumbsScrollRef.current;
@@ -678,14 +577,11 @@ export function Product() {
     }
   }, [lightboxIndex, galleryImages.length]);
 
-  // Сбрасываем индекс лайтбокса при изменении варианта или списка изображений
   useEffect(() => {
     if (selectedVariant && galleryImages.length > 0) {
-      if (lightboxIndex >= galleryImages.length) {
-        setLightboxIndex(0);
-      }
+      if (lightboxIndex >= galleryImages.length) setLightboxIndex(0);
     }
-  }, [galleryImages.length, selectedVariant?.id]);
+  }, [galleryImages.length, selectedVariant?.id, lightboxIndex]);
 
   const selectedAttributesList = useMemo(() => {
     if (!product || !selectedVariant) return [];
@@ -693,10 +589,7 @@ export function Product() {
       .map((attrValue) => {
         const attrId = attrValue.attribute_id || (attrValue as any).attribute_name;
         const attribute = product.attributes.find(
-          (attr) =>
-            attr.id === attrId ||
-            attr.name === attrId ||
-            attr.name === (attrValue as any).attribute_name
+          (attr) => attr.id === attrId || attr.name === attrId || attr.name === (attrValue as any).attribute_name
         );
         const label = attribute?.name || attrValue.attribute_name || "";
         const value = attrValue.value;
@@ -706,21 +599,20 @@ export function Product() {
       .filter((entry): entry is { name: string; value: string } => Boolean(entry));
   }, [product, selectedVariant]);
 
-  // Недавно просмотренные: сохраняем текущий товар
+  // Недавно просмотренные
   useEffect(() => {
-    // Предзагрузка ранее просмотренных, чтобы показать сразу
     try {
-      const key = 'recently_viewed';
+      const key = "recently_viewed";
       const list: ProductType[] = storage.get(key) || [];
-      setRecentlyViewed(list.filter((p) => p.product_id !== (product?.product_id || '')) .slice(0, 8));
+      setRecentlyViewed(list.filter((p) => p.product_id !== (product?.product_id || "")).slice(0, 8));
     } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!product) return;
     try {
-      const key = 'recently_viewed';
+      const key = "recently_viewed";
       const list: ProductType[] = storage.get(key) || [];
       const item: ProductType = {
         product_id: product.product_id,
@@ -737,7 +629,6 @@ export function Product() {
       };
       const deduped = [item, ...list.filter((p) => p.product_id !== item.product_id)].slice(0, 12);
       storage.set(key, deduped);
-      // Показываем и текущий товар, чтобы не оставлять секцию пустой при первом просмотре
       setRecentlyViewed(deduped.slice(0, 8));
     } catch {}
   }, [product, selectedVariant]);
@@ -745,7 +636,7 @@ export function Product() {
   useEffect(() => {
     if (!isQuickOrderOpen) return;
     const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previousOverflow;
     };
@@ -756,49 +647,66 @@ export function Product() {
     setLightboxIndex(index);
     setLightboxZoom(1);
     setLightboxOpen(true);
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
   };
   const closeLightbox = () => {
     setLightboxOpen(false);
     setLightboxZoom(1);
-    document.body.style.overflow = '';
+    document.body.style.overflow = "";
   };
-  const nextImage = () => {
-    setLightboxIndex((prev) => (prev + 1) % Math.max(galleryImages.length, 1));
-  };
-  const prevImage = () => {
-    setLightboxIndex((prev) => (prev - 1 + Math.max(galleryImages.length, 1)) % Math.max(galleryImages.length, 1));
-  };
+  const nextImage = () => setLightboxIndex((prev) => (prev + 1) % Math.max(galleryImages.length, 1));
+  const prevImage = () => setLightboxIndex((prev) => (prev - 1 + Math.max(galleryImages.length, 1)) % Math.max(galleryImages.length, 1));
   const zoomIn = () => setLightboxZoom((z) => Math.min(z + 0.25, 3));
   const zoomOut = () => setLightboxZoom((z) => Math.max(z - 0.25, 0.5));
   const onLightboxWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
     if (e.deltaY < 0) zoomIn();
     else zoomOut();
   };
+
   useEffect(() => {
     if (!lightboxOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeLightbox();
-      if (e.key === 'ArrowRight') nextImage();
-      if (e.key === 'ArrowLeft') prevImage();
-      if (e.key === '+') zoomIn();
-      if (e.key === '-') zoomOut();
+      if (e.key === "Escape") closeLightbox();
+      if (e.key === "ArrowRight") nextImage();
+      if (e.key === "ArrowLeft") prevImage();
+      if (e.key === "+") zoomIn();
+      if (e.key === "-") zoomOut();
     };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [lightboxOpen, galleryImages.length]);
+
+  const canBuy =
+    selectedVariant ? selectedVariant.stock > 0 && selectedVariant.price !== null : product?.price !== null && (product?.stock ?? 0) > 0;
+
+  // FIX (п.4): поиск товара в корзине — учитываем разные ключи (productId/id)
+  const currentCartItemId = String(selectedVariant?.id || product?.variant_id || "");
+  const cartItem = useMemo(() => {
+    return appState.cart.find((item: any) => String(item.productId ?? item.id ?? "") === currentCartItemId);
+  }, [appState.cart, currentCartItemId]);
+  const cartQuantity = cartItem?.quantity || 0;
+  const maxStock = selectedVariant?.stock ?? product?.stock ?? 0;
+
+  const handleIncreaseQuantity = () => {
+    if (!currentCartItemId || cartQuantity >= maxStock) return;
+    updateCartItem(currentCartItemId, cartQuantity + 1);
+  };
+
+  const handleDecreaseQuantity = () => {
+    if (!currentCartItemId) return;
+    if (cartQuantity <= 1) removeFromCart(currentCartItemId);
+    else updateCartItem(currentCartItemId, cartQuantity - 1);
+  };
 
   // Добавление в корзину
   const handleAddToCart = () => {
     if (!product || !canBuy) return;
-    const cartImage =
-      primaryImage ||
-      galleryImages[0] ||
-      (product.main_image ? getProductImageUrl(product.main_image) : undefined);
+    const cartImage = primaryImage || galleryImages[0] || (product.main_image ? getProductImageUrl(product.main_image) : undefined);
     const cartPrice = currentPrice ?? product.price ?? 0;
     const stockAmount = selectedVariant?.stock ?? product.stock ?? 0;
+
     const item = {
-      id: (selectedVariant?.id || product.variant_id),
+      id: selectedVariant?.id || product.variant_id,
       name: product.product_name,
       refferal_price: product.refferal_price || 0,
       base_price: cartPrice,
@@ -811,41 +719,6 @@ export function Product() {
     addToCart(item, 1);
   };
 
-  const canBuy =
-    selectedVariant
-      ? selectedVariant.stock > 0 && selectedVariant.price !== null
-      : product?.price !== null && (product?.stock ?? 0) > 0;
-
-  // Получаем ID текущего товара/варианта для корзины
-  const currentCartItemId = selectedVariant?.id || product?.variant_id || '';
-  
-  // Находим товар в корзине
-  const cartItem = React.useMemo(() => {
-    return appState.cart.find(item => item.productId === currentCartItemId);
-  }, [appState.cart, currentCartItemId]);
-  
-  // Количество товара в корзине
-  const cartQuantity = cartItem?.quantity || 0;
-  
-  // Максимальное количество (stock)
-  const maxStock = selectedVariant?.stock ?? product?.stock ?? 0;
-  
-  // Увеличить количество в корзине
-  const handleIncreaseQuantity = () => {
-    if (!currentCartItemId || cartQuantity >= maxStock) return;
-    updateCartItem(currentCartItemId, cartQuantity + 1);
-  };
-  
-  // Уменьшить количество в корзине
-  const handleDecreaseQuantity = () => {
-    if (!currentCartItemId) return;
-    if (cartQuantity <= 1) {
-      removeFromCart(currentCartItemId);
-    } else {
-      updateCartItem(currentCartItemId, cartQuantity - 1);
-    }
-  };
-
   const openQuickOrder = () => {
     if (!canBuy) return;
     setQuickOrderError(null);
@@ -853,10 +726,9 @@ export function Product() {
     setIsQuickOrderOpen(true);
   };
 
-  const closeQuickOrder = () => {
-    setIsQuickOrderOpen(false);
-  };
+  const closeQuickOrder = () => setIsQuickOrderOpen(false);
 
+  // FIX (п.5): корректный order_region в QuickOrderSheet submit (не меняя архитектуру)
   const handleQuickOrderSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!product) return;
@@ -881,27 +753,26 @@ export function Product() {
     try {
       setQuickOrderLoading(true);
       setQuickOrderError(null);
+
       const variantId = selectedVariant?.id || product.variant_id;
       const citySource = appState.location.data?.city || "tashkent";
       const cityCode = toCityCode(citySource) || citySource;
+
       const payload = {
-        items: [
-          {
-            variant_id: variantId,
-            quantity: 1,
-            referral_code: referralCode || undefined,
-          },
-        ],
+        items: [{ variant_id: variantId, quantity: 1, referral_code: referralCode || undefined }],
         guest_user_number: phone,
         full_name: name.trim(),
         city: cityCode,
-        order_region: getRegionForCityOrRegion(cityCode),
+        order_region: getRegionForCityOrRegion(cityCode), // FIX
         order_comment: "",
       } as any;
+
       await shopAPI.guestOrder(payload);
+
       setQuickOrderFeedback(t("product.quickOrder.success"));
       setName("");
       setPhone("");
+
       setTimeout(() => {
         setIsQuickOrderOpen(false);
         setQuickOrderFeedback(null);
@@ -914,83 +785,65 @@ export function Product() {
     }
   };
 
-  // Функция для получения значения атрибута по ID
-  const getAttributeValue = (variant: ProductDetail['variants'][0], attributeId: string) => {
-    const attributeValue = variant.attribute_values.find(av => {
-      // Сравниваем как по attribute_id, так и по attribute_name
+  const getAttributeValue = (variant: ProductDetail["variants"][0], attributeId: string) => {
+    const attributeValue = variant.attribute_values.find((av) => {
       const attrId = av.attribute_id || (av as any).attribute_name;
       const attrName = (av as any).attribute_name || av.attribute_id;
-      return attrId === attributeId || attrName === attributeId;
+      return String(attrId) === String(attributeId) || String(attrName) === String(attributeId);
     });
-    return attributeValue?.value || '';
+    return attributeValue?.value || "";
   };
 
-  // Функция для обработки выбора атрибута
-  const handleAttributeSelect = (attributeId: string, value: string) => {
-    if (!product || !selectedVariant) return;
-
-    // Создаем новую комбинацию атрибутов на основе текущих значений
-    const currentAttributes = getCurrentAttributeValues();
-    const newAttributes = { ...currentAttributes };
-    newAttributes[attributeId] = value;
-
-    // Ищем подходящий вариант
-    const matchingVariant = product.variants.find(variant => {
-      return Object.entries(newAttributes).every(([attrId, attrValue]) => {
-        const variantValue = getAttributeValue(variant, attrId);
-        return variantValue === attrValue;
-      });
-    });
-
-    if (matchingVariant) {
-      setSelectedVariant(matchingVariant);
-      // Сбрасываем индекс лайтбокса на 0 при изменении варианта
-      setLightboxIndex(0);
-    } else {
-      // Если точного совпадения нет, пытаемся найти вариант с таким же значением этого атрибута
-      const variantWithSameAttr = product.variants.find(variant => {
-        const variantValue = getAttributeValue(variant, attributeId);
-        return variantValue === value && variant.stock > 0 && variant.price !== null;
-      }) || product.variants.find(variant => {
-        const variantValue = getAttributeValue(variant, attributeId);
-        return variantValue === value;
-      });
-      
-      if (variantWithSameAttr) {
-        setSelectedVariant(variantWithSameAttr);
-        setLightboxIndex(0);
-      }
-    }
-  };
-
-  // Функция для получения текущих значений атрибутов
   const getCurrentAttributeValues = (): Record<string, string> => {
     if (!selectedVariant) return {};
-    
     const values: Record<string, string> = {};
-    product?.attributes.forEach(attribute => {
+    product?.attributes.forEach((attribute) => {
       const value = getAttributeValue(selectedVariant, attribute.id);
-      if (value) {
-        values[attribute.id] = value;
-      }
+      if (value) values[attribute.id] = value;
     });
     return values;
   };
-  // Скелетон загрузки
-  if (loading) {
-    return <ProductPageSkeleton />;
-  }
 
-  // Ошибка загрузки
+  const handleAttributeSelect = (attributeId: string, value: string) => {
+    if (!product || !selectedVariant) return;
+
+    const currentAttributes = getCurrentAttributeValues();
+    const newAttributes = { ...currentAttributes, [attributeId]: value };
+
+    const matchingVariant = product.variants.find((variant) =>
+      Object.entries(newAttributes).every(([attrId, attrValue]) => getAttributeValue(variant, attrId) === attrValue)
+    );
+
+    if (matchingVariant) {
+      setSelectedVariant(matchingVariant);
+      setLightboxIndex(0);
+      return;
+    }
+
+    const variantWithSameAttr =
+      product.variants.find((variant) => getAttributeValue(variant, attributeId) === value && variant.stock > 0 && variant.price !== null) ||
+      product.variants.find((variant) => getAttributeValue(variant, attributeId) === value);
+
+    if (variantWithSameAttr) {
+      setSelectedVariant(variantWithSameAttr);
+      setLightboxIndex(0);
+    }
+  };
+
+  // loading
+  if (loading) return <ProductPageSkeleton />;
+
+  // error
   if (error) {
     return (
-      <div className={cn.error_screen}>
-        <div className={cn.error_container}>
-          <div className={cn.error_icon}>⚠️</div>
-          <h2 className={cn.error_title}>{t("product.errors.loadTitle")}</h2>
-          <p className={cn.error_message}>{error}</p>
-          <button 
-            className={cn.retry_button}
+      <div className="min-h-[70vh] bg-slate-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 shadow-sm p-6 text-center">
+          <div className="text-3xl mb-2">⚠️</div>
+          <h2 className="text-lg font-semibold text-slate-900">{t("product.errors.loadTitle")}</h2>
+          <p className="mt-2 text-sm text-slate-600">{error}</p>
+          <button
+            className="mt-4 h-11 w-full rounded-2xl text-white font-semibold transition hover:brightness-110"
+            style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
             onClick={() => window.location.reload()}
           >
             {t("product.errors.loadAction")}
@@ -1000,18 +853,16 @@ export function Product() {
     );
   }
 
-  // Товар не найден
+  // not found
   if (!product) {
     return (
-      <div className={cn.not_found_screen}>
-        <div className={cn.not_found_container}>
-          <div className={cn.not_found_icon}>🔍</div>
-          <h2 className={cn.not_found_title}>{t("product.errors.notFoundTitle")}</h2>
-          <p className={cn.not_found_message}>
-            {t("product.errors.notFoundMessage", { id: id ? `#${id}` : "" })}
-          </p>
-          <button 
-            className={cn.back_button}
+      <div className="min-h-[70vh] bg-slate-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 shadow-sm p-6 text-center">
+          <div className="text-3xl mb-2">🔍</div>
+          <h2 className="text-lg font-semibold text-slate-900">{t("product.errors.notFoundTitle")}</h2>
+          <p className="mt-2 text-sm text-slate-600">{t("product.errors.notFoundMessage", { id: id ? `#${id}` : "" })}</p>
+          <button
+            className="mt-4 h-11 w-full rounded-2xl border border-slate-200 bg-white text-slate-900 font-semibold transition hover:bg-slate-50"
             onClick={() => window.history.back()}
           >
             {t("product.errors.back")}
@@ -1023,30 +874,31 @@ export function Product() {
 
   const currentPrice = selectedVariant?.price ?? product.price ?? null;
   const basePrice = selectedVariant?.base_price ?? product.price ?? null;
+
   const hasDiscount =
-    currentPrice !== null &&
-    basePrice !== null &&
-    typeof currentPrice === "number" &&
-    typeof basePrice === "number" &&
-    basePrice > currentPrice;
-  const discountPercent =
-    hasDiscount && basePrice
-      ? Math.round(((basePrice - currentPrice) / basePrice) * 100)
-      : null;
+    currentPrice !== null && basePrice !== null && typeof currentPrice === "number" && typeof basePrice === "number" && basePrice > currentPrice;
+
+  const discountPercent = hasDiscount && basePrice ? Math.round(((basePrice - currentPrice) / basePrice) * 100) : null;
+
   const sku = selectedVariant?.sku || product.variant_sku || product.product_id;
   const availableUnits = selectedVariant ? selectedVariant.stock : product.stock;
   const isAvailable = (availableUnits ?? 0) > 0;
 
-    return (
-      <div ref={productRef} className={cn.product}>
+  const attributeButtonBase =
+    "px-3 py-2 rounded-xl border text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed";
+  const attributeButtonSelected = "border-emerald-600 bg-emerald-50 text-emerald-800";
+  const attributeButtonDefault = "border-slate-200 bg-white text-slate-800 hover:bg-slate-50";
+
+  return (
+    <div ref={productRef} className="min-h-screen bg-slate-50">
       <div className="mx-auto w-full max-w-[1240px] px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-8">
-        {product && (
-          <div className={cn.product_content}>
-            <section className={`${cn.product_gallery} ${galleryImages.length <= 1 ? cn.gallery_no_thumbs : ''}`}>
-              {/* Показываем миниатюры только если есть больше одного изображения */}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 md:gap-6">
+          {/* Gallery */}
+          <section className="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+            <div className="flex gap-3 p-3 md:p-4">
               {galleryImages.length > 1 && (
-                <div className="relative flex w-[140px] flex-col gap-2.5 max-h-[440px] overflow-hidden px-2.5">
-                  { (thumbCanScrollUp || thumbCanScrollDown) && (
+                <div className="relative flex flex-col gap-1.5  w-[88px] overflow-hidden px-1.5 py-3 sm:w-[96px] md:w-[104px] xl:w-[120px]">
+                  {(thumbCanScrollUp || thumbCanScrollDown) && (
                     <button
                       type="button"
                       aria-label={t("product.lightbox.prev")}
@@ -1059,34 +911,28 @@ export function Product() {
                       ↑
                     </button>
                   )}
-                  <div
-                    className="flex flex-col gap-2.5 max-h-full overflow-y-auto overscroll-contain scroll-smooth pr-2 touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                    ref={thumbsScrollRef}
-                  >
+
+                    <div
+                      className="flex flex-col gap-2 h-full overflow-y-auto overscroll-contain scroll-smooth pr-1 touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                      ref={thumbsScrollRef}
+                    >
                     {galleryImages.map((img, i) => (
                       <button
                         id={`thumb-${i}`}
                         key={i}
-                        className={`w-[104px] rounded-[16px] border-2 bg-white shadow-sm grid place-items-center transition relative ${
-                          i === lightboxIndex
-                            ? "border-blue-500 shadow-lg"
-                            : "border-slate-200 hover:-translate-y-0.5 hover:shadow-md"
+                          className={`w-full rounded-[16px] border-2 bg-white shadow-sm grid place-items-center transition relative ${
+                          i === lightboxIndex ? "border-emerald-600 shadow-md" : "border-slate-200 hover:-translate-y-0.5 hover:shadow-md"
                         }`}
                         type="button"
                         aria-label={t("product.lightbox.preview", { index: i + 1 })}
-                        onClick={() => {
-                          setLightboxIndex(i);
-                        }}
+                        onClick={() => setLightboxIndex(i)}
                       >
-                        <img
-                          src={img}
-                          alt=""
-                          className="w-full h-full object-cover rounded-[12px]"
-                        />
+                        <img src={img} alt="" className="w-full h-full object-cover rounded-[12px]" />
                       </button>
                     ))}
                   </div>
-                  { (thumbCanScrollUp || thumbCanScrollDown) && (
+
+                  {(thumbCanScrollUp || thumbCanScrollDown) && (
                     <button
                       type="button"
                       aria-label={t("product.lightbox.next")}
@@ -1101,990 +947,567 @@ export function Product() {
                   )}
                 </div>
               )}
-              <div className={cn.gallery_main}>
-                <img 
-                  src={galleryImages[Math.min(lightboxIndex, galleryImages.length - 1)] || getProductImageUrl(product.main_image)} 
-                  alt={product.product_name} 
-                  className={cn.main_image}
+
+              <div className="flex-1">
+                <img
+                  src={galleryImages[Math.min(lightboxIndex, galleryImages.length - 1)] || getProductImageUrl(product.main_image)}
+                  alt={product.product_name}
+                  className="w-full rounded-3xl object-cover cursor-zoom-in"
                   onClick={() => openLightbox(Math.min(lightboxIndex, galleryImages.length - 1))}
                 />
               </div>
-            </section>
-            <section className={cn.product_info}>
-              <div className="-mx-3 rounded-t-[28px] bg-white px-3 py-4 shadow-sm sm:-mx-4 md:m-0 md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-2">
-                      <h1 className={`${cn.product_title} text-slate-900`}>{product.product_name}</h1>
-                      <div className="flex flex-wrap items-center gap-3 text-sm">
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                            isAvailable ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'
-                          }`}
-                        >
-                          {isAvailable ? t("common.status.inStock") : t("common.status.outOfStock")}
-                        </span>
-                        {sku && (
-                          <span className="text-xs font-medium text-gray-500">
-                            {t("product.quickOrder.skuLabel")}: {sku}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <p className="text-[28px] font-semibold leading-tight text-[#04734b] sm:text-[32px]">
-                          {currentPrice ? formatPrice(currentPrice) : t("product.priceMissing")}
-                        </p>
-                        {hasDiscount && discountPercent && (
-                          <span className="inline-flex items-center rounded-full bg-[#e6f4ef] px-3 py-1 text-xs font-semibold text-[#04734b]">
-                            -{discountPercent}%
-                          </span>
-                        )}
-                      </div>
-                      {hasDiscount && basePrice ? (
-                        <p className="text-sm font-medium text-gray-400 line-through">
-                          {formatPrice(basePrice)}
-                        </p>
-                      ) : null}
-                      {currentPrice ? (
-                        <>
-                          <p className="text-xs font-medium text-gray-500">
-                            {t("product.deliveryUzbekistan")}:{" "}
-                            <span className="text-[#04734b] font-semibold">
-                              {t("product.deliveryFlatRate", {
-                                price: formatPrice(30000),
-                                currency: t("common.currency"),
-                              })}
-                            </span>
-                          </p>
-                        </>
-                      ) : null}
-                    </div>
-                    {/* <div className={`${cn.rating_row} mt-1 sm:mt-0`}>
-                      <img src="/icons/star.png" alt="" aria-hidden="true" />
-                      <strong>4.9</strong>
-                      <span className={cn.muted}>{t("product.ratingCount", { count: "18 503" })}</span>
-                    </div> */}
+            </div>
+          </section>
+
+          {/* Info + Aside */}
+          <section className="space-y-4">
+            <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-4 md:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <h1 className="text-xl md:text-2xl font-bold text-slate-900">{product.product_name}</h1>
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                        isAvailable ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-600"
+                      }`}
+                    >
+                      {isAvailable ? t("common.status.inStock") : t("common.status.outOfStock")}
+                    </span>
+                    {sku && <span className="text-xs font-medium text-slate-500">{t("product.quickOrder.skuLabel")}: {sku}</span>}
                   </div>
                 </div>
-                
-                {/* Отображение вариантов продукта - показываем только если есть варианты и атрибуты */}
-                {(() => {
-                  const hasVariants = product.variants && product.variants.length > 0;
-                  const hasAttributes = product.attributes && product.attributes.length > 0;
-                  const hasValidAttributes = hasAttributes && product.attributes.some(attr => {
-                    return product.variants.some(variant => {
-                      const value = getAttributeValue(variant, attr.id);
-                      return value && value.trim() !== '';
-                    });
-                  });
+              </div>
 
-                  if (!hasVariants || !hasValidAttributes) {
-                    return null;
-                  }
-
-                  return (
-                    <div className="mt-4 space-y-4">
-                      {product.attributes.map((attribute) => {
-                        // Проверяем, есть ли у этого атрибута хотя бы одно значение в вариантах
-                        const hasValues = product.variants.some(variant => {
-                          const value = getAttributeValue(variant, attribute.id);
-                          return value && value.trim() !== '';
-                        });
-
-                        if (!hasValues) return null;
-
-                        return (
-                          <div key={attribute.id} className={cn.attribute_group}>
-                            <h4 className={cn.attribute_title}>
-                              {attribute.name} {attribute.unit && `(${attribute.unit})`}
-                            </h4>
-                            <div className={cn.attribute_values}>
-                              {(() => {
-                                // Получаем все уникальные значения для этого атрибута
-                                const uniqueValues = new Map();
-                                product.variants.forEach(variant => {
-                                  const value = getAttributeValue(variant, attribute.id);
-                                  if (value && value.trim() !== '' && !uniqueValues.has(value)) {
-                                    // Находим первый доступный вариант с этим значением
-                                    const availableVariant = product.variants.find(v => 
-                                      getAttributeValue(v, attribute.id) === value && 
-                                      v.stock > 0 && v.price !== null
-                                    ) || product.variants.find(v => 
-                                      getAttributeValue(v, attribute.id) === value
-                                    );
-                                    uniqueValues.set(value, availableVariant);
-                                  }
-                                });
-
-                                return Array.from(uniqueValues.entries()).map(([value, variant]) => {
-                                  const isSelected = selectedVariant && getAttributeValue(selectedVariant, attribute.id) === value;
-                                  const isDisabled = !variant || variant.stock === 0 || variant.price === null;
-                                  
-                                  return (
-                                    <button
-                                      key={`${attribute.id}-${value}`}
-                                      className={`${cn.attribute_value} ${isSelected ? cn.selected : ''} ${isDisabled ? cn.disabled : ''}`}
-                                      onClick={() => !isDisabled && handleAttributeSelect(attribute.id, value)}
-                                      disabled={isDisabled}
-                                      type="button"
-                                    >
-                                      {value}
-                                    </button>
-                                  );
-                                });
-                              })()}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-                {/* Блок рассрочки в мобильной версии - закомментирован
-                <div className="md:hidden mt-6 space-y-3 rounded-[26px] border border-white/40 bg-white/95 p-4 shadow-[0_16px_30px_rgba(15,23,42,0.12)]">
-                  <div className="flex items-center justify-between text-sm font-semibold text-slate-900">
-                    <span>{t("product.installment.forMonths", { count: selectedInstallment })}</span>
-                    <span className="text-base text-[#04734b]">
-                      {t("product.installment.perMonth", {
-                        price: formatPrice(Math.round((currentPrice ?? 0) / Math.max(1, selectedInstallment))),
-                      })}
-                    </span>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <p className="text-[28px] font-semibold leading-tight text-[#04734b] sm:text-[32px]">
+                      {currentPrice ? formatPrice(currentPrice) : t("product.priceMissing")}
+                    </p>
+                    {hasDiscount && discountPercent && (
+                      <span className="inline-flex items-center rounded-full bg-[#e6f4ef] px-3 py-1 text-xs font-semibold text-[#04734b]">
+                        -{discountPercent}%
+                      </span>
+                    )}
                   </div>
-                  <p className="text-xs text-slate-500">{t("product.installment.selectTerm")}</p>
-                  {renderInstallmentSlider()}
-                  <div className="grid gap-2">
-                    {installmentVendors.map((item, idx) => {
-                      const monthly = Math.round(item.price / Math.max(1, selectedInstallment)).toLocaleString("ru-RU");
-                      const isActive = selectedVendor === idx;
+                  {hasDiscount && basePrice ? <p className="text-sm font-medium text-slate-400 line-through">{formatPrice(basePrice)}</p> : null}
+                  {currentPrice ? (
+                    <p className="text-xs font-medium text-slate-500">
+                      {t("product.deliveryUzbekistan")}:{" "}
+                      <span className="text-[#04734b] font-semibold">
+                        {t("product.deliveryFlatRate", { price: formatPrice(30000), currency: t("common.currency") })}
+                      </span>
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Variants */}
+              {(() => {
+                const hasVariants = product.variants && product.variants.length > 0;
+                const hasAttributes = product.attributes && product.attributes.length > 0;
+                const hasValidAttributes =
+                  hasAttributes &&
+                  product.attributes.some((attr) =>
+                    product.variants.some((variant) => {
+                      const value = getAttributeValue(variant, attr.id);
+                      return value && value.trim() !== "";
+                    })
+                  );
+
+                if (!hasVariants || !hasValidAttributes) return null;
+
+                return (
+                  <div className="mt-5 space-y-4">
+                    {product.attributes.map((attribute) => {
+                      const hasValues = product.variants.some((variant) => {
+                        const value = getAttributeValue(variant, attribute.id);
+                        return value && value.trim() !== "";
+                      });
+                      if (!hasValues) return null;
+
+                      const uniqueValues = new Map<string, ProductDetail["variants"][0] | undefined>();
+                      product.variants.forEach((variant) => {
+                        const value = getAttributeValue(variant, attribute.id);
+                        if (value && value.trim() !== "" && !uniqueValues.has(value)) {
+                          const availableVariant =
+                            product.variants.find((v) => getAttributeValue(v, attribute.id) === value && v.stock > 0 && v.price !== null) ||
+                            product.variants.find((v) => getAttributeValue(v, attribute.id) === value);
+                          uniqueValues.set(value, availableVariant);
+                        }
+                      });
+
                       return (
-                        <button
-                          key={item.name}
-                          type="button"
-                          onClick={() => setSelectedVendor(idx)}
-                          className={`relative flex items-center justify-between rounded-[18px] border-2 px-3 py-2 text-xs font-semibold transition-all duration-200 ${
-                            isActive 
-                              ? "border-[#04734b] bg-gradient-to-r from-[#e6f4ef] to-[#f0faf6] shadow-[0_0_0_3px_rgba(4,115,75,0.15)]" 
-                              : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
-                          }`}
-                        >
-                          {isActive && (
-                            <span className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-[#04734b] flex items-center justify-center">
-                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            </span>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <span className={`h-7 w-7 rounded-xl text-[11px] grid place-items-center transition-colors ${
-                              isActive ? "bg-[#04734b] text-white" : "bg-slate-100 text-slate-500"
-                            }`}>
-                              {item.name.slice(0, 1)}
-                            </span>
-                            <span className={isActive ? "text-[#04734b]" : ""}>{item.name}</span>
+                        <div key={attribute.id} className="space-y-2">
+                          <h4 className="text-sm font-bold text-slate-900">
+                            {attribute.name} {attribute.unit && `(${attribute.unit})`}
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {Array.from(uniqueValues.entries()).map(([value, v]) => {
+                              const isSelected = selectedVariant && getAttributeValue(selectedVariant, attribute.id) === value;
+                              const isDisabled = !v || v.stock === 0 || v.price === null;
+                              return (
+                                <button
+                                  key={`${attribute.id}-${value}`}
+                                  type="button"
+                                  disabled={isDisabled}
+                                  onClick={() => !isDisabled && handleAttributeSelect(attribute.id, value)}
+                                  className={[
+                                    attributeButtonBase,
+                                    isSelected ? attributeButtonSelected : attributeButtonDefault,
+                                    isDisabled ? "opacity-50" : "",
+                                  ].join(" ")}
+                                >
+                                  {value}
+                                </button>
+                              );
+                            })}
                           </div>
-                          <div className={`font-bold ${isActive ? "text-[#04734b]" : "text-slate-600"}`}>
-                            {t("product.installment.perMonth", { price: monthly })}
-                          </div>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
-                  <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-                    <span>{t("product.installment.total", { count: selectedInstallment })}</span>
-                    <strong className="text-slate-900">{formatPrice(currentPrice ?? 0)}</strong>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowComingSoonModal(true)}
-                    className="w-full h-11 rounded-[18px] text-white text-sm font-semibold shadow-[0_10px_20px_rgba(4,115,75,0.3)] transition hover:brightness-110 active:scale-[0.98]"
-                    style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
-                  >
-                    {t("product.buttons.checkout")}
-                  </button>
-                </div>
-                */}
-                
-                {/* Форма "Купить в 1 клик" для мобильной версии */}
-                <div className={`${cn.quick_order_form} md:hidden mt-6 rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.08)] px-4 py-3 space-y-3`}>
-                  <div className="space-y-2.5">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                        {t("product.quickOrder.nameLabel")}
-                      </label>
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder={t("product.quickOrder.namePlaceholder")}
-                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                        {t("product.quickOrder.phoneLabel")}
-                      </label>
-                      <PhoneInput
-                        value={phone}
-                        onChange={setPhone}
-                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                        Город / Область
-                      </label>
-                      <select
-                        value={quickOrderRegion}
-                        onChange={(e) => {
-                          const selectedValue = e.target.value;
-                          setQuickOrderRegion(selectedValue);
-                          setQuickOrderCity(""); // Сбрасываем город при смене
-                        }}
-                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
-                      >
-                        <option value="">Выберите город или область</option>
-                        <option value="tashkent">Toshkent</option>
-                        <option value="tashkent_region">Toshkent viloyati</option>
-                        <option value="samarkand">Samarqand viloyati</option>
-                        <option value="samarkand_city">Samarqand</option>
-                        <option value="bukhara">Buxoro viloyati</option>
-                        <option value="bukhara_city">Buxoro</option>
-                        <option value="andijan">Andijon viloyati</option>
-                        <option value="andijan_city">Andijon</option>
-                        <option value="fergana">Farg'ona viloyati</option>
-                        <option value="fergana_city">Farg'ona</option>
-                        <option value="namangan">Namangan viloyati</option>
-                        <option value="namangan_city">Namangan</option>
-                        <option value="navoiy">Navoiy viloyati</option>
-                        <option value="navoiy_city">Navoiy</option>
-                        <option value="kashkadarya">Qashqadaryo viloyati</option>
-                        <option value="karshi">Qarshi</option>
-                        <option value="surkhandarya">Surxondaryo viloyati</option>
-                        <option value="termez">Termiz</option>
-                        <option value="sirdarya">Sirdaryo viloyati</option>
-                        <option value="gulistan">Guliston</option>
-                        <option value="jizzakh">Jizzax viloyati</option>
-                        <option value="jizzakh_city">Jizzax</option>
-                        <option value="khorezm">Xorazm viloyati</option>
-                        <option value="urgench">Urganch</option>
-                        <option value="karakalpakstan">Qoraqalpog'iston Respublikasi</option>
-                        <option value="nukus">Nukus</option>
-                      </select>
-                    </div>
-                    
-                    {quickOrderRegion && (() => {
-                      const selectedLocation = uzbekistanLocations.find(loc => loc.id === quickOrderRegion);
-                      const isRegion = selectedLocation?.type === 'region';
-                      const isCityWithoutRegion = selectedLocation?.type === 'city' && !selectedLocation?.parentId;
-                      
-                      if (!isRegion || isCityWithoutRegion) {
-                        return null;
-                      }
-                      
-                      const cities = getCitiesByRegion(quickOrderRegion);
-                      const cityNameMap: Record<string, string> = {
-                        'Андижан': 'Andijon',
-                        'Бухара': 'Buxoro',
-                        'Джизак': 'Jizzax',
-                        'Фергана': 'Farg\'ona',
-                        'Наманган': 'Namangan',
-                        'Навои': 'Navoiy',
-                        'Самарканд': 'Samarqand',
-                        'Ангрен': 'Angren',
-                        'Бекабад': 'Bekobod',
-                        'Чирчик': 'Chirchiq',
-                        'Газалкент': 'Gazalkent',
-                        'Паркент': 'Parkent',
-                        'Каттакурган': 'Kattaqo\'rg\'on',
-                        'Ургут': 'Urgut',
-                        'Каган': 'Kagan',
-                        'Гиждуван': 'G\'ijduvon',
-                        'Асака': 'Asaka',
-                        'Ханабад': 'Xonobod',
-                        'Коканд': 'Qo\'qon',
-                        'Маргилан': 'Marg\'ilon',
-                        'Кува': 'Quva',
-                        'Риштан': 'Rishton',
-                        'Чуст': 'Chust',
-                        'Пап': 'Pop',
-                        'Зарафшан': 'Zarafshon',
-                        'Нурата': 'Nurota',
-                        'Шахрисабз': 'Shahrisabz',
-                        'Китаб': 'Kitob',
-                        'Денау': 'Denov',
-                        'Шурчи': 'Shurchi',
-                        'Янгиер': 'Yangiyer',
-                        'Ширин': 'Shirin',
-                        'Дустлик': 'Do\'stlik',
-                        'Ургенч': 'Urganch',
-                        'Хива': 'Xiva',
-                        'Питнак': 'Pitnak',
-                        'Нукус': 'Nukus',
-                        'Муйнак': 'Mo\'ynoq',
-                      };
-                      
-                      return (
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                            Город
-                          </label>
-                          <select
-                            value={quickOrderCity}
-                            onChange={(e) => setQuickOrderCity(e.target.value)}
-                            className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
-                          >
-                            <option value="">Выберите город</option>
-                            {cities.map((city) => (
-                              <option key={city.id} value={city.id}>
-                                {cityNameMap[city.name] || city.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  
-                  <button 
-                    type="button"
-                    onClick={async () => {
-                      if (!fetchedProduct) return;
-                      
-                      if (!name.trim()) {
-                        setQuickOrderError(t("product.quickOrder.errors.nameRequired"));
-                        setTimeout(() => setQuickOrderError(null), 3000);
-                        return;
-                      }
-                      if (!phone || phone.trim().length < 8) {
-                        setQuickOrderError(t("product.quickOrder.errors.phoneInvalid"));
-                        setTimeout(() => setQuickOrderError(null), 3000);
-                        return;
-                      }
-                      const selectedLocation = uzbekistanLocations.find(loc => loc.id === quickOrderRegion);
-                      const isRegion = selectedLocation?.type === 'region';
-                      if (isRegion && !quickOrderCity) {
-                        setQuickOrderError("Выберите город");
-                        setTimeout(() => setQuickOrderError(null), 3000);
-                        return;
-                      }
-                      
-                      try {
-                        setQuickOrderLoading(true);
-                        setQuickOrderError(null);
-                        setQuickOrderFeedback(null);
-                        
-                        const variantId = selectedVariant?.id || fetchedProduct.variant_id;
-                        const finalCityId = isRegion ? quickOrderCity : quickOrderRegion;
-                        const cityLocation = uzbekistanLocations.find(loc => loc.id === finalCityId);
-                        const cityCode = toCityCode(finalCityId) || finalCityId;
-                        const regionCode = isRegion ? quickOrderRegion : (cityLocation?.parentId || quickOrderRegion);
-                        
-                        const payload = {
-                          items: [
-                            {
-                              variant_id: variantId,
-                              quantity: 1,
-                              referral_code: referralCode || undefined,
-                            },
-                          ],
-                          guest_user_number: phone,
-                          full_name: name.trim(),
-                          city: cityCode,
-                          order_region: getRegionForCityOrRegion(regionCode) || regionCode,
-                          order_comment: "",
-                        } as any;
-                        
-                        await shopAPI.guestOrder(payload);
-                        setQuickOrderFeedback(t("product.quickOrder.success"));
-                        setName("");
-                        setPhone("");
-                        setQuickOrderRegion("");
-                        setQuickOrderCity("");
-                        setTimeout(() => {
-                          setQuickOrderFeedback(null);
-                        }, 3000);
-                      } catch (err: any) {
-                        logger.errorWithContext(err, { context: "quickOrder" });
-                        const errorMsg = err?.response?.data?.detail || err?.message || t("product.quickOrder.errors.generic");
-                        setQuickOrderError(errorMsg);
-                        setTimeout(() => setQuickOrderError(null), 3000);
-                      } finally {
-                        setQuickOrderLoading(false);
-                      }
-                    }}
-                    disabled={(() => {
-                      if (!name || !phone || !quickOrderRegion) return true;
-                      const selectedLocation = uzbekistanLocations.find(loc => loc.id === quickOrderRegion);
-                      const isRegion = selectedLocation?.type === 'region';
-                      return isRegion ? !quickOrderCity : false;
-                    })() || quickOrderLoading}
-                    className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed" 
-                    style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
-                  >
-                    {quickOrderLoading ? t("product.quickOrder.submitting") : t("product.quickOrder.submit")}
-                  </button>
-                  {quickOrderError && (
-                    <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600">
-                      {quickOrderError}
-                    </div>
-                  )}
-                  {quickOrderFeedback && (
-                    <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800">
-                      {quickOrderFeedback}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
-            <aside className={cn.aside}>
-              <div className="hidden md:block">
-                <div className="rounded-[26px] border border-white/40 bg-white/70 shadow-[0_20px_50px_rgba(15,23,42,0.12)] backdrop-blur-md px-6 py-5 space-y-4">
-                  <div className="flex items-center gap-3">
+                );
+              })()}
+            </div>
+
+            {/* Aside actions + Quick order (desktop) */}
+            <aside className="rounded-3xl bg-white border border-slate-200 shadow-sm p-4 md:p-5 space-y-4">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={openQuickOrder}
+                  disabled={!canBuy}
+                  className="flex-1 h-12 rounded-[18px] text-sm font-semibold text-white shadow-[0_12px_24px_rgba(0,160,120,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+                  style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+                >
+                  {t("product.buttons.buyOneClick")}
+                </button>
+
+                {cartQuantity > 0 ? (
+                  <div className="flex-1 h-12 rounded-[18px] border border-[#d5ebe3] bg-white flex items-center justify-between px-2">
                     <button
                       type="button"
-                      onClick={openQuickOrder}
-                      disabled={!canBuy}
-                      className="flex-1 h-12 rounded-[18px] bg-gradient-to-r from-[#00a779] via-[#00b78a] to-[#00c08c] text-xs md:text-sm font-semibold text-white shadow-[0_12px_24px_rgba(0,160,120,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
-                      style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+                      onClick={handleDecreaseQuantity}
+                      className="h-9 w-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-lg font-semibold text-[#04734b] transition"
                     >
-                      {t("product.buttons.buyOneClick")}
+                      −
                     </button>
-                    {cartQuantity > 0 ? (
-                      <div className="flex-1 h-12 rounded-[18px] border border-[#d5ebe3] bg-white flex items-center justify-between px-2">
-                        <button
-                          type="button"
-                          onClick={handleDecreaseQuantity}
-                          className="h-9 w-9 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-lg font-semibold text-[#04734b] transition"
-                        >
-                          −
-                        </button>
-                        <span className="text-base font-bold text-[#04734b] min-w-[40px] text-center">
-                          {cartQuantity}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={handleIncreaseQuantity}
-                          disabled={cartQuantity >= maxStock}
-                          className={`h-9 w-9 rounded-xl border border-gray-200 bg-white text-lg font-semibold text-[#04734b] transition ${
-                            cartQuantity >= maxStock ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
-                          }`}
-                        >
-                          +
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleAddToCart}
-                        disabled={!canBuy}
-                        className="flex-1 h-12 rounded-[18px] border border-[#d5ebe3] bg-white text-base font-semibold text-[#04734b] shadow-[inset_0_2px_6px_rgba(4,115,75,0.08)] transition hover:border-[#04734b] hover:text-[#003d32] disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {t("product.buttons.addToCart")}
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-center text-xs font-medium text-slate-500">
-                    {t("product.paymentInfo")}
-                  </p>
-                </div>
-                {/* Блок рассрочки - закомментирован
-                <div className="mt-4 rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.08)] px-5 py-4 space-y-4">
-                  <div className="flex items-center justify-between text-sm font-semibold text-slate-900">
-                    <span>{t("product.installment.forMonths", { count: selectedInstallment })}</span>
-                  </div>
-                  {renderInstallmentSlider()}
-                  <div className="grid gap-2">
-                    {installmentVendors.map((item, idx) => {
-                      const monthly = Math.round(item.price / Math.max(1, selectedInstallment)).toLocaleString("ru-RU");
-                      const isActive = selectedVendor === idx;
-                      return (
-                        <button
-                          key={item.name}
-                          type="button"
-                          onClick={() => setSelectedVendor(idx)}
-                          className={`relative flex items-center justify-between rounded-[18px] border-2 px-4 py-3 text-sm font-semibold transition-all duration-200 ${
-                            isActive 
-                              ? "border-[#04734b] bg-gradient-to-r from-[#e6f4ef] to-[#f0faf6] shadow-[0_0_0_4px_rgba(4,115,75,0.12)]" 
-                              : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
-                          }`}
-                        >
-                          {isActive && (
-                            <span className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-[#04734b] flex items-center justify-center shadow-lg">
-                              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            </span>
-                          )}
-                          <div className="flex items-center gap-3">
-                            <span className={`h-8 w-8 rounded-xl text-xs grid place-items-center transition-colors ${
-                              isActive ? "bg-[#04734b] text-white" : "bg-slate-100 text-slate-500"
-                            }`}>
-                              {item.name.slice(0, 1)}
-                            </span>
-                            <span className={isActive ? "text-[#04734b]" : ""}>{item.name}</span>
-                          </div>
-                          <div className={`font-bold ${isActive ? "text-[#04734b]" : "text-slate-600"}`}>
-                            {t("product.installment.perMonth", { price: monthly })}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-                    <span>{t("product.installment.total", { count: selectedInstallment })}</span>
-                    <strong className="text-slate-900">{formatPrice(currentPrice ?? 0)}</strong>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => setShowComingSoonModal(true)}
-                    className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110 active:scale-[0.98]" 
-                    style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
-                  >
-                    {t("product.buttons.checkout")}
-                  </button>
-                </div>
-                */}
-                
-                {/* Форма "Купить в 1 клик" */}
-                <div className={`${cn.quick_order_form} mt-4 rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.08)] px-5 py-4 space-y-4`}>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                        {t("product.quickOrder.nameLabel")}
-                      </label>
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder={t("product.quickOrder.namePlaceholder")}
-                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                        {t("product.quickOrder.phoneLabel")}
-                      </label>
-                      <PhoneInput
-                        value={phone}
-                        onChange={setPhone}
-                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                        Город / Область
-                      </label>
-                      <select
-                        value={quickOrderRegion}
-                        onChange={(e) => {
-                          const selectedValue = e.target.value;
-                          setQuickOrderRegion(selectedValue);
-                          setQuickOrderCity(""); // Сбрасываем город при смене
-                        }}
-                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
-                      >
-                        <option value="">Выберите город или область</option>
-                        {/* Все области и города-центры областей */}
-                        <option value="tashkent">Toshkent</option>
-                        <option value="tashkent_region">Toshkent viloyati</option>
-                        <option value="samarkand">Samarqand viloyati</option>
-                        <option value="samarkand_city">Samarqand</option>
-                        <option value="bukhara">Buxoro viloyati</option>
-                        <option value="bukhara_city">Buxoro</option>
-                        <option value="andijan">Andijon viloyati</option>
-                        <option value="andijan_city">Andijon</option>
-                        <option value="fergana">Farg'ona viloyati</option>
-                        <option value="fergana_city">Farg'ona</option>
-                        <option value="namangan">Namangan viloyati</option>
-                        <option value="namangan_city">Namangan</option>
-                        <option value="navoiy">Navoiy viloyati</option>
-                        <option value="navoiy_city">Navoiy</option>
-                        <option value="kashkadarya">Qashqadaryo viloyati</option>
-                        <option value="karshi">Qarshi</option>
-                        <option value="surkhandarya">Surxondaryo viloyati</option>
-                        <option value="termez">Termiz</option>
-                        <option value="sirdarya">Sirdaryo viloyati</option>
-                        <option value="gulistan">Guliston</option>
-                        <option value="jizzakh">Jizzax viloyati</option>
-                        <option value="jizzakh_city">Jizzax</option>
-                        <option value="khorezm">Xorazm viloyati</option>
-                        <option value="urgench">Urganch</option>
-                        <option value="karakalpakstan">Qoraqalpog'iston Respublikasi</option>
-                        <option value="nukus">Nukus</option>
-                      </select>
-                    </div>
-                    
-                    {quickOrderRegion && (() => {
-                      const selectedLocation = uzbekistanLocations.find(loc => loc.id === quickOrderRegion);
-                      const isRegion = selectedLocation?.type === 'region';
-                      const isCityWithoutRegion = selectedLocation?.type === 'city' && !selectedLocation?.parentId;
-                      
-                      // Показываем второй селект только если выбрана область (не город)
-                      if (!isRegion || isCityWithoutRegion) {
-                        return null;
-                      }
-                      
-                      const cities = getCitiesByRegion(quickOrderRegion);
-                      
-                      // Маппинг русских названий на узбекские
-                      const cityNameMap: Record<string, string> = {
-                        'Андижан': 'Andijon',
-                        'Бухара': 'Buxoro',
-                        'Джизак': 'Jizzax',
-                        'Фергана': 'Farg\'ona',
-                        'Наманган': 'Namangan',
-                        'Навои': 'Navoiy',
-                        'Самарканд': 'Samarqand',
-                        'Ангрен': 'Angren',
-                        'Бекабад': 'Bekobod',
-                        'Чирчик': 'Chirchiq',
-                        'Газалкент': 'Gazalkent',
-                        'Паркент': 'Parkent',
-                        'Каттакурган': 'Kattaqo\'rg\'on',
-                        'Ургут': 'Urgut',
-                        'Каган': 'Kagan',
-                        'Гиждуван': 'G\'ijduvon',
-                        'Асака': 'Asaka',
-                        'Ханабад': 'Xonobod',
-                        'Коканд': 'Qo\'qon',
-                        'Маргилан': 'Marg\'ilon',
-                        'Кува': 'Quva',
-                        'Риштан': 'Rishton',
-                        'Чуст': 'Chust',
-                        'Пап': 'Pop',
-                        'Зарафшан': 'Zarafshon',
-                        'Нурата': 'Nurota',
-                        'Шахрисабз': 'Shahrisabz',
-                        'Китаб': 'Kitob',
-                        'Денау': 'Denov',
-                        'Шурчи': 'Shurchi',
-                        'Янгиер': 'Yangiyer',
-                        'Ширин': 'Shirin',
-                        'Дустлик': 'Do\'stlik',
-                        'Ургенч': 'Urganch',
-                        'Хива': 'Xiva',
-                        'Питнак': 'Pitnak',
-                        'Нукус': 'Nukus',
-                        'Муйнак': 'Mo\'ynoq',
-                      };
-                      
-                      return (
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                            Город
-                          </label>
-                          <select
-                            value={quickOrderCity}
-                            onChange={(e) => setQuickOrderCity(e.target.value)}
-                            className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
-                          >
-                            <option value="">Выберите город</option>
-                            {cities.map((city) => (
-                              <option key={city.id} value={city.id}>
-                                {cityNameMap[city.name] || city.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  
-                  <button 
-                    type="button"
-                    onClick={async () => {
-                      if (!fetchedProduct) return;
-                      
-                      // Валидация
-                      if (!name.trim()) {
-                        setQuickOrderError(t("product.quickOrder.errors.nameRequired"));
-                        setTimeout(() => setQuickOrderError(null), 3000);
-                        return;
-                      }
-                      if (!phone || phone.trim().length < 8) {
-                        setQuickOrderError(t("product.quickOrder.errors.phoneInvalid"));
-                        setTimeout(() => setQuickOrderError(null), 3000);
-                        return;
-                      }
-                      const selectedLocation = uzbekistanLocations.find(loc => loc.id === quickOrderRegion);
-                      const isRegion = selectedLocation?.type === 'region';
-                      if (isRegion && !quickOrderCity) {
-                        setQuickOrderError("Выберите город");
-                        setTimeout(() => setQuickOrderError(null), 3000);
-                        return;
-                      }
-                      
-                      try {
-                        setQuickOrderLoading(true);
-                        setQuickOrderError(null);
-                        setQuickOrderFeedback(null);
-                        
-                        const variantId = selectedVariant?.id || fetchedProduct.variant_id;
-                        // Определяем город: если выбран город - используем его, иначе используем выбранный город из второго селекта
-                        const finalCityId = isRegion ? quickOrderCity : quickOrderRegion;
-                        const cityLocation = uzbekistanLocations.find(loc => loc.id === finalCityId);
-                        const cityCode = toCityCode(finalCityId) || finalCityId;
-                        const regionCode = isRegion ? quickOrderRegion : (cityLocation?.parentId || quickOrderRegion);
-                        
-                        const payload = {
-                          items: [
-                            {
-                              variant_id: variantId,
-                              quantity: 1,
-                              referral_code: referralCode || undefined,
-                            },
-                          ],
-                          guest_user_number: phone,
-                          full_name: name.trim(),
-                          city: cityCode,
-                          order_region: getRegionForCityOrRegion(regionCode) || regionCode,
-                          order_comment: "",
-                        } as any;
-                        
-                        await shopAPI.guestOrder(payload);
-                        setQuickOrderFeedback(t("product.quickOrder.success"));
-                        setName("");
-                        setPhone("");
-                        setQuickOrderRegion("");
-                        setQuickOrderCity("");
-                        setTimeout(() => {
-                          setQuickOrderFeedback(null);
-                        }, 3000);
-                      } catch (err: any) {
-                        logger.errorWithContext(err, { context: "quickOrder" });
-                        const errorMsg = err?.response?.data?.detail || err?.message || t("product.quickOrder.errors.generic");
-                        setQuickOrderError(errorMsg);
-                        setTimeout(() => setQuickOrderError(null), 3000);
-                      } finally {
-                        setQuickOrderLoading(false);
-                      }
-                    }}
-                    disabled={(() => {
-                      if (!name || !phone || !quickOrderRegion) return true;
-                      const selectedLocation = uzbekistanLocations.find(loc => loc.id === quickOrderRegion);
-                      const isRegion = selectedLocation?.type === 'region';
-                      // Если выбрана область, нужен город. Если выбран город, город не нужен
-                      return isRegion ? !quickOrderCity : false;
-                    })() || quickOrderLoading}
-                    className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed" 
-                    style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
-                  >
-                    {quickOrderLoading ? t("product.quickOrder.submitting") : t("product.quickOrder.submit")}
-                  </button>
-                  {quickOrderError && (
-                    <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600">
-                      {quickOrderError}
-                    </div>
-                  )}
-                  {quickOrderFeedback && (
-                    <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800">
-                      {quickOrderFeedback}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* <div className={cn.seller_card}>
-                <div className={cn.seller_top}>
-                  <div className={cn.seller_logo} />
-                  <div className={cn.seller_meta}>
-                    <div className={cn.seller_name}>Mediapark</div>
-                    <div className={cn.seller_rating}>
-                      <img src="/icons/star.png" alt="" aria-hidden="true" />
-                      <strong>4.5</strong>
-                      <span className={cn.muted}>1320 baho</span>
-                    </div>
-                  </div>
-                </div>
-                <button type="button" className={cn.seller_btn}>Do`konga o`tish</button>
-              </div> */}
-            </aside>
-          </div>
-        )}
-
-        {/* Дополнительные блоки */}
-        {product && (
-          <div className={cn.additional_sections}>
-            {/* Табы: Описание / Характеристики / Комментарии */}
-            <div>
-              <div className={cn.tabs}>
-                <button
-                  className={`${cn.tab} ${activeTab === 'description' ? cn.tab_active : ''}`}
-                  onClick={() => setActiveTab('description')}
-                  type="button"
-                >
-                  {t("product.tabs.description")}
-                </button>
-                <button
-                  className={`${cn.tab} ${activeTab === 'characteristics' ? cn.tab_active : ''}`}
-                  onClick={() => setActiveTab('characteristics')}
-                  type="button"
-                >
-                  {t("product.tabs.specs")}
-                </button>
-                <button
-                  className={`${cn.tab} ${activeTab === 'comments' ? cn.tab_active : ''}`}
-                  onClick={() => setActiveTab('comments')}
-                  type="button"
-                >
-                  {t("product.tabs.comments")}
-                </button>
-              </div>
-              <div className={cn.tabs_panel}>
-                {activeTab === 'description' ? (
-                  <div className={cn.product_desc}>
-                    {product.product_description ? (
-                      product.product_description.split('\r\n\r\n').map((paragraph, index) => (
-                        <p key={index} className={cn.description_paragraph}>
-                          {paragraph}
-                        </p>
-                      ))
-                    ) : (
-                      <p>{t("product.empty.description")}</p>
-                    )}
-                  </div>
-                ) : activeTab === 'characteristics' ? (
-                  <div className={cn.specifications_section}>
-                    {(() => {
-                      // Проверяем наличие характеристик у выбранного варианта
-                      const hasSpecs = selectedVariant && selectedVariant.attribute_values && selectedVariant.attribute_values.length > 0;
-                      
-                      if (!hasSpecs || !selectedVariant) {
-                        return <p>{t("product.empty.specs")}</p>;
-                      }
-
-                      // Отображаем список характеристик
-                      const validSpecs = selectedVariant.attribute_values
-                        .map((attrValue) => {
-                          // Ищем атрибут по attribute_id или attribute_name
-                          const attrId = attrValue.attribute_id || (attrValue as any).attribute_name;
-                          const attribute = product.attributes.find(attr => 
-                            attr.id === attrId || attr.name === attrId || attr.name === (attrValue as any).attribute_name
-                          );
-                          if (!attribute) return null;
-                          
-                          return {
-                            id: attrValue.id,
-                            name: attribute.name,
-                            value: attrValue.value,
-                            unit: attribute.unit
-                          };
-                        })
-                        .filter((spec): spec is { id: string; name: string; value: string; unit: string } => spec !== null);
-
-                      if (validSpecs.length === 0) {
-                        return <p>{t("product.empty.specs")}</p>;
-                      }
-
-                      return (
-                        <div className={cn.specifications_list}>
-                          {validSpecs.map((spec) => (
-                            <div key={spec.id} className={cn.specification_item}>
-                              <span className={cn.spec_name}>{spec.name}:</span>
-                              <span className={cn.spec_value}>
-                                {spec.value} {spec.unit && spec.unit.trim()}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
+                    <span className="text-base font-bold text-[#04734b] min-w-[40px] text-center">{cartQuantity}</span>
+                    <button
+                      type="button"
+                      onClick={handleIncreaseQuantity}
+                      disabled={cartQuantity >= maxStock}
+                      className={`h-9 w-9 rounded-xl border border-slate-200 bg-white text-lg font-semibold text-[#04734b] transition ${
+                        cartQuantity >= maxStock ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-50"
+                      }`}
+                    >
+                      +
+                    </button>
                   </div>
                 ) : (
-                  <div className={cn.comments_section}>
-                    {comments.length === 0 ? (
-                      <p className={cn.comments_empty}>{t("product.empty.comments")}</p>
-                    ) : (
-                      <div className={cn.specifications_list}>
-                        {comments.map((c) => (
-                          <div key={c.id} className={cn.specification_item}>
-                            <div>
-                              <strong>{c.author}</strong>
-                              <div className={cn.muted} style={{ fontSize: 12 }}>{new Date(c.createdAt).toLocaleString('ru-RU')}</div>
-                            </div>
-                            <div style={{ maxWidth: 640 }}>{c.text}</div>
+                  <button
+                    type="button"
+                    onClick={handleAddToCart}
+                    disabled={!canBuy}
+                    className="flex-1 h-12 rounded-[18px] border border-[#d5ebe3] bg-white text-base font-semibold text-[#04734b] shadow-[inset_0_2px_6px_rgba(4,115,75,0.08)] transition hover:border-[#04734b] hover:text-[#003d32] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {t("product.buttons.addToCart")}
+                  </button>
+                )}
+              </div>
+
+              <p className="text-center text-xs font-medium text-slate-500">{t("product.paymentInfo")}</p>
+
+              {/* Quick order form (desktop) */}
+              <div className="rounded-[22px] border border-slate-200 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.08)] px-5 py-4 space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">{t("product.quickOrder.nameLabel")}</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t("product.quickOrder.namePlaceholder")}
+                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">{t("product.quickOrder.phoneLabel")}</label>
+                  <PhoneInput
+                    value={phone}
+                    onChange={setPhone}
+                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Город / Область</label>
+                  <select
+                    value={quickOrderRegion}
+                    onChange={(e) => {
+                      const selectedValue = e.target.value;
+                      setQuickOrderRegion(selectedValue);
+                      setQuickOrderCity("");
+                    }}
+                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                  >
+                    <option value="">Выберите город или область</option>
+                    <option value="tashkent">Toshkent</option>
+                    <option value="tashkent_region">Toshkent viloyati</option>
+                    <option value="samarkand">Samarqand viloyati</option>
+                    <option value="samarkand_city">Samarqand</option>
+                    <option value="bukhara">Buxoro viloyati</option>
+                    <option value="bukhara_city">Buxoro</option>
+                    <option value="andijan">Andijon viloyati</option>
+                    <option value="andijan_city">Andijon</option>
+                    <option value="fergana">Farg'ona viloyati</option>
+                    <option value="fergana_city">Farg'ona</option>
+                    <option value="namangan">Namangan viloyati</option>
+                    <option value="namangan_city">Namangan</option>
+                    <option value="navoiy">Navoiy viloyati</option>
+                    <option value="navoiy_city">Navoiy</option>
+                    <option value="kashkadarya">Qashqadaryo viloyati</option>
+                    <option value="karshi">Qarshi</option>
+                    <option value="surkhandarya">Surxondaryo viloyati</option>
+                    <option value="termez">Termiz</option>
+                    <option value="sirdarya">Sirdaryo viloyati</option>
+                    <option value="gulistan">Guliston</option>
+                    <option value="jizzakh">Jizzax viloyati</option>
+                    <option value="jizzakh_city">Jizzax</option>
+                    <option value="khorezm">Xorazm viloyati</option>
+                    <option value="urgench">Urganch</option>
+                    <option value="karakalpakstan">Qoraqalpog'iston Respublikasi</option>
+                    <option value="nukus">Nukus</option>
+                  </select>
+                </div>
+
+                {quickOrderRegion &&
+                  (() => {
+                    const selectedLocation = uzbekistanLocations.find((loc) => loc.id === quickOrderRegion);
+                    const isRegion = selectedLocation?.type === "region";
+                    const isCityWithoutRegion = selectedLocation?.type === "city" && !selectedLocation?.parentId;
+                    if (!isRegion || isCityWithoutRegion) return null;
+
+                    const cities = getCitiesByRegion(quickOrderRegion);
+                    const cityNameMap: Record<string, string> = {
+                      Андижан: "Andijon",
+                      Бухара: "Buxoro",
+                      Джизак: "Jizzax",
+                      Фергана: "Farg'ona",
+                      Наманган: "Namangan",
+                      Навои: "Navoiy",
+                      Самарканд: "Samarqand",
+                      Ангрен: "Angren",
+                      Бекабад: "Bekobod",
+                      Чирчик: "Chirchiq",
+                      Газалкент: "Gazalkent",
+                      Паркент: "Parkent",
+                      Каттакурган: "Kattaqo'rg'on",
+                      Ургут: "Urgut",
+                      Каган: "Kagan",
+                      Гиждуван: "G'ijduvon",
+                      Асака: "Asaka",
+                      Ханабад: "Xonobod",
+                      Коканд: "Qo'qon",
+                      Маргилан: "Marg'ilon",
+                      Кува: "Quva",
+                      Риштан: "Rishton",
+                      Чуст: "Chust",
+                      Пап: "Pop",
+                      Зарафшан: "Zarafshon",
+                      Нурата: "Nurota",
+                      Шахрисабз: "Shahrisabz",
+                      Китаб: "Kitob",
+                      Денау: "Denov",
+                      Шурчи: "Shurchi",
+                      Янгиер: "Yangiyer",
+                      Ширин: "Shirin",
+                      Дустлик: "Do'stlik",
+                      Ургенч: "Urganch",
+                      Хива: "Xiva",
+                      Питнак: "Pitnak",
+                      Нукус: "Nukus",
+                      Муйнак: "Mo'ynoq",
+                    };
+
+                    return (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1.5">Город</label>
+                        <select
+                          value={quickOrderCity}
+                          onChange={(e) => setQuickOrderCity(e.target.value)}
+                          className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                        >
+                          <option value="">Выберите город</option>
+                          {cities.map((city) => (
+                            <option key={city.id} value={city.id}>
+                              {cityNameMap[city.name] || city.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })()}
+
+                {/* FIX (п.7): agreeTerms тут тоже */}
+                <label className="flex items-start gap-3 text-sm text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={agreeTerms}
+                    onChange={(e) => setAgreeTerms(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span>
+                    {t("product.quickOrder.consent")}{" "}
+                    <a href="/terms" className="text-emerald-700 hover:underline">
+                      {t("product.quickOrder.terms")}
+                    </a>
+                  </span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!fetchedProduct) return;
+
+                    if (!canBuy) {
+                      setQuickOrderError(t("product.quickOrder.errors.unavailable"));
+                      setTimeout(() => setQuickOrderError(null), 3000);
+                      return;
+                    }
+                    if (!name.trim()) {
+                      setQuickOrderError(t("product.quickOrder.errors.nameRequired"));
+                      setTimeout(() => setQuickOrderError(null), 3000);
+                      return;
+                    }
+                    if (!phone || phone.trim().length < 8) {
+                      setQuickOrderError(t("product.quickOrder.errors.phoneInvalid"));
+                      setTimeout(() => setQuickOrderError(null), 3000);
+                      return;
+                    }
+                    if (!agreeTerms) {
+                      setQuickOrderError(t("product.quickOrder.errors.consentRequired"));
+                      setTimeout(() => setQuickOrderError(null), 3000);
+                      return;
+                    }
+
+                    const selectedLocation = uzbekistanLocations.find((loc) => loc.id === quickOrderRegion);
+                    const isRegion = selectedLocation?.type === "region";
+                    if (isRegion && !quickOrderCity) {
+                      setQuickOrderError("Выберите город");
+                      setTimeout(() => setQuickOrderError(null), 3000);
+                      return;
+                    }
+
+                    try {
+                      setQuickOrderLoading(true);
+                      setQuickOrderError(null);
+                      setQuickOrderFeedback(null);
+
+                      const variantId = selectedVariant?.id || fetchedProduct.variant_id;
+                      const finalCityId = isRegion ? quickOrderCity : quickOrderRegion;
+
+                      const cityLocation = uzbekistanLocations.find((loc) => loc.id === finalCityId);
+                      const cityCode = toCityCode(finalCityId) || finalCityId;
+
+                      // FIX (п.5): регион берём корректно
+                      const regionId = isRegion ? quickOrderRegion : (cityLocation?.parentId || getRegionForCityOrRegion(cityCode) || "");
+
+                      const payload = {
+                        items: [{ variant_id: variantId, quantity: 1, referral_code: referralCode || undefined }],
+                        guest_user_number: phone,
+                        full_name: name.trim(),
+                        city: cityCode,
+                        order_region: regionId,
+                        order_comment: "",
+                      } as any;
+
+                      await shopAPI.guestOrder(payload);
+
+                      setQuickOrderFeedback(t("product.quickOrder.success"));
+                      setName("");
+                      setPhone("");
+                      setQuickOrderRegion("");
+                      setQuickOrderCity("");
+                      setTimeout(() => setQuickOrderFeedback(null), 3000);
+                    } catch (err: any) {
+                      logger.errorWithContext(err, { context: "quickOrder" });
+                      const errorMsg = err?.response?.data?.detail || err?.message || t("product.quickOrder.errors.generic");
+                      setQuickOrderError(errorMsg);
+                      setTimeout(() => setQuickOrderError(null), 3000);
+                    } finally {
+                      setQuickOrderLoading(false);
+                    }
+                  }}
+                  disabled={(() => {
+                    if (!name || !phone || !quickOrderRegion) return true;
+                    const selectedLocation = uzbekistanLocations.find((loc) => loc.id === quickOrderRegion);
+                    const isRegion = selectedLocation?.type === "region";
+                    return isRegion ? !quickOrderCity : false;
+                  })() || quickOrderLoading}
+                  className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+                >
+                  {quickOrderLoading ? t("product.quickOrder.submitting") : t("product.quickOrder.submit")}
+                </button>
+
+                {quickOrderError && (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600">
+                    {quickOrderError}
+                  </div>
+                )}
+                {quickOrderFeedback && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800">
+                    {quickOrderFeedback}
+                  </div>
+                )}
+              </div>
+            </aside>
+          </section>
+        </div>
+
+        {/* Tabs + additional */}
+        <div className="mt-6 space-y-6">
+          <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-4 md:p-5">
+            <div className="flex gap-2 rounded-2xl bg-slate-50 p-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("description")}
+                className={`flex-1 h-10 rounded-xl text-sm font-semibold transition ${
+                  activeTab === "description" ? "bg-white shadow-sm text-slate-900" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {t("product.tabs.description")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("characteristics")}
+                className={`flex-1 h-10 rounded-xl text-sm font-semibold transition ${
+                  activeTab === "characteristics" ? "bg-white shadow-sm text-slate-900" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {t("product.tabs.specs")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("comments")}
+                className={`flex-1 h-10 rounded-xl text-sm font-semibold transition ${
+                  activeTab === "comments" ? "bg-white shadow-sm text-slate-900" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {t("product.tabs.comments")}
+              </button>
+            </div>
+
+            <div className="mt-4 text-sm sm:text-base leading-relaxed text-slate-700">
+              {activeTab === "description" ? (
+                <div className="space-y-3">
+                  {product.product_description ? (
+                    product.product_description.split("\r\n\r\n").map((paragraph, index) => (
+                      <p key={index} className="text-slate-700">
+                        {paragraph}
+                      </p>
+                    ))
+                  ) : (
+                    <p>{t("product.empty.description")}</p>
+                  )}
+                </div>
+              ) : activeTab === "characteristics" ? (
+                <div>
+                  {(() => {
+                    const hasSpecs = selectedVariant && selectedVariant.attribute_values && selectedVariant.attribute_values.length > 0;
+                    if (!hasSpecs || !selectedVariant) return <p>{t("product.empty.specs")}</p>;
+
+                    const validSpecs = selectedVariant.attribute_values
+                      .map((attrValue) => {
+                        const attrId = attrValue.attribute_id || (attrValue as any).attribute_name;
+                        const attribute = product.attributes.find(
+                          (attr) => attr.id === attrId || attr.name === attrId || attr.name === (attrValue as any).attribute_name
+                        );
+                        if (!attribute) return null;
+                        return { id: attrValue.id, name: attribute.name, value: attrValue.value, unit: attribute.unit };
+                      })
+                      .filter((spec): spec is { id: string; name: string; value: string; unit: string } => spec !== null);
+
+                    if (validSpecs.length === 0) return <p>{t("product.empty.specs")}</p>;
+
+                    return (
+                      <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 overflow-hidden">
+                        {validSpecs.map((spec) => (
+                          <div key={spec.id} className="flex items-start justify-between gap-4 p-4">
+                            <span className="font-semibold text-slate-900">{spec.name}:</span>
+                            <span className="text-slate-700">
+                              {spec.value} {spec.unit && spec.unit.trim()}
+                            </span>
                           </div>
                         ))}
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Недавно просмотренные */}
-            <section className={cn.recently_viewed_section}>
-              <h3 className={cn.section_title}>{t("product.sections.recentlyViewed")}</h3>
-              <div className={cn.products_grid}>
-                {recentlyViewed && recentlyViewed.length > 0 ? (
-                  recentlyViewed.map((p) => {
-                    // Создаем уникальный ключ на основе product_id и variant_id
-                    const uniqueKey = p.variant_id 
-                      ? `${p.product_id}_${p.variant_id}` 
-                      : p.product_id;
-                    return (
-                      <ProductCard key={uniqueKey} product={p} />
                     );
-                  })
-                ) : (
-                  <div className={cn.placeholder_card}>
-                    <div className={cn.placeholder_image}></div>
-                    <div className={cn.placeholder_content}>
-                      <div className={cn.placeholder_title}></div>
-                      <div className={cn.placeholder_price}></div>
+                  })()}
+                </div>
+              ) : (
+                <div>
+                  {comments.length === 0 ? (
+                    <p className="text-slate-600">{t("product.empty.comments")}</p>
+                  ) : (
+                    <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 overflow-hidden">
+                      {comments.map((c) => (
+                        <div key={c.id} className="p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <strong className="text-slate-900">{c.author}</strong>
+                            <span className="text-xs text-slate-500">{new Date(c.createdAt).toLocaleString("ru-RU")}</span>
+                          </div>
+                          <div className="mt-2 text-slate-700">{c.text}</div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* Рекомендации */}
-            <section className={cn.recommendations_section}>
-              <h3 className={cn.section_title}>{t("product.sections.recommendations")}</h3>
-              <div className={cn.products_grid}>
-                {/* Здесь будут карточки рекомендуемых товаров */}
-                <div className={cn.placeholder_card}>
-                  <div className={cn.placeholder_image}></div>
-                  <div className={cn.placeholder_content}>
-                    <div className={cn.placeholder_title}></div>
-                    <div className={cn.placeholder_price}></div>
-                  </div>
+                  )}
                 </div>
-                <div className={cn.placeholder_card}>
-                  <div className={cn.placeholder_image}></div>
-                  <div className={cn.placeholder_content}>
-                    <div className={cn.placeholder_title}></div>
-                    <div className={cn.placeholder_price}></div>
-                  </div>
-                </div>
-                <div className={cn.placeholder_card}>
-                  <div className={cn.placeholder_image}></div>
-                  <div className={cn.placeholder_content}>
-                    <div className={cn.placeholder_title}></div>
-                    <div className={cn.placeholder_price}></div>
-                  </div>
-                </div>
-                <div className={cn.placeholder_card}>
-                  <div className={cn.placeholder_image}></div>
-                  <div className={cn.placeholder_content}>
-                    <div className={cn.placeholder_title}></div>
-                    <div className={cn.placeholder_price}></div>
-                  </div>
-                </div>
-              </div>
-            </section>
+              )}
+            </div>
           </div>
-        )}
+
+          {/* Recently viewed */}
+          <section className="rounded-3xl bg-white border border-slate-200 shadow-sm p-3 sm:p-4 md:p-5">
+            <h3 className="text-base sm:text-lg font-bold text-slate-900">{t("product.sections.recentlyViewed")}</h3>
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+              {recentlyViewed && recentlyViewed.length > 0 ? (
+                recentlyViewed.map((p) => {
+                  const uniqueKey = p.variant_id ? `${p.product_id}_${p.variant_id}` : p.product_id;
+                  return (
+                    <div key={uniqueKey} className="min-w-0">
+                      <ProductCard product={p} size="compact" />
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="h-32 rounded-xl bg-slate-200/60" />
+                  <div className="mt-3 h-4 w-2/3 rounded bg-slate-200/70" />
+                  <div className="mt-2 h-4 w-1/3 rounded bg-slate-200/70" />
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Recommendations (placeholder) */}
+          <section className="rounded-3xl bg-white border border-slate-200 shadow-sm p-4 md:p-5">
+            <h3 className="text-base sm:text-lg font-bold text-slate-900">{t("product.sections.recommendations")}</h3>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="h-32 rounded-xl bg-slate-200/60" />
+                  <div className="mt-3 h-4 w-2/3 rounded bg-slate-200/70" />
+                  <div className="mt-2 h-4 w-1/3 rounded bg-slate-200/70" />
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
       </div>
 
+      {/* QuickOrderSheet */}
       {product && (
         <QuickOrderSheet
           open={isQuickOrderOpen}
@@ -2106,11 +1529,9 @@ export function Product() {
         />
       )}
 
+      {/* Mobile bottom bar */}
       {canBuy && (
-        <div
-          className="md:hidden fixed inset-x-0 z-40 flex gap-2 px-4"
-          style={{ bottom: "73px" }}
-        >
+        <div className="md:hidden fixed inset-x-0 z-40 flex gap-2 px-4" style={{ bottom: "73px" }}>
           <button
             type="button"
             onClick={openQuickOrder}
@@ -2119,6 +1540,7 @@ export function Product() {
           >
             {t("product.buttons.buyOneClick")}
           </button>
+
           {cartQuantity > 0 ? (
             <div className="flex-1 rounded-2xl border border-white/40 bg-white/90 shadow-md backdrop-blur-lg flex items-center justify-between px-3">
               <button
@@ -2128,15 +1550,13 @@ export function Product() {
               >
                 −
               </button>
-              <span className="text-sm font-bold text-[#04734b] min-w-[30px] text-center">
-                {cartQuantity}
-              </span>
+              <span className="text-sm font-bold text-[#04734b] min-w-[30px] text-center">{cartQuantity}</span>
               <button
                 type="button"
                 onClick={handleIncreaseQuantity}
                 disabled={cartQuantity >= maxStock}
                 className={`h-9 w-9 rounded-xl bg-white/80 text-lg font-semibold text-[#04734b] transition ${
-                  cartQuantity >= maxStock ? 'opacity-50' : 'active:scale-95'
+                  cartQuantity >= maxStock ? "opacity-50" : "active:scale-95"
                 }`}
               >
                 +
@@ -2154,65 +1574,77 @@ export function Product() {
         </div>
       )}
 
-      {/* Модалка "Скоро заработает" */}
-      {showComingSoonModal && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={() => setShowComingSoonModal(false)}
+      {/* Lightbox */}
+      {lightboxOpen && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center px-4"
+          onWheel={onLightboxWheel}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeLightbox();
+          }}
         >
-          <div 
-            className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center animate-[fadeInScale_0.2s_ease-out]"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="relative w-full max-w-5xl">
             <button
-              type="button"
-              onClick={() => setShowComingSoonModal(false)}
-              className="absolute top-4 right-4 h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition"
+              className="absolute -top-3 -right-3 h-10 w-10 rounded-full bg-white/90 text-slate-900 shadow-md grid place-items-center"
+              onClick={closeLightbox}
+              aria-label={t("product.lightbox.close")}
             >
               ×
             </button>
-            <div className="mb-4">
-              <div className="mx-auto h-20 w-20 rounded-full bg-gradient-to-br from-[#e6f4ef] to-[#d0ebe0] flex items-center justify-center">
-                <span className="text-4xl">🚀</span>
-              </div>
-            </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Скоро заработает!</h3>
-            <p className="text-slate-500 text-sm mb-6">
-              Оформление рассрочки находится в разработке. Мы работаем над этим и скоро всё будет готово!
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowComingSoonModal(false)}
-              className="w-full h-12 rounded-2xl text-white font-semibold transition hover:brightness-110"
-              style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
-            >
-              Понятно
-            </button>
-          </div>
-        </div>
-      )}
 
-      {/* Лайтбокс */}
-      {lightboxOpen && (
-        <div className={cn.lightbox_overlay} onWheel={onLightboxWheel} onClick={(e) => {
-          if (e.target === e.currentTarget) closeLightbox();
-        }}>
-          <div className={cn.lightbox_container}>
-            <button className={`${cn.lightbox_btn} ${cn.lightbox_close}`} onClick={closeLightbox} aria-label={t("product.lightbox.close")}>×</button>
-            <button className={`${cn.lightbox_btn} ${cn.lightbox_prev}`} onClick={(e)=>{ e.stopPropagation(); prevImage(); }} aria-label={t("product.lightbox.prev")}>‹</button>
-            <button className={`${cn.lightbox_btn} ${cn.lightbox_next}`} onClick={(e)=>{ e.stopPropagation(); nextImage(); }} aria-label={t("product.lightbox.next")}>›</button>
-            <div className={cn.lightbox_image_wrapper}>
+            <button
+              className="absolute left-2 top-1/2 -translate-y-1/2 h-12 w-12 rounded-2xl bg-white/90 text-slate-900 shadow-md grid place-items-center"
+              onClick={(e) => {
+                e.stopPropagation();
+                prevImage();
+              }}
+              aria-label={t("product.lightbox.prev")}
+            >
+              ‹
+            </button>
+
+            <button
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-12 w-12 rounded-2xl bg-white/90 text-slate-900 shadow-md grid place-items-center"
+              onClick={(e) => {
+                e.stopPropagation();
+                nextImage();
+              }}
+              aria-label={t("product.lightbox.next")}
+            >
+              ›
+            </button>
+
+            <div className="rounded-3xl overflow-hidden bg-black">
               <img
-                src={galleryImages[lightboxIndex] || getProductImageUrl(product?.main_image || '')}
+                src={galleryImages[lightboxIndex] || getProductImageUrl(product?.main_image || "")}
                 alt={t("product.lightbox.view")}
-                className={cn.lightbox_image}
+                className="w-full max-h-[80vh] object-contain"
                 style={{ transform: `scale(${lightboxZoom})` }}
-                onClick={(e)=> e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
               />
             </div>
-            <div className={cn.lightbox_zoom}>
-              <button className={cn.zoom_btn} onClick={(e)=>{ e.stopPropagation(); zoomOut(); }} aria-label={t("product.lightbox.zoomOut")}>−</button>
-              <button className={cn.zoom_btn} onClick={(e)=>{ e.stopPropagation(); zoomIn(); }} aria-label={t("product.lightbox.zoomIn")}>+</button>
+
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+              <button
+                className="h-11 w-11 rounded-2xl bg-white/90 text-slate-900 shadow-md text-xl font-bold"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  zoomOut();
+                }}
+                aria-label={t("product.lightbox.zoomOut")}
+              >
+                −
+              </button>
+              <button
+                className="h-11 w-11 rounded-2xl bg-white/90 text-slate-900 shadow-md text-xl font-bold"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  zoomIn();
+                }}
+                aria-label={t("product.lightbox.zoomIn")}
+              >
+                +
+              </button>
             </div>
           </div>
         </div>
@@ -2220,4 +1652,5 @@ export function Product() {
     </div>
   );
 }
+
 export default Product;
