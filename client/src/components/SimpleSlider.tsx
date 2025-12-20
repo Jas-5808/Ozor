@@ -11,6 +11,8 @@ interface Slide {
 }
 
 const fallbackSlides: Slide[] = [];
+const SLIDE_WIDTH_PERCENT = 94; // ширина одного слайда, чтобы по 3% оставалось видно соседей
+const SLIDE_GAP_PERCENT = 1;    // зазор между слайдами
 /*
   {
     id: "1",
@@ -414,21 +416,26 @@ export const SimpleSlider: React.FC = () => {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="relative w-full h-full px-[1%] overflow-visible">
+        <div className="relative w-full h-full px-0 sm:px-[1%] overflow-hidden sm:overflow-visible">
           <div
             ref={sliderRef}
             className="flex h-full"
             style={{
+              gap: `${SLIDE_GAP_PERCENT}%`,
               transform: isDragging 
-                ? `translateX(${-mobileSlideIndex * 100 + (dragOffset / (sliderRef.current?.offsetWidth || 1)) * 100}%)`
-                : `translateX(-${mobileSlideIndex * 100}%)`,
+                ? `translateX(${-mobileSlideIndex * (SLIDE_WIDTH_PERCENT + SLIDE_GAP_PERCENT) + (dragOffset / (sliderRef.current?.offsetWidth || 1)) * 100}%)`
+                : `translateX(-${mobileSlideIndex * (SLIDE_WIDTH_PERCENT + SLIDE_GAP_PERCENT)}%)`,
               transition: isTransitioning && !isDragging ? 'transform 500ms ease-out' : 'none',
             }}
           >
             {infiniteSlides.map((slide, index) => (
               <div
                 key={`${slide.id}-${index}`}
-                className="w-full flex-shrink-0 h-full px-[1%]"
+                className="flex-shrink-0 h-full px-0 sm:px-[1%]"
+                style={{
+                  flexBasis: `${SLIDE_WIDTH_PERCENT}%`,
+                  maxWidth: `${SLIDE_WIDTH_PERCENT}%`,
+                }}
               >
               <a
                 href={slide.link}

@@ -8,6 +8,7 @@ import { buildDisplayProducts, splitProductsIntoPrimaryAndVariants } from "../ut
 
 const ITEMS_PER_PAGE = 20; // Количество товаров на страницу
 const API_LIMIT = 100; // Максимальный лимит для API запроса
+const FIRST_PAGE_LIMIT = 40; // Быстрая первая страница для улучшения LCP
 const CACHE_TTL = 5 * 60 * 1000; // 5 минут кэш
 
 // Простой кэш для продуктов
@@ -39,44 +40,49 @@ export const useProducts = () => {
         return;
       }
       
-      // Загружаем все продукты с пагинацией
+      // Быстрая первая страница для мгновенного рендера
       const allFetchedProducts: any[] = [];
-      let offset = 0;
+      const firstResponse = await shopAPI.getProducts({ limit: FIRST_PAGE_LIMIT, offset: 0 });
+      const firstData = firstResponse.data || [];
+      allFetchedProducts.push(...firstData);
+
+      // Отдаем первую партию сразу
+      const { primaryProducts: firstPrimary, variantProducts: firstVariants } =
+        splitProductsIntoPrimaryAndVariants(allFetchedProducts);
+      setPrimaryProducts(firstPrimary);
+      setVariantProducts(firstVariants);
+      setDisplayedCount(ITEMS_PER_PAGE); // Сбрасываем счетчик при новой загрузке
+      setLoading(false); // skeleton уходит после первой быстрой партии
+
+      // Догружаем остальное в фоне
+      let offset = allFetchedProducts.length;
       let hasMore = true;
-      
       while (hasMore) {
         const response = await shopAPI.getProducts({ limit: API_LIMIT, offset });
         const data = response.data || [];
-        
         if (data.length === 0) {
           hasMore = false;
         } else {
-          // Используем прямой push элементов для лучшей производительности
           for (let i = 0; i < data.length; i++) {
             allFetchedProducts.push(data[i]);
           }
           offset += data.length;
-          
-          // Если получили меньше лимита, значит это последняя страница
           if (data.length < API_LIMIT) {
             hasMore = false;
           }
         }
       }
-      
-      // Обрабатываем продукты: основные и варианты
-      const { primaryProducts: primary, variantProducts: variants } = splitProductsIntoPrimaryAndVariants(allFetchedProducts);
-      
-      // Сохраняем в кэш
+
+      // Финализируем полную выдачу и кэшируем
+      const { primaryProducts: primary, variantProducts: variants } =
+        splitProductsIntoPrimaryAndVariants(allFetchedProducts);
       productsCache = {
         primary,
         variants,
         timestamp: Date.now(),
       };
-      
       setPrimaryProducts(primary);
       setVariantProducts(variants);
-      setDisplayedCount(ITEMS_PER_PAGE); // Сбрасываем счетчик при новой загрузке
     } catch (error) {
       const appError = handleApiError(error);
       const errorMessage = getUserFriendlyMessage(appError) || i18n.t("common.errors.productsLoad");
