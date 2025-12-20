@@ -13,12 +13,8 @@ interface Slide {
 const SLIDE_WIDTH_PERCENT = 94; // ширина одного слайда, чтобы по 3% оставалось видно соседей
 const SLIDE_GAP_PERCENT = 1;    // зазор между слайдами
 
-const getBannerBase = () => {
-  if (typeof window !== "undefined" && window.location.hostname.includes("ozar")) {
-    return "https://ozar.uz/media/banners/";
-  }
-  return "https://lab.ozar.uz/media/banners/";
-};
+// На проде тоже используем lab.ozar.uz как источник баннеров (пожелание заказчика)
+const getBannerBase = () => "https://lab.ozar.uz/media/banners/";
 
 const normalizeBannerUrl = (url: string): string => {
   if (!url) return "";
