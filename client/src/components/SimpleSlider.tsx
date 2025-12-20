@@ -13,6 +13,29 @@ interface Slide {
 const fallbackSlides: Slide[] = [];
 const SLIDE_WIDTH_PERCENT = 94; // ширина одного слайда, чтобы по 3% оставалось видно соседей
 const SLIDE_GAP_PERCENT = 1;    // зазор между слайдами
+
+const getBannerBase = () => {
+  if (typeof window !== "undefined" && window.location.hostname.includes("ozar")) {
+    return "https://ozar.uz/media/banners/";
+  }
+  return "https://lab.ozar.uz/media/banners/";
+};
+
+const normalizeBannerUrl = (url: string): string => {
+  if (!url) return "";
+  const base = getBannerBase();
+  // Берем только путь после /media/banners/
+  const match = url.match(/\/media\/banners\/(.+)$/);
+  const path = match ? match[1] : url;
+  // Если уже абсолютный и совпадает с base — возвращаем как есть
+  if (url.startsWith(base)) return url;
+  // Если уже https://ozar.uz/media/banners/... или https://lab.ozar.uz/media/banners/...
+  if (/https?:\/\/(ozar\.uz|lab\.ozar\.uz)\/media\/banners\//.test(url)) {
+    return `${base}${path}`;
+  }
+  // Если относительный путь (products/banners/...), тоже склеиваем
+  return `${base}${path}`;
+};
 /*
   {
     id: "1",
@@ -228,11 +251,7 @@ export const SimpleSlider: React.FC = () => {
               id: b?.id || crypto.randomUUID(),
               title: b?.title || "",
               subtitle: "",
-              image:
-                (b?.image || "").replace(
-                  /^https?:\/\/api\.ozar\.uz\/media\/banners\//,
-                  "https://lab.ozar.uz/media/banners/"
-                ) || "",
+              image: normalizeBannerUrl(b?.image || ""),
               link: b?.link || "#",
             }))
             .filter((s) => s.image);
