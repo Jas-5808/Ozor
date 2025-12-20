@@ -69,17 +69,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       const token = localStorage.getItem("access_token");
       if (token) {
-        try {
-          await fetchUserProfile();
-          if (!cancelled) setUser({ token });
-        } catch (_) {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
-          if (!cancelled) {
-            setUser(null);
-            setProfile(null);
-          }
-        }
+        // Быстрый старт: не дергаем профиль на первой загрузке, просто восстанавливаем токен.
+        if (!cancelled) setUser({ token });
       }
       if (!cancelled) setLoading(false);
     };
