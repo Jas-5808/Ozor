@@ -10,11 +10,16 @@ interface Slide {
   link: string;
 }
 
+const fallbackSlides: Slide[] = [];
 const SLIDE_WIDTH_PERCENT = 94; // ширина одного слайда, чтобы по 3% оставалось видно соседей
 const SLIDE_GAP_PERCENT = 1;    // зазор между слайдами
 
-// На проде тоже используем lab.ozar.uz как источник баннеров (пожелание заказчика)
-const getBannerBase = () => "https://lab.ozar.uz/media/banners/";
+const getBannerBase = () => {
+  if (typeof window !== "undefined" && window.location.hostname.includes("ozar")) {
+    return "https://ozar.uz/media/banners/";
+  }
+  return "https://lab.ozar.uz/media/banners/";
+};
 
 const normalizeBannerUrl = (url: string): string => {
   if (!url) return "";
@@ -412,7 +417,7 @@ export const SimpleSlider: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full aspect-video rounded-2xl shadow-2xl md:overflow-hidden" style={{ minHeight: '192px', maxHeight: '500px' }}>
+    <div className="relative w-full aspect-[16/9] rounded-2xl shadow-2xl md:overflow-hidden" style={{ minHeight: '192px', maxHeight: '500px' }}>
       {/* Индикатор загрузки */}
       {!allImagesLoaded && (
         <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10">
@@ -445,7 +450,7 @@ export const SimpleSlider: React.FC = () => {
             {infiniteSlides.map((slide, index) => (
               <div
                 key={`${slide.id}-${index}`}
-                className="shrink-0 h-full px-0 sm:px-[1%]"
+                className="flex-shrink-0 h-full px-0 sm:px-[1%]"
                 style={{
                   flexBasis: `${SLIDE_WIDTH_PERCENT}%`,
                   maxWidth: `${SLIDE_WIDTH_PERCENT}%`,
@@ -483,7 +488,7 @@ export const SimpleSlider: React.FC = () => {
                     </div>
                   )}
                   {/* Gradient overlay for better text readability */}
-                  <div className="absolute inset-0 bg-linear-to-t from-black/20 via-transparent to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
                 </div>
               </a>
             </div>
@@ -526,7 +531,7 @@ export const SimpleSlider: React.FC = () => {
                   </div>
                 )}
                 {/* Gradient overlay for better text readability */}
-                <div className="absolute inset-0 bg-linear-to-t from-black/20 via-transparent to-transparent"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
               </div>
             </a>
           </div>

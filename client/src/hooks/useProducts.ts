@@ -10,7 +10,6 @@ const ITEMS_PER_PAGE = 20; // Количество товаров на стра�
 const API_LIMIT = 100; // Максимальный лимит для API запроса
 const FIRST_PAGE_LIMIT = 40; // Быстрая первая страница для улучшения LCP
 const CACHE_TTL = 5 * 60 * 1000; // 5 минут кэш
-const PRODUCTS_CACHE_KEY = "ozar_products_cache_v1";
 
 // Простой кэш для продуктов
 let productsCache: {
@@ -18,29 +17,6 @@ let productsCache: {
   variants: Product[];
   timestamp: number;
 } | null = null;
-
-const loadCacheFromStorage = () => {
-  try {
-    const raw = localStorage.getItem(PRODUCTS_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed?.timestamp || !parsed?.primary || !parsed?.variants) return null;
-    // TTL проверка
-    if (Date.now() - parsed.timestamp > CACHE_TTL) return null;
-    return parsed as typeof productsCache;
-  } catch {
-    return null;
-  }
-};
-
-const saveCacheToStorage = (data: typeof productsCache) => {
-  try {
-    if (!data) return;
-    localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(data));
-  } catch {
-    // игнорируем ошибки storage
-  }
-};
 
 export const useProducts = () => {
   const [primaryProducts, setPrimaryProducts] = useState<Product[]>([]);
@@ -56,18 +32,11 @@ export const useProducts = () => {
       
       // Проверяем кэш
       const now = Date.now();
-      const memoryCacheValid = productsCache && (now - productsCache.timestamp) < CACHE_TTL;
-      const storageCache = loadCacheFromStorage();
-      const storageCacheValid = storageCache && (now - storageCache.timestamp) < CACHE_TTL;
-      const cacheToUse = memoryCacheValid ? productsCache : storageCacheValid ? storageCache : null;
-
-      if (cacheToUse) {
-        setPrimaryProducts(cacheToUse.primary);
-        setVariantProducts(cacheToUse.variants);
+      if (productsCache && (now - productsCache.timestamp) < CACHE_TTL) {
+        setPrimaryProducts(productsCache.primary);
+        setVariantProducts(productsCache.variants);
         setDisplayedCount(ITEMS_PER_PAGE);
         setLoading(false);
-        // не выходим — можем в фоне обновить, но без повторного запроса сразу после холодного старта.
-        // Если хотим полностью избежать запроса, раскомментировать return;
         return;
       }
       
@@ -112,7 +81,6 @@ export const useProducts = () => {
         variants,
         timestamp: Date.now(),
       };
-      saveCacheToStorage(productsCache);
       setPrimaryProducts(primary);
       setVariantProducts(variants);
     } catch (error) {

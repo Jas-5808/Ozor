@@ -4,6 +4,7 @@ import { adminStore } from "../storage";
 import { shopAPI, userAPI } from "../../services/api";
 import apiClient from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
+import { getProductImageUrl } from "../../utils/helpers";
 
 type OrderStatus =
   | "pending"
@@ -114,6 +115,30 @@ export default function Orders() {
       return {};
     }
   });
+
+  // Кэш для информации о продуктах по variant_id
+  const [productCache, setProductCache] = useState<
+    Record<
+      string,
+      {
+        name: string;
+        image: string;
+        description?: string;
+        price?: number;
+        base_price?: number;
+        stock?: number;
+        category?: { id: string; name: string };
+        variants?: any[];
+        loading?: boolean;
+      }
+    >
+  >({});
+
+  // Состояние для модального окна продукта
+  const [productModal, setProductModal] = useState<{
+    open: boolean;
+    variantId: string | null;
+  }>({ open: false, variantId: null });
 
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersLimit, setOrdersLimit] = useState(20);
@@ -298,6 +323,60 @@ export default function Orders() {
     };
   }, []);
 
+  // Функция для загрузки информации о продукте по variant_id
+  const loadProductByVariantId = useCallback(async (variantId: string) => {
+    if (!variantId) return;
+
+    setProductCache((prev) => {
+      // Проверяем, не загружается ли уже или не загружен ли уже
+      if (prev[variantId]?.loading || (prev[variantId]?.image && prev[variantId]?.name)) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [variantId]: { name: "", image: "", loading: true },
+      };
+    });
+
+    try {
+      const res = await apiClient.get(`/shop/product/${variantId}`);
+      const productData = res.data;
+
+      // Находим нужный вариант
+      const variant = productData.variants?.find((v: any) => v.id === variantId) || productData.variants?.[0];
+
+      // Получаем изображение: сначала из варианта, потом основное
+      let imageUrl = "";
+      if (variant?.media && variant.media.length > 0) {
+        const mainMedia = variant.media.find((m: any) => m.is_main) || variant.media[0];
+        imageUrl = mainMedia?.file || "";
+      }
+      if (!imageUrl && productData.main_image) {
+        imageUrl = productData.main_image;
+      }
+
+      setProductCache((prev) => ({
+        ...prev,
+        [variantId]: {
+          name: productData.name || "",
+          image: imageUrl ? getProductImageUrl(imageUrl) : "",
+          description: productData.description || "",
+          price: variant?.price || 0,
+          base_price: variant?.base_price || 0,
+          stock: variant?.stock || 0,
+          category: productData.category || undefined,
+          variants: productData.variants || [],
+          loading: false,
+        },
+      }));
+    } catch (error) {
+      setProductCache((prev) => ({
+        ...prev,
+        [variantId]: { name: "", image: "", loading: false },
+      }));
+    }
+  }, []);
+
   const loadCcOrders = useCallback(async () => {
     if (!isSale) return;
     try {
@@ -330,7 +409,7 @@ export default function Orders() {
     } catch {
       setCcOrders([]);
     }
-  }, [isSale]);
+  }, [isSale, loadProductByVariantId]);
 
   useEffect(() => {
     try {
@@ -344,6 +423,41 @@ export default function Orders() {
     if (!isSale) return;
     loadCcOrders();
   }, [isSale, loadCcOrders]);
+
+  // Загружаем информацию о продуктах для отображаемых заказов
+  useEffect(() => {
+    if (!isSale) return;
+    const visibleOrders = filteredCc.slice((ccPage - 1) * ccLimit, (ccPage - 1) * ccLimit + ccLimit);
+    visibleOrders.forEach((o: any) => {
+      if (o.items && o.items.length > 0) {
+        const firstItem = o.items[0];
+        if (firstItem.variant_id && !productCache[firstItem.variant_id]) {
+          loadProductByVariantId(firstItem.variant_id);
+        }
+      }
+    });
+  }, [isSale, filteredCc, ccPage, ccLimit, productCache, loadProductByVariantId]);
+
+  // Загружаем полную информацию о продукте при открытии модального окна
+  useEffect(() => {
+    if (productModal.open && productModal.variantId) {
+      const productInfo = productCache[productModal.variantId];
+      if (!productInfo || (!productInfo.description && !productInfo.loading)) {
+        loadProductByVariantId(productModal.variantId);
+      }
+    }
+  }, [productModal.open, productModal.variantId, productCache, loadProductByVariantId]);
+
+  // Блокируем скролл при открытии модального окна
+  useEffect(() => {
+    if (productModal.open) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [productModal.open]);
 
   useEffect(() => {
     let ignore = false;
@@ -800,7 +914,7 @@ export default function Orders() {
                         " / " +
                         t("admin.ordersPage.cc.table.region"),
                     },
-                    { key: "total", label: t("admin.ordersPage.cc.table.total") },
+                    { key: "total", label: t("admin.ordersPage.cc.table.product") || "Продукт" },
                     { key: "status", label: t("admin.ordersPage.cc.table.status") },
                     { key: "time", label: t("admin.ordersPage.cc.table.time") },
                   ].map((h) => (
@@ -917,7 +1031,55 @@ export default function Orders() {
                           </td>
 
                           <td className="px-3 py-3 text-center">
-                            {Number(o.total_price || 0).toLocaleString()}
+                            {(() => {
+                              const firstItem = o.items && o.items.length > 0 ? o.items[0] : null;
+                              const variantId = firstItem?.variant_id;
+                              const productInfo = variantId ? productCache[variantId] : null;
+
+                              if (!variantId) {
+                                return <span className="text-xs text-slate-400">—</span>;
+                              }
+
+                              if (productInfo?.loading) {
+                                return (
+                                  <div className="flex items-center justify-center">
+                                    <div className="h-12 w-12 animate-pulse rounded bg-slate-200" />
+                                  </div>
+                                );
+                              }
+
+                              if (productInfo?.image) {
+                                return (
+                                  <div 
+                                    className="flex flex-col items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => {
+                                      setProductModal({ open: true, variantId: variantId });
+                                    }}
+                                  >
+                                    <img
+                                      src={productInfo.image}
+                                      alt={productInfo.name || "Product"}
+                                      className="h-16 w-16 rounded-lg object-cover border border-slate-200"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
+                                      }}
+                                    />
+                                    {productInfo.name && (
+                                      <span className="max-w-[100px] truncate text-xs text-slate-600" title={productInfo.name}>
+                                        {productInfo.name}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              }
+
+                              // Если продукт не загружен, показываем placeholder
+                              return (
+                                <div className="flex items-center justify-center">
+                                  <div className="h-12 w-12 animate-pulse rounded bg-slate-200" />
+                                </div>
+                              );
+                            })()}
                           </td>
 
                           <td className="px-3 py-3 text-center">
@@ -1146,6 +1308,128 @@ export default function Orders() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Модальное окно продукта */}
+      {productModal.open && productModal.variantId && (
+        <div 
+          className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setProductModal({ open: false, variantId: null })}
+        >
+          <div 
+            className="relative w-full max-w-2xl rounded-2xl bg-white shadow-xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
+              onClick={() => setProductModal({ open: false, variantId: null })}
+              aria-label="Закрыть"
+            >
+              ×
+            </button>
+
+            {(() => {
+              const productInfo = productCache[productModal.variantId!];
+              
+              if (!productInfo || productInfo.loading) {
+                return (
+                  <div className="flex items-center justify-center p-12">
+                    <div className="h-12 w-12 animate-pulse rounded bg-slate-200" />
+                  </div>
+                );
+              }
+
+              return (
+                <div className="p-6">
+                  <div className="mb-6 flex flex-col gap-4 md:flex-row">
+                    <div className="flex-shrink-0">
+                      <img
+                        src={productInfo.image || "/img/NaturalTitanium.jpg"}
+                        alt={productInfo.name || "Product"}
+                        className="h-64 w-64 rounded-xl object-cover border border-slate-200"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <h2 className="mb-2 text-2xl font-bold text-slate-900">
+                        {productInfo.name || "—"}
+                      </h2>
+                      {productInfo.category && (
+                        <div className="mb-3">
+                          <span className="inline-block rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
+                            {productInfo.category.name}
+                          </span>
+                        </div>
+                      )}
+                      <div className="mb-4 flex items-center gap-3">
+                        {productInfo.price && (
+                          <span className="text-2xl font-bold text-slate-900">
+                            {productInfo.price.toLocaleString()} сум
+                          </span>
+                        )}
+                        {productInfo.base_price && productInfo.base_price > (productInfo.price || 0) && (
+                          <span className="text-lg text-slate-500 line-through">
+                            {productInfo.base_price.toLocaleString()} сум
+                          </span>
+                        )}
+                      </div>
+                      {productInfo.stock !== undefined && (
+                        <div className="mb-4">
+                          <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${
+                            productInfo.stock > 0 
+                              ? "bg-emerald-100 text-emerald-700" 
+                              : "bg-rose-100 text-rose-700"
+                          }`}>
+                            {productInfo.stock > 0 ? `В наличии: ${productInfo.stock} шт.` : "Нет в наличии"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {productInfo.description && (
+                    <div className="mb-6">
+                      <h3 className="mb-2 text-lg font-semibold text-slate-900">Описание</h3>
+                      <p className="whitespace-pre-line text-sm text-slate-600">
+                        {productInfo.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {productInfo.variants && productInfo.variants.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="mb-3 text-lg font-semibold text-slate-900">Варианты</h3>
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                        {productInfo.variants.map((variant: any) => (
+                          <div
+                            key={variant.id}
+                            className={`rounded-lg border p-3 ${
+                              variant.id === productModal.variantId
+                                ? "border-indigo-500 bg-indigo-50"
+                                : "border-slate-200 bg-slate-50"
+                            }`}
+                          >
+                            <div className="mb-2 text-sm font-semibold text-slate-900">
+                              {variant.attribute_values?.map((av: any) => av.value).join(", ") || "Вариант"}
+                            </div>
+                            <div className="text-xs text-slate-600">
+                              Цена: {variant.price?.toLocaleString() || 0} сум
+                            </div>
+                            <div className="text-xs text-slate-600">
+                              Остаток: {variant.stock || 0} шт.
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
         </div>
       )}
     </div>
