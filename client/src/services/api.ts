@@ -556,8 +556,10 @@ export const warehouseAPI = {
 export const paymentAPI = {
   getUserBalance: (): Promise<TypedAxiosResponse<{ balance: number }>> => 
     apiClient.get("/payment/get_user_balance"),
-  createWithdrawal: (payload: { amount: number; card_number: string; cardholder_name: string }): Promise<TypedAxiosResponse<{ id: string; status: string; created_at: string }>> =>
-    apiClient.post("/payment/withdrawal", payload),
+  createWithdrawal: (payload: { amount: number; card_number: string; card_holder_name: string; description?: string }): Promise<TypedAxiosResponse<{ id: string; status: string; created_at: string }>> => {
+    const description = (payload.description ?? "").trim() || "string";
+    return apiClient.post("/payment/statements", { ...payload, description });
+  },
   createStatement: (payload: { amount: number; card_number: string; card_holder_name: string; description?: string }): Promise<TypedAxiosResponse<{
     id: string;
     user_id: string;
@@ -569,7 +571,10 @@ export const paymentAPI = {
     image?: string | null;
     created_at: string;
     updated_at: string;
-  }>> => apiClient.post("/payment/statements", payload),
+  }>> => {
+    const description = (payload.description ?? "").trim() || "string";
+    return apiClient.post("/payment/statements", { ...payload, description });
+  },
   getWithdrawals: (): Promise<TypedAxiosResponse<Array<{ id: string; amount: number; card_number: string; cardholder_name: string; status: string; created_at: string; updated_at?: string }>>> =>
     apiClient.get("/payment/withdrawals"),
   getStatements: (params: { status?: string; offset?: number; limit?: number } = {}): Promise<TypedAxiosResponse<{

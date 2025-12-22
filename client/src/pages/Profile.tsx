@@ -149,7 +149,8 @@ export function Profile() {
       await paymentAPI.createWithdrawal({
         amount,
         card_number: cardNumber.replace(/\s/g, ""),
-        cardholder_name: cardholderName.trim(),
+        card_holder_name: cardholderName.trim(),
+        description: "string",
       });
       setWithdrawalSuccess(true);
       setWithdrawalAmount("");
@@ -194,7 +195,7 @@ export function Profile() {
         amount,
         card_number: statementCardNumber.replace(/\s/g, ""),
         card_holder_name: statementCardHolder.trim(),
-        description: statementDescription || undefined,
+        description: statementDescription,
       });
       setStatementSuccess(true);
       setStatementAmount("");
