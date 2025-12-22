@@ -1314,11 +1314,11 @@ export default function Orders() {
       {/* Модальное окно продукта */}
       {productModal.open && productModal.variantId && (
         <div 
-          className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-[1100] flex min-h-screen items-center justify-center bg-black/50 mt-[300px]"
           onClick={() => setProductModal({ open: false, variantId: null })}
         >
           <div 
-            className="relative w-full max-w-2xl rounded-2xl bg-white shadow-xl max-h-[90vh] overflow-y-auto"
+            className="relative w-full max-w-2xl rounded-2xl bg-white shadow-xl max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <button
