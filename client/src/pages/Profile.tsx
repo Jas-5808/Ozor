@@ -338,6 +338,9 @@ export function Profile() {
   const filteredAndSortedProducts = useMemo(() => {
     // Фильтрация по поисковому запросу
     const filtered = products.filter((p: any) => {
+      // Не показываем товары с нулевым доходом
+      if (!p.refferal_price || Number(p.refferal_price) <= 0) return false;
+
       if (!marketSearchQuery.trim()) return true;
       const query = marketSearchQuery.toLowerCase().trim();
       const productName = (p.product_name || "").toLowerCase();
