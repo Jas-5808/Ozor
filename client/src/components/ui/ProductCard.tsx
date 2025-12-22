@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useApp } from "../../context/AppContext";
 import { formatPrice, truncateText, getProductImageUrl, getVariantMainImage } from "../../utils/helpers";
@@ -21,6 +21,7 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
 }) => {
   const { toggleLike, isLiked: isProductLiked } = useApp();
   const { t } = useTranslation();
+  const location = useLocation();
 
   const isCompact = size === "compact";
 
@@ -75,7 +76,12 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
     <div className="w-full flex flex-col h-full min-w-0">
       <Link
         to={productUrl}
-        state={{ product, variant_id: product.variant_id }}
+        state={{
+          product,
+          variant_id: product.variant_id,
+          from: location.pathname + location.search,
+          scrollY: typeof window !== "undefined" ? window.scrollY : 0,
+        }}
         className={[
           "flex flex-col text-black transition-transform min-w-0",
           "md:hover:scale-105",

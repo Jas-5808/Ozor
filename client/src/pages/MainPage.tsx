@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import useSEO from "../hooks/useSEO";
 import ProductsList from "../components/ProductsList";
@@ -6,6 +7,7 @@ import SimpleSlider from "../components/SimpleSlider";
 
 export function MainPage() {
   const { t } = useTranslation();
+  const location = useLocation();
   const pageTitle = t("home.seoTitle");
   const pageDescription = t("home.seoDescription");
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -26,6 +28,14 @@ export function MainPage() {
       "twitter:description": pageDescription,
     },
   });
+
+  // Восстанавливаем позицию скролла, если вернулись со страницы товара
+  useEffect(() => {
+    const state = location.state as any;
+    if (state && typeof state.scrollY === "number") {
+      window.scrollTo({ top: state.scrollY, behavior: "auto" });
+    }
+  }, [location.state]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
