@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef, FormEvent, useCallback } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import cn from "./style.module.scss";
 import { formatPrice, getProductImageUrl, storage } from "../utils/helpers";
@@ -121,7 +121,6 @@ type QuickOrderSheetProps = {
   onAgreeChange: (value: boolean) => void;
   loading: boolean;
   error: string | null;
-  feedback: string | null;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   locationLabel: string;
   locationHint?: string;
@@ -140,7 +139,6 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
   onAgreeChange,
   loading,
   error,
-  feedback,
   onSubmit,
   locationLabel,
   locationHint,
@@ -253,11 +251,6 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
             </label>
 
             {error && <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</div>}
-            {feedback && (
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                {feedback}
-              </div>
-            )}
 
             <button
               type="submit"
@@ -279,6 +272,7 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
 export function Product() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const { t } = useTranslation();
 
   const referralCode = useMemo(() => new URLSearchParams(location.search).get("ref") || "", [location.search]);
@@ -317,7 +311,6 @@ export function Product() {
 
   const [quickOrderLoading, setQuickOrderLoading] = useState(false);
   const [quickOrderError, setQuickOrderError] = useState<string | null>(null);
-  const [quickOrderFeedback, setQuickOrderFeedback] = useState<string | null>(null);
 
   const [quickOrderRegion, setQuickOrderRegion] = useState<string>("");
   const [quickOrderCity, setQuickOrderCity] = useState<string>("");
@@ -847,7 +840,6 @@ export function Product() {
   const openQuickOrder = () => {
     if (!canBuy) return;
     setQuickOrderError(null);
-    setQuickOrderFeedback(null);
     setIsQuickOrderOpen(true);
   };
 
@@ -894,14 +886,26 @@ export function Product() {
 
       await shopAPI.guestOrder(payload);
 
-      setQuickOrderFeedback(t("product.quickOrder.success"));
+      const variantTitle =
+        selectedVariant?.attribute_values
+          ?.map((av: any) => av?.value || av?.attribute_value)
+          ?.filter(Boolean)
+          ?.join(", ") || "";
+
+      // Сразу переводим на страницу подтверждения, чтобы пользователь не оставался на форме
+      navigate("/order/requested", {
+        state: {
+          productName: product.product_name,
+          variantTitle,
+          phone,
+          fullName: name.trim(),
+        },
+        replace: true,
+      });
+
       setName("");
       setPhone("");
-
-      setTimeout(() => {
-        setIsQuickOrderOpen(false);
-        setQuickOrderFeedback(null);
-      }, 1800);
+      setIsQuickOrderOpen(false);
     } catch (err) {
       logger.errorWithContext(err, { context: "quickOrder" });
       setQuickOrderError(t("product.quickOrder.errors.generic"));
@@ -1398,7 +1402,6 @@ export function Product() {
                     try {
                       setQuickOrderLoading(true);
                       setQuickOrderError(null);
-                      setQuickOrderFeedback(null);
 
                       const variantId = selectedVariant?.id || fetchedProduct.variant_id;
                       const finalCityId = isRegion ? quickOrderCity : quickOrderRegion;
@@ -1420,12 +1423,27 @@ export function Product() {
 
                       await shopAPI.guestOrder(payload);
 
-                      setQuickOrderFeedback(t("product.quickOrder.success"));
+                    const variantTitle =
+                      selectedVariant?.attribute_values
+                        ?.map((av: any) => av?.value || av?.attribute_value)
+                        ?.filter(Boolean)
+                        ?.join(", ") || "";
+
+                    navigate("/order/requested", {
+                      state: {
+                        productName: fetchedProduct.product_name,
+                        variantTitle,
+                        phone,
+                        fullName: name.trim(),
+                      },
+                      replace: true,
+                    });
+
                       setName("");
                       setPhone("");
                       setQuickOrderRegion("");
                       setQuickOrderCity("");
-                      setTimeout(() => setQuickOrderFeedback(null), 3000);
+                    setIsQuickOrderOpen(false);
                     } catch (err: any) {
                       logger.errorWithContext(err, { context: "quickOrder" });
                       const errorMsg = err?.response?.data?.detail || err?.message || t("product.quickOrder.errors.generic");
@@ -1450,11 +1468,6 @@ export function Product() {
                 {quickOrderError && (
                   <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600">
                     {quickOrderError}
-                  </div>
-                )}
-                {quickOrderFeedback && (
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800">
-                    {quickOrderFeedback}
                   </div>
                 )}
               </div>
@@ -1626,7 +1639,6 @@ export function Product() {
             onAgreeChange={setAgreeTerms}
             loading={quickOrderLoading}
             error={quickOrderError}
-            feedback={quickOrderFeedback}
             onSubmit={handleQuickOrderSubmit}
             locationLabel={locationLabel}
             locationHint={locationHint}

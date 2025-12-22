@@ -286,13 +286,15 @@ export default function Orders() {
       if (!uid) return;
       try {
         const info = await userAPI.getUsersInfo();
-        const roleFromInfo = String(info?.data?.role || "").toLowerCase();
+        const infoData = (info as any)?.data;
+        const roleFromInfo = String(infoData?.role || infoData?.user_role || "").toLowerCase();
         if (!ignore && roleFromInfo) {
           setRoleState(roleFromInfo);
           return;
         }
         const res = await userAPI.getUserById(String(uid));
-        const apiRole = String(res?.data?.role || "").toLowerCase();
+        const resData = (res as any)?.data;
+        const apiRole = String(resData?.role || resData?.user_role || "").toLowerCase();
         if (!ignore) setRoleState(apiRole);
       } catch {
         if (!ignore) setRoleState("");
@@ -311,7 +313,9 @@ export default function Orders() {
         setLoading(true);
         const res = await shopAPI.getAllOrders();
         if (ignore) return;
-        const data = Array.isArray(res.data) ? res.data : res.data?.results || [];
+        const data = Array.isArray(res.data)
+          ? res.data
+          : (res.data as any)?.data || [];
         setItems(normalizeOrders(data));
       } finally {
         setLoading(false);
@@ -383,7 +387,7 @@ export default function Orders() {
       const res = await shopAPI.getCallCenterOrders();
       const data = Array.isArray(res.data)
         ? res.data
-        : res.data?.results || res.data?.data || [];
+          : (res.data as any)?.data || [];
       setCcOrders((prev) =>
         (data || []).map((o: any) => {
           const existing = prev.find((p) => p.id === o.id);
@@ -465,7 +469,9 @@ export default function Orders() {
       try {
         const res = await shopAPI.getAllOrders();
         if (ignore) return;
-        const data = Array.isArray(res.data) ? res.data : res.data?.results || [];
+        const data = Array.isArray(res.data)
+          ? res.data
+          : (res.data as any)?.data || [];
         setItems(normalizeOrders(data));
       } catch {}
     };
@@ -692,7 +698,7 @@ export default function Orders() {
                             const res = await shopAPI.getAllOrders();
                             const data = Array.isArray(res.data)
                               ? res.data
-                              : res.data?.results || [];
+                              : (res.data as any)?.data || [];
                             setItems(normalizeOrders(data));
                           } catch (e: any) {
                             const msg =
@@ -775,9 +781,11 @@ export default function Orders() {
 
                       await loadCcOrders();
 
-                      const res = await shopAPI.getAllOrders();
-                      const data = Array.isArray(res.data) ? res.data : res.data?.results || [];
-                      setItems(normalizeOrders(data));
+                    const res = await shopAPI.getAllOrders();
+                    const data = Array.isArray(res.data)
+                      ? res.data
+                      : (res.data as any)?.data || [];
+                    setItems(normalizeOrders(data));
                     } catch (e: any) {
                       const msg = e?.response?.data?.detail || e?.message || t("common.forms.error");
                       setNotice({ type: "error", message: msg });
