@@ -1351,7 +1351,9 @@ export function Profile() {
                             {t(`profile.payments.statements.status.${s.type}`, { defaultValue: s.type })}
                           </span>
                             </td>
-                            <td className="py-3 px-2 text-slate-600">{s.description || "-"}</td>
+                            <td className="py-3 px-2 text-slate-600">
+                              {s.type === "pending" && s.description === "string" ? "—" : (s.description || "—")}
+                            </td>
                           </tr>
                         ))
                       )}
