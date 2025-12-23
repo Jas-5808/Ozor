@@ -784,13 +784,21 @@ export function Profile() {
                 {t("profile.market.error", { message: String(marketError) })}
               </div>
             )}
-            {!marketLoading && !marketError && (
+            {!marketError && (
               filteredAndSortedProducts.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
-                  <p className="text-sm font-semibold text-slate-500">{t("profile.market.search.empty")}</p>
-                </div>
+                !marketLoading ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+                    <p className="text-sm font-semibold text-slate-500">{t("profile.market.search.empty")}</p>
+                  </div>
+                ) : null
               ) : (
                 <>
+                  {marketLoading && (
+                    <div className="mb-3 flex items-center justify-between rounded-2xl border border-slate-100 bg-white/70 px-4 py-3 text-sm text-slate-600 shadow-sm backdrop-blur">
+                      <span className="font-semibold">{t("common.loading") || "Загрузка..."}</span>
+                      <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-[#04734b]" />
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
                     {filteredAndSortedProducts.map((p: any, index: number) => {
                     const productId = p?.product_id || p?.id || p?.productId || "";
@@ -838,19 +846,18 @@ export function Profile() {
                     return (
                       <article
                         key={productId ? `${productId}-${p.variant_id || index}` : `market-card-${index}`}
-                        className="group relative flex h-full min-h-[380px] sm:min-h-[440px] flex-col rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-4 shadow-[0_18px_35px_rgба(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_25px_50px_rgба(15,23,42,0.12)]"
+                        className="group relative flex h-full min-h-[380px] sm:min-h-[440px] flex-col rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-4 shadow-[0_18px_35px_rgba(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_25px_50px_rgba(15,23,42,0.12)]"
                       >
                         <button
                           type="button"
                           onClick={handleOpenProduct}
-                          className="relative overflow-hidden rounded-2xl bg-slate-100"
-                          style={{ minHeight: 170 }}
+                          className="relative h-[170px] sm:h-[190px] overflow-hidden rounded-2xl bg-slate-50"
                           disabled={isLoadingCard || !canOpenProduct}
                         >
                           <img
                             src={getVariantMainImage(p.variant_media) || getProductImageUrl(p.main_image)}
                             alt={p.product_name}
-                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                            className="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-[1.02]"
                             loading="lazy"
                             onError={(e) => {
                               (e.currentTarget as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
@@ -867,20 +874,21 @@ export function Profile() {
                         </button>
                         <div className="mt-4 flex flex-1 flex-col gap-4">
                           <div>
-                            <h4 className="text-base font-bold text-slate-900 line-clamp-2">{p.product_name}</h4>
+                            <h4 className="min-h-[44px] text-base font-bold leading-snug text-slate-900 line-clamp-2">
+                              {p.product_name}
+                            </h4>
                             <p className="mt-1 text-xs uppercase tracking-wide text-slate-500 truncate">
                               {t("profile.market.card.skuLabel")}: {p.variant_sku || "—"}
                             </p>
                           </div>
-                          <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-slate-100/60  py-2">
-                            <div className="flex flex-col">
+                          <div className="grid grid-cols-2 items-center gap-3 rounded-2xl bg-slate-100/60 px-3 py-2 min-h-[74px]">
+                            <div className="min-w-0 flex flex-col">
                               <span className="text-xs text-slate-500">{t("profile.market.card.priceLabel")}</span>
                               <span className="text-lg font-extrabold text-slate-900">{priceValue}</span>
                             </div>
-                            <div className="h-8 w-px bg-slate-200" />
-                            <div className="flex flex-col">
+                            <div className="min-w-0 flex flex-col border-l border-slate-200 pl-3">
                               <span className="text-xs text-slate-500">{t("profile.market.card.incomeLabel")}</span>
-                              <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#04734b]">
+                              <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#04734b] truncate">
                                 {referralValue}
                                 <span className="rounded-full bg-[#e6f8ef] px-2 py-0.5 text-[11px] font-bold text-[#04734b]">
                                   +

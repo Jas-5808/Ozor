@@ -31,6 +31,7 @@ const ProductsListComponent: React.FC = () => {
   const listRef = useRef<HTMLDivElement | null>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
   const [rowHeight, setRowHeight] = useState<number>(ESTIMATED_ROW_HEIGHT);
+  const rowHeightLockedRef = useRef(false);
   
   const { ref: sentinelRef } = useInfiniteScroll({
     hasMore,
@@ -81,11 +82,14 @@ const ProductsListComponent: React.FC = () => {
     if (!measureRef.current) return;
     const el = measureRef.current;
     const ro = new ResizeObserver(() => {
+      if (rowHeightLockedRef.current) return;
       const rect = el.getBoundingClientRect();
       if (!rect.height) return;
       // + gap между рядами (примерно 16px; точность не критична, но снижает "прыжки")
       const next = Math.max(240, Math.round(rect.height + 16));
       setRowHeight(next);
+      // Фиксируем после первого успешного измерения, чтобы при догрузке не было скачков
+      rowHeightLockedRef.current = true;
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -188,7 +192,9 @@ const ProductsListComponent: React.FC = () => {
       {hasMore && !loading && (
         <div className="flex justify-center mt-4">
           <button
-            onClick={() => {
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
               loadMore();
             }}
             className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:border-emerald-500 hover:text-emerald-700 transition"

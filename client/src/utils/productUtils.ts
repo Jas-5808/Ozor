@@ -65,21 +65,79 @@ export const splitProductsIntoPrimaryAndVariants = (rawProducts: any[]) => {
 
 /**
  * Строит итоговый список для отображения:
- * сначала основные товары, затем варианты, когда основные закончились
+ * основной поток — основные товары, но варианты "подмешиваются" по ходу,
+ * чтобы не было ситуации, когда в конце ленты идут подряд одни варианты.
+ *
+ * Правило по умолчанию: 4 основных → 1 вариант (если варианты есть).
+ * Также стараемся не ставить два элемента с одинаковым product_id подряд.
  */
 export const buildDisplayProducts = (
   primaryProducts: Product[],
   variantProducts: Product[],
   takeCount: number
 ): Product[] => {
-  if (takeCount <= primaryProducts.length) {
-    return primaryProducts.slice(0, takeCount);
+  const target = Math.max(0, takeCount | 0);
+  if (target === 0) return [];
+
+  const primary = Array.isArray(primaryProducts) ? primaryProducts : [];
+  const variants = Array.isArray(variantProducts) ? variantProducts : [];
+
+  let ip = 0;
+  let iv = 0;
+  const result: Product[] = [];
+
+  const PRIMARY_BATCH = 6;
+  let primaryBatchUsed = 0;
+
+  const lastProductId = () => (result.length ? String(result[result.length - 1]?.product_id || "") : "");
+
+  while (result.length < target && (ip < primary.length || iv < variants.length)) {
+    const canPickPrimary = ip < primary.length;
+    const canPickVariant = iv < variants.length;
+
+    // Решаем, что пробуем взять: по умолчанию берем primary, но раз в batch — variant.
+    const shouldTryVariant = canPickVariant && primaryBatchUsed >= PRIMARY_BATCH;
+
+    const pick = (type: "primary" | "variant"): Product | null => {
+      if (type === "primary") {
+        if (!canPickPrimary) return null;
+        const next = primary[ip++];
+        primaryBatchUsed += 1;
+        return next;
+      }
+      // variant
+      if (!canPickVariant) return null;
+
+      // Стараемся не брать вариант с тем же product_id, что был последним
+      const prevId = lastProductId();
+      let localIdx = iv;
+      while (localIdx < variants.length) {
+        const candidate = variants[localIdx];
+        const candidateId = String(candidate?.product_id || "");
+        if (!prevId || candidateId !== prevId) {
+          iv = localIdx + 1;
+          primaryBatchUsed = 0; // после вставки варианта сбрасываем batch
+          return candidate;
+        }
+        localIdx += 1;
+      }
+
+      // Если не нашли "другой" — берем следующий по порядку
+      const fallback = variants[iv++];
+      primaryBatchUsed = 0;
+      return fallback;
+    };
+
+    let next: Product | null = null;
+    if (shouldTryVariant) {
+      next = pick("variant") ?? pick("primary");
+    } else {
+      next = pick("primary") ?? pick("variant");
+    }
+    if (!next) break;
+    result.push(next);
   }
 
-  const remaining = takeCount - primaryProducts.length;
-  const safePrimary = primaryProducts.slice();
-  const safeVariants = variantProducts.slice(0, remaining);
-
-  return [...safePrimary, ...safeVariants];
+  return result;
 };
 
