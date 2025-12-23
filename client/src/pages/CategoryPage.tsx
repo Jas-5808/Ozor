@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { shopAPI } from "../services/api";
@@ -42,12 +42,23 @@ export function CategoryPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState(0); // индекс следующей подкатегории для подгрузки
+  const [extraProducts, setExtraProducts] = useState<Product[]>([]);
+  const [extraLoading, setExtraLoading] = useState(false);
+  const [extraError, setExtraError] = useState<string | null>(null);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const categoryUrl = origin && id ? `${origin}/category/${id}` : undefined;
   const categoryTitle = category?.name ? `${category.name} — OZAR` : "Категория — OZAR";
   const categoryDescription = category?.name
     ? `Купить ${category.name} в OZAR. Актуальные цены, варианты и быстрая доставка.`
     : "Категория товаров в OZAR. Актуальные цены и быстрая доставка.";
+
+  const tt = useCallback(
+    (key: string, fallback: string) => {
+      const v = t(key as any) as unknown as string;
+      return v === key ? fallback : v;
+    },
+    [t]
+  );
 
   // Важно: displayedProducts должен быть объявлен ДО использования в JSON-LD (иначе возможен runtime-crash)
   const displayedProducts = useMemo(() => {
@@ -160,6 +171,20 @@ export function CategoryPage() {
     return Array.from(ids);
   }, [id, subcategoriesKey]);
 
+  // refs: чтобы fetchNextCategories был стабильным и не ломал зависимости useEffect
+  const rawItemsRef = useRef<any[]>([]);
+  const cursorRef = useRef(0);
+  const loadingMoreRef = useRef(false);
+  useEffect(() => {
+    rawItemsRef.current = rawItems;
+  }, [rawItems]);
+  useEffect(() => {
+    cursorRef.current = cursor;
+  }, [cursor]);
+  useEffect(() => {
+    loadingMoreRef.current = loadingMore;
+  }, [loadingMore]);
+
   const mergeRawItems = useCallback((prev: any[], next: any[]) => {
     const existing = new Set(
       prev.map((it: any) => `${it?.product_id || it?.id || ""}_${it?.variant_id || it?.variantId || ""}`)
@@ -184,13 +209,14 @@ export function CategoryPage() {
 
   const fetchNextCategories = useCallback(async (opts?: { minTotalRaw?: number }) => {
     if (!id) return;
-    if (loadingMore) return;
-    if (cursor >= categoryIds.length) return;
+    if (loadingMoreRef.current) return;
+    if (cursorRef.current >= categoryIds.length) return;
 
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
-      let localCursor = cursor;
-      let localRaw = rawItems;
+      let localCursor = cursorRef.current;
+      let localRaw = rawItemsRef.current;
 
       while (localCursor < categoryIds.length) {
         const batch = categoryIds.slice(localCursor, localCursor + MAX_CONCURRENT);
@@ -214,12 +240,15 @@ export function CategoryPage() {
       }
 
       setRawItems(localRaw);
+      rawItemsRef.current = localRaw;
       syncDerivedProducts(localRaw);
       setCursor(localCursor);
+      cursorRef.current = localCursor;
     } finally {
+      loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [categoryIds, cursor, id, loadingMore, mergeRawItems, rawItems, syncDerivedProducts]);
+  }, [categoryIds, id, mergeRawItems, syncDerivedProducts]);
 
   useEffect(() => {
     let cancelled = false;
@@ -239,6 +268,10 @@ export function CategoryPage() {
       setPrimaryProducts([]);
       setVariantProducts([]);
       setDisplayedCount(PAGE_SIZE);
+      // sync refs too
+      rawItemsRef.current = [];
+      cursorRef.current = 0;
+      loadingMoreRef.current = false;
       
       if (categoryLoading && !category) {
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -282,6 +315,77 @@ export function CategoryPage() {
   }, [id, category?.id, category?.parent_id, categoryLoading, subcategoriesKey, t, fetchNextCategories]);
 
   const totalProductsCount = useMemo(() => primaryProducts.length + variantProducts.length, [primaryProducts.length, variantProducts.length]);
+
+  // Кандидаты "других категорий" (для удержания, если в текущей категории мало товаров)
+  const otherCategoryCandidates = useMemo(() => {
+    const exclude = new Set<string>((categoryIds || []).map(String));
+    return (categories || [])
+      .filter((c) => c?.id && !exclude.has(String(c.id)))
+      .filter((c) => (c.products_count ?? 0) > 0)
+      .map((c) => String(c.id));
+  }, [categories, categoryIds]);
+
+  useEffect(() => {
+    // сбрасываем подбор при смене категории
+    setExtraProducts([]);
+    setExtraError(null);
+    setExtraLoading(false);
+  }, [id]);
+
+  useEffect(() => {
+    // Если товаров в категории достаточно — не подгружаем "другие"
+    const SHOULD_ENRICH_THRESHOLD = 18;
+    if (loading) return;
+    if (totalProductsCount >= SHOULD_ENRICH_THRESHOLD) return;
+    if (extraLoading) return;
+    if (extraProducts.length > 0) return;
+    if (!id) return;
+    if (otherCategoryCandidates.length === 0) return;
+
+    let ignore = false;
+    const pickSome = (arr: string[], n: number) => {
+      const copy = arr.slice();
+      copy.sort(() => 0.5 - Math.random());
+      return copy.slice(0, n);
+    };
+
+    const fetchExtras = async () => {
+      setExtraLoading(true);
+      setExtraError(null);
+      try {
+        const chosen = pickSome(otherCategoryCandidates, 3);
+        const responses = await Promise.all(
+          chosen.map((cid) =>
+            shopAPI
+              .getProductsByCategory(cid, { limit: 30, offset: 0 })
+              .then((r) => (r as any)?.data || [])
+              .catch(() => [])
+          )
+        );
+
+        const flat = responses.flat();
+        const transformed = flat
+          .filter((p: any) => p?.product_id && typeof p?.price === "number" && p.price > 0)
+          .map(transformProductFromApi);
+
+        const { primaryProducts: uniquePrimary } = splitProductsIntoPrimaryAndVariants(transformed);
+        const existingIds = new Set(displayedProducts.map((p) => String(p.product_id)));
+        const deduped = uniquePrimary.filter((p) => p?.product_id && !existingIds.has(String(p.product_id)));
+        const final = deduped.slice(0, 12);
+
+        if (!ignore) setExtraProducts(final);
+      } catch (e: any) {
+        if (!ignore) setExtraError(e?.message || (t("common.errors.productsLoad") as any) || "Ошибка загрузки");
+      } finally {
+        if (!ignore) setExtraLoading(false);
+      }
+    };
+
+    void fetchExtras();
+    return () => {
+      ignore = true;
+    };
+  }, [displayedProducts, extraLoading, extraProducts.length, id, loading, otherCategoryCandidates, t, totalProductsCount]);
 
   const hasMore = useMemo(() => {
     // есть ещё что показать ИЛИ есть что догрузить по категориям
@@ -355,6 +459,17 @@ export function CategoryPage() {
             category?.name || t("catalog.category")
           )}
         </h1>
+            {category?.parent_id && category?.parent_name && (
+              <div className="mt-2">
+                <Link
+                  to={`/category/${category.parent_id}`}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#04734b] hover:brightness-110 transition"
+                >
+                  <span aria-hidden="true">←</span>
+                  {category.parent_name}
+                </Link>
+              </div>
+            )}
         {category?.products_count !== undefined && (
           <p className="text-slate-500 mt-1">
             {t("catalog.productsCount", { count: category.products_count })}
@@ -427,6 +542,48 @@ export function CategoryPage() {
           {hasMore && (
             <div className="flex justify-center items-center py-8">
               <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#04734b]"></div>
+            </div>
+          )}
+
+          {/* Удержание: товары из других категорий, если в текущей мало */}
+          {(extraLoading || extraProducts.length > 0 || extraError) && (
+            <div className="mt-10">
+              <div className="mb-4 flex items-end justify-between gap-3">
+                <div>
+                  <h2 className="text-lg md:text-xl font-extrabold text-slate-900">
+                    {tt("catalog.alsoLike", "Вам может понравиться")}
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    {tt("catalog.alsoLikeSubtitle", "Популярные товары из других категорий")}
+                  </p>
+                </div>
+                <Link
+                  to="/catalog"
+                  className="shrink-0 text-sm font-semibold text-[#04734b] hover:brightness-110 transition"
+                >
+                  {t("catalog.backToCatalog") || "Каталог"} →
+                </Link>
+              </div>
+
+              {extraError && (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {extraError}
+                </div>
+              )}
+
+              {extraLoading && extraProducts.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-slate-200 p-6">
+                  <SkeletonGrid count={6} />
+                </div>
+              )}
+
+              {extraProducts.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {extraProducts.map((p) => (
+                    <ProductCard key={`extra_${p.product_id}_${p.variant_id || ""}`} product={p} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>
