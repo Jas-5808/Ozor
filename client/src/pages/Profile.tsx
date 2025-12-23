@@ -537,17 +537,19 @@ export function Profile() {
 
   if (!isAuthenticated) {
     return (
-      <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-5 md:px-6 py-6">
-        <div className="rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)] ring-1 ring-gray-100 p-6 text-gray-800">
-          <p className="text-center">{t("profile.guestPrompt")}</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="container mx-auto px-4 py-6">
+          <div className="rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)] ring-1 ring-gray-100 p-6 text-gray-800">
+            <p className="text-center">{t("profile.guestPrompt")}</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f7f9] pb-28">
-      <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-5 md:px-6 text-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 pb-28">
+      <div className="container mx-auto px-4 py-6 text-gray-800">
         <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-r from-[#003d32] via-[#015a41] to-[#04734b] px-6 py-7 text-white shadow-[0_25px_70px_rgba(0,61,50,0.35)]">
           <div
             className="pointer-events-none absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.5),_transparent_55%)]"
@@ -628,7 +630,7 @@ export function Profile() {
           </div>
         </section>
 
-        <div className="mt-8 rounded-3xl border border-emerald-100 bg-white/95 p-2 shadow-[0_20px_60px_rgба(15,23,42,0.08)]">
+        <div className="mt-8 rounded-3xl border border-emerald-100 bg-white/95 p-2 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
           <div className="flex flex-wrap gap-2">
             {tabItems.map((tab) => {
               const isActive = activeTab === tab.id;
@@ -658,7 +660,7 @@ export function Profile() {
         </div>
 
         {activeTab === "market" && (
-          <section className="mt-6 rounded-[30px] border border-white/80 bg-white p-4 sm:p-5 shadow-[0_25px_80px_rgба(15,23,42,0.05)]">
+          <section className="mt-6 rounded-[30px] border border-white/80 bg-white p-4 sm:p-5 shadow-[0_25px_80px_rgba(15,23,42,0.05)]">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.35em] text-[#015338]">{t("profile.market.badge")}</p>
@@ -754,14 +756,14 @@ export function Profile() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex w-full items-center gap-3 sm:w-auto sm:justify-end">
                 <label className="text-sm font-semibold text-slate-700 whitespace-nowrap">
                   {t("profile.market.sort.label")}:
                 </label>
                 <select
                   value={marketSortBy}
                   onChange={(e) => setMarketSortBy(e.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20 cursor-pointer"
+                  className="w-full sm:w-auto min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20 cursor-pointer"
                 >
                   <option value="default">{t("profile.market.sort.default")}</option>
                   <option value="priceAsc">{t("profile.market.sort.priceAsc")}</option>
@@ -846,24 +848,24 @@ export function Profile() {
                     return (
                       <article
                         key={productId ? `${productId}-${p.variant_id || index}` : `market-card-${index}`}
-                        className="group relative flex h-full min-h-[380px] sm:min-h-[440px] flex-col rounded-[26px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-4 shadow-[0_18px_35px_rgba(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_25px_50px_rgba(15,23,42,0.12)]"
+                        className="group relative flex h-full min-h-[300px] sm:min-h-[360px] flex-col rounded-[24px] border border-slate-100 bg-gradient-to-b from-white to-slate-50/30 p-3 sm:p-4 shadow-[0_18px_35px_rgba(15,23,42,0.07)] transition hover:-translate-y-1 hover:shadow-[0_25px_50px_rgba(15,23,42,0.12)]"
                       >
                         <button
                           type="button"
                           onClick={handleOpenProduct}
-                          className="relative h-[170px] sm:h-[190px] overflow-hidden rounded-2xl bg-slate-50"
+                          className="relative h-[190px] sm:h-[220px] overflow-hidden rounded-2xl bg-white"
                           disabled={isLoadingCard || !canOpenProduct}
                         >
                           <img
                             src={getVariantMainImage(p.variant_media) || getProductImageUrl(p.main_image)}
                             alt={p.product_name}
-                            className="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-[1.02]"
+                            className="h-full w-full object-contain p-0 transition duration-300 group-hover:scale-[1.02]"
                             loading="lazy"
                             onError={(e) => {
                               (e.currentTarget as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
                             }}
                           />
-                          <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-white/85 px-3 py-1 text-xs font-semibold text-slate-800 line-clamp-1">
+                          <span className="absolute left-2 top-2 max-w-[80%] inline-flex items-center rounded-full bg-white/85 px-2 py-0.5 text-[10px] sm:text-xs font-semibold text-slate-800 truncate">
                             {categoryLabel || "—"}
                           </span>
                           {isLoadingCard && (
@@ -872,25 +874,27 @@ export function Profile() {
                             </span>
                           )}
                         </button>
-                        <div className="mt-4 flex flex-1 flex-col gap-4">
+                        <div className="mt-3 sm:mt-4 flex flex-1 flex-col gap-3 sm:gap-4">
                           <div>
-                            <h4 className="min-h-[44px] text-base font-bold leading-snug text-slate-900 line-clamp-2">
+                            <h4 className="min-h-[36px] text-sm sm:text-base font-bold leading-snug text-slate-900 line-clamp-2">
                               {p.product_name}
                             </h4>
-                            <p className="mt-1 text-xs uppercase tracking-wide text-slate-500 truncate">
+                            <p className="mt-1 hidden sm:block text-xs uppercase tracking-wide text-slate-500 truncate">
                               {t("profile.market.card.skuLabel")}: {p.variant_sku || "—"}
                             </p>
                           </div>
-                          <div className="grid grid-cols-2 items-center gap-3 rounded-2xl bg-slate-100/60 px-3 py-2 min-h-[74px]">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 items-start sm:items-center gap-2 sm:gap-3 rounded-2xl bg-slate-100/60 px-3 py-2 min-h-[64px]">
                             <div className="min-w-0 flex flex-col">
-                              <span className="text-xs text-slate-500">{t("profile.market.card.priceLabel")}</span>
-                              <span className="text-lg font-extrabold text-slate-900">{priceValue}</span>
+                              <span className="text-[11px] sm:text-xs text-slate-500">{t("profile.market.card.priceLabel")}</span>
+                              <span className="text-base sm:text-lg font-extrabold text-slate-900 leading-tight tabular-nums">
+                                {priceValue}
+                              </span>
                             </div>
-                            <div className="min-w-0 flex flex-col border-l border-slate-200 pl-3">
-                              <span className="text-xs text-slate-500">{t("profile.market.card.incomeLabel")}</span>
-                              <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#04734b] truncate">
+                            <div className="min-w-0 flex flex-col sm:border-l sm:border-slate-200 sm:pl-3">
+                              <span className="text-[11px] sm:text-xs text-slate-500">{t("profile.market.card.incomeLabel")}</span>
+                              <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-[#04734b] tabular-nums">
                                 {referralValue}
-                                <span className="rounded-full bg-[#e6f8ef] px-2 py-0.5 text-[11px] font-bold text-[#04734b]">
+                                <span className="rounded-full bg-[#e6f8ef] px-2 py-0.5 text-[11px] font-bold text-[#04734b] shrink-0">
                                   +
                                 </span>
                               </span>
@@ -899,7 +903,7 @@ export function Profile() {
                           <div className="mt-auto space-y-3">
                             <button
                               type="button"
-                              className="group relative h-12 w-full rounded-[18px] text-sm font-semibold uppercase tracking-wide text-white shadow-[0_22px_48px_rgba(6,78,59,0.45)] ring-1 ring-white/20 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                              className="group relative h-10 sm:h-11 w-full rounded-[18px] text-xs sm:text-sm font-semibold tracking-wide text-white shadow-[0_18px_40px_rgba(6,78,59,0.40)] ring-1 ring-white/20 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                               style={{ background: "linear-gradient(92.41deg, rgb(0, 61, 50), rgb(4, 115, 75))" }}
                               disabled={createLoading || isLoadingCard}
                               onClick={() => handleGenerate(p)}
@@ -1612,7 +1616,7 @@ export function Profile() {
             onClick={() => setCreateModal({ open: false, title: "", agree: false })}
           >
             <div
-              className="relative w-full max-w-md rounded-[32px] bg-white p-6 shadow-[0_35px_80px_rgба(15,23,42,0.25)]"
+              className="relative w-full max-w-md rounded-[32px] bg-white p-6 shadow-[0_35px_80px_rgba(15,23,42,0.25)]"
               onClick={(e) => e.stopPropagation()}
             >
               <button
