@@ -15,9 +15,7 @@ const SLIDE_WIDTH_PERCENT = 94; // ширина одного слайда, чт�
 const SLIDE_GAP_PERCENT = 1;    // зазор между слайдами
 
 const getBannerBase = () => {
-  if (typeof window !== "undefined" && window.location.hostname.includes("ozar")) {
-    return "https://ozar.uz/media/banners/";
-  }
+  // Всегда используем lab-домен как базу для баннеров
   return "https://lab.ozar.uz/media/banners/";
 };
 
