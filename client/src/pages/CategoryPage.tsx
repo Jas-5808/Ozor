@@ -42,11 +42,99 @@ export function CategoryPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState(0); // индекс следующей подкатегории для подгрузки
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const categoryUrl = origin && id ? `${origin}/category/${id}` : undefined;
+  const categoryTitle = category?.name ? `${category.name} — OZAR` : "Категория — OZAR";
+  const categoryDescription = category?.name
+    ? `Купить ${category.name} в OZAR. Актуальные цены, варианты и быстрая доставка.`
+    : "Категория товаров в OZAR. Актуальные цены и быстрая доставка.";
+
+  const categoryJsonLd = useMemo(() => {
+    const name = category?.name || "";
+    const parentName = category?.parent_name || "";
+    const parentId = category?.parent_id ? String(category.parent_id) : "";
+
+    const breadcrumbItems: any[] = [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: t("common.navigation.home") || "Главная",
+        item: origin ? `${origin}/` : undefined,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: t("catalog.header") || "Каталог",
+        item: origin ? `${origin}/catalog` : undefined,
+      },
+    ];
+
+    if (parentName && parentId && origin) {
+      breadcrumbItems.push({
+        "@type": "ListItem",
+        position: 3,
+        name: parentName,
+        item: `${origin}/category/${parentId}`,
+      });
+      breadcrumbItems.push({
+        "@type": "ListItem",
+        position: 4,
+        name: name || (t("catalog.category") || "Категория"),
+        item: categoryUrl,
+      });
+    } else {
+      breadcrumbItems.push({
+        "@type": "ListItem",
+        position: 3,
+        name: name || (t("catalog.category") || "Категория"),
+        item: categoryUrl,
+      });
+    }
+
+    const listItems = displayedProducts.slice(0, 24).map((p, idx) => ({
+      "@type": "ListItem",
+      position: idx + 1,
+      url: origin && p?.product_id ? `${origin}/product/${p.product_id}` : undefined,
+      name: p?.product_name || undefined,
+    }));
+
+    return [
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: breadcrumbItems,
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        name: name || undefined,
+        url: categoryUrl,
+        isPartOf: origin ? { "@type": "WebSite", name: "OZAR", url: `${origin}/` } : undefined,
+        mainEntity: {
+          "@type": "ItemList",
+          itemListElement: listItems,
+        },
+      },
+    ];
+  }, [category?.name, category?.parent_id, category?.parent_name, categoryUrl, displayedProducts, origin, t]);
 
   useSEO({
-    title: category ? `${category.name} — OZAR` : "Категория — OZAR",
+    title: categoryTitle,
+    description: categoryDescription,
     robots: "index,follow",
-    canonical: typeof window !== "undefined" ? window.location.href : undefined,
+    canonical: categoryUrl,
+    openGraph: {
+      "og:type": "website",
+      "og:title": categoryTitle,
+      "og:description": categoryDescription,
+      ...(categoryUrl ? { "og:url": categoryUrl } : {}),
+    },
+    twitter: {
+      "twitter:card": "summary",
+      "twitter:title": categoryTitle,
+      "twitter:description": categoryDescription,
+    },
+    jsonLd: categoryJsonLd,
   });
 
   // Получаем подкатегории для текущей категории - мемоизировано
