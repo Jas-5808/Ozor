@@ -75,6 +75,13 @@ const NAV_ICON_MAP = {
       <path d="m9 12 2.2 2.2L15 10.5" />
     </svg>
   ),
+  payments: () => (
+    <svg {...iconProps}>
+      <rect x="4" y="6.5" width="16" height="11" rx="2" />
+      <path d="M4 10.5h16" />
+      <path d="M8 14h3" />
+    </svg>
+  ),
 } as const;
 
 const ACTION_ICON_MAP = {
@@ -129,6 +136,7 @@ const NAV_ITEMS: Array<{ to: string; labelKey: string; icon: NavIconKey; roles: 
   { to: '/admin/categories', labelKey: 'admin.nav.categories', icon: 'categories', roles: ['admin'] },
   { to: '/admin/banners', labelKey: 'admin.nav.banners', icon: 'banners', roles: ['admin'] },
   { to: '/admin/audit', labelKey: 'admin.nav.audit', icon: 'audit', roles: ['admin'] },
+  { to: '/admin/payments', labelKey: 'admin.nav.payments', icon: 'payments', roles: ['ceo', 'admin'] },
 ];
 
 export default function AdminLayout() {

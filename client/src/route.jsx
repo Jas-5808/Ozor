@@ -32,6 +32,7 @@ const AdminWarehouse = lazy(()=> import('./admin/pages/Warehouse'));
 const AdminCategories = lazy(()=> import('./admin/pages/Categories'));
 const AdminBanners = lazy(()=> import('./admin/pages/Banners'));
 const AdminAudit = lazy(()=> import('./admin/pages/Audit'));
+const AdminPayments = lazy(()=> import('./admin/pages/Payments'));
 // other admin pages enabled
 import { useAuth } from './hooks/useAuth';
 import { userAPI } from './services/api';
@@ -237,6 +238,7 @@ export const router = createBrowserRouter([
       { path: "/admin/categories", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminCategories /></Suspense> },
       { path: "/admin/banners", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminBanners /></Suspense> },
       { path: "/admin/audit", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminAudit /></Suspense> },
+      { path: "/admin/payments", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminPayments /></Suspense> },
     ],
   },
   {

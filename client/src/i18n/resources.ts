@@ -681,6 +681,7 @@ export const resources = {
           categories: 'Categories',
           banners: 'Banners',
           audit: 'Audit',
+          payments: 'Payments',
         },
         filters: {
           all: 'Все',
@@ -1679,6 +1680,7 @@ export const resources = {
           categories: 'Toifalar',
           banners: 'Bannerlar',
           audit: 'Audit',
+          payments: 'To‘lovlar',
         },
         filters: {
           all: 'Hammasi',
