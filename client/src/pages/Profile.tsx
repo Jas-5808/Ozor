@@ -918,7 +918,7 @@ export function Profile() {
         )}
 
         {activeTab === "oqim" && (
-          <section className="mt-6 rounded-[30px] border border-white/80 bg-white p-4 sm:p-5 shadow-[0_25px_80px_rgba(15,23,42,0.05)]">
+          <section className="mt-6 rounded-[30px] border border-slate-100 bg-white p-4 sm:p-6 shadow-[0_25px_80px_rgba(15,23,42,0.06)]">
             {apiFlowsLoading && (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -934,18 +934,18 @@ export function Profile() {
                 ))}
               </div>
             )}
-            {apiFlowsError && <p style={{ color: '#b91c1c' }}>{apiFlowsError}</p>}
+            {apiFlowsError && (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                {apiFlowsError}
+              </div>
+            )}
             {referralNotice && (
               <div
-                style={{
-                  marginBottom: 10,
-                  padding: '10px 12px',
-                  borderRadius: 12,
-                  border: referralNotice.type === 'success' ? '1px solid #86efac' : '1px solid #fecaca',
-                  background: referralNotice.type === 'success' ? '#ecfdf5' : '#fef2f2',
-                  color: referralNotice.type === 'success' ? '#065f46' : '#7f1d1d',
-                  fontWeight: 600,
-                }}
+                className={`mb-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${
+                  referralNotice.type === "success"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : "border-rose-200 bg-rose-50 text-rose-800"
+                }`}
                 role="status"
                 aria-live="polite"
               >
@@ -953,9 +953,11 @@ export function Profile() {
               </div>
             )}
             {!apiFlowsLoading && !apiFlowsError && (
-              <div className="grid gap-3 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {referralStats.length === 0 && flows.length === 0 && (
-                  <p>{t("profile.flows.empty")}</p>
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm font-semibold text-slate-500">
+                    {t("profile.flows.empty")}
+                  </div>
                 )}
                 {referralStats.map((r) => {
                   const linkedFlow = apiFlows.find((flow) => flow.id === r.id);
@@ -972,36 +974,41 @@ export function Profile() {
                   return (
                     <div
                       key={r.id}
-                      className="p-3 sm:p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]"
+                      className="group p-4 sm:p-5 border border-slate-100 rounded-3xl bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_50px_rgba(15,23,42,0.10)]"
                       style={{ minHeight: 170 }}
                     >
                       <div className="flex flex-col gap-3 max-w-full">
                         {/* Верхняя часть: заголовок и код */}
-                        <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 max-w-full">
-                          <div className="flex-1 min-w-0 max-w-full">
-                            <div className="text-sm sm:text-base font-extrabold text-slate-900 truncate" title={linkTitle}>
-                              {linkTitle}
-                            </div>
-                            {productName && (
-                              <div className="text-xs text-slate-500 mt-0.5 truncate" title={productName}>
-                                {productName}
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-start justify-between gap-3 min-w-0">
+                            <div className="min-w-0">
+                              <div
+                                className="text-sm sm:text-base font-extrabold text-slate-900 line-clamp-2"
+                                title={linkTitle}
+                              >
+                                {linkTitle}
                               </div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className="inline-flex h-6 items-center px-2 rounded-full text-[10px] sm:text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50 whitespace-nowrap">
-                              {r.code}
-                            </span>
-                            <span className="inline-flex h-6 items-center px-2 rounded-full text-[10px] sm:text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50 whitespace-nowrap">
-                              {formatPrice(r.product_referal_price || 0)}
-                            </span>
+                              {productName && (
+                                <div className="mt-0.5 text-xs text-slate-500 line-clamp-1" title={productName}>
+                                  {productName}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+                              <span className="inline-flex h-6 items-center px-2 rounded-full text-[10px] sm:text-xs font-bold border border-emerald-200 text-emerald-800 bg-emerald-50 whitespace-nowrap">
+                                {r.code}
+                              </span>
+                              <span className="inline-flex h-6 items-center px-2 rounded-full text-[10px] sm:text-xs font-bold border border-emerald-200 text-emerald-800 bg-emerald-50 whitespace-nowrap">
+                                {formatPrice(r.product_referal_price || 0)}
+                              </span>
+                            </div>
                           </div>
                         </div>
 
                         {/* Средняя часть: ссылка и кнопки */}
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-full">
                           <div 
-                            className="flex-1 min-w-0 group relative rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer hover:bg-slate-100 transition-colors"
+                            className="flex-1 min-w-0 relative rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 cursor-pointer hover:bg-slate-100 transition-colors overflow-hidden"
                             title={shareLink}
                             onClick={() => shareLink && handleCopyFlowLink(shareLink, r.id)}
                           >
@@ -1014,12 +1021,12 @@ export function Profile() {
                               >
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                               </svg>
-                              <span className="text-xs sm:text-sm text-slate-600 font-mono truncate flex-1 min-w-0">
+                              <span className="text-xs sm:text-sm text-slate-700 font-mono truncate flex-1 min-w-0">
                                 {shareLink ? (
                                   <span className="block truncate" title={shareLink}>
-                                    <span className="hidden sm:inline lg:hidden">{shortenUrl(shareLink, 38)}</span>
-                                    <span className="hidden lg:inline">{shortenUrl(shareLink, 48)}</span>
-                                    <span className="sm:hidden">{shortenUrl(shareLink, 26)}</span>
+                                    <span className="sm:hidden">{shortenUrl(shareLink, 28)}</span>
+                                    <span className="hidden sm:inline md:hidden">{shortenUrl(shareLink, 42)}</span>
+                                    <span className="hidden md:inline">{shortenUrl(shareLink, 64)}</span>
                                   </span>
                                 ) : (
                                   <span className="text-slate-400 italic">{t("profile.flows.noLink") || "Ссылка не доступна"}</span>
@@ -1068,8 +1075,8 @@ export function Profile() {
                         </div>
 
                         {/* Нижняя часть: дата */}
-                        <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
-                          <span>{createdAt ? new Date(createdAt).toLocaleString('ru-RU', { 
+                        <div className="flex items-center justify-between gap-2 text-xs text-slate-500 pt-2 border-t border-slate-100">
+                          <span className="min-w-0 truncate">{createdAt ? new Date(createdAt).toLocaleString('ru-RU', { 
                             day: '2-digit', 
                             month: '2-digit', 
                             year: 'numeric',
@@ -1087,14 +1094,14 @@ export function Profile() {
                   return (
                     <div
                       key={f.id}
-                      className="p-3 sm:p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]"
+                      className="group p-4 sm:p-5 border border-slate-100 rounded-3xl bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_50px_rgba(15,23,42,0.10)]"
                       style={{ minHeight: 170 }}
                     >
                       <div className="flex flex-col gap-3 max-w-full">
                         {/* Верхняя часть: название товара и комиссия */}
                         <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 max-w-full">
                           <div className="flex-1 min-w-0 max-w-full">
-                            <div className="text-sm sm:text-base font-extrabold text-slate-900 truncate" title={f.productName}>
+                            <div className="text-sm sm:text-base font-extrabold text-slate-900 line-clamp-2" title={f.productName}>
                               {f.productName}
                             </div>
                           </div>
@@ -1106,7 +1113,7 @@ export function Profile() {
                         {/* Средняя часть: ссылка и кнопки */}
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-full">
                           <div 
-                            className="flex-1 min-w-0 group relative rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer hover:bg-slate-100 transition-colors"
+                            className="flex-1 min-w-0 relative rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 cursor-pointer hover:bg-slate-100 transition-colors overflow-hidden"
                             title={f.link}
                             onClick={() => handleCopyFlowLink(f.link, f.id)}
                           >
@@ -1119,10 +1126,10 @@ export function Profile() {
                               >
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                               </svg>
-                              <span className="text-xs sm:text-sm text-slate-600 font-mono truncate flex-1 min-w-0" title={f.link}>
-                                <span className="hidden sm:inline lg:hidden">{shortenUrl(f.link, 38)}</span>
-                                <span className="hidden lg:inline">{shortenUrl(f.link, 48)}</span>
-                                <span className="sm:hidden">{shortenUrl(f.link, 26)}</span>
+                              <span className="text-xs sm:text-sm text-slate-700 font-mono truncate flex-1 min-w-0" title={f.link}>
+                                <span className="sm:hidden">{shortenUrl(f.link, 28)}</span>
+                                <span className="hidden sm:inline md:hidden">{shortenUrl(f.link, 42)}</span>
+                                <span className="hidden md:inline">{shortenUrl(f.link, 64)}</span>
                               </span>
                             </div>
                           </div>
