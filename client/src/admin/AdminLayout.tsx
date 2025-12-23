@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import AdminLanguageSwitcher from './components/AdminLanguageSwitcher';
+import useSEO from '../hooks/useSEO';
 
 const iconProps = {
   width: 20,
@@ -142,6 +143,11 @@ const NAV_ITEMS: Array<{ to: string; labelKey: string; icon: NavIconKey; roles: 
 export default function AdminLayout() {
   const { t } = useTranslation();
   const { profile, logout } = useAuth();
+
+  useSEO({
+    title: 'Admin — OZAR',
+    robots: 'noindex,nofollow',
+  });
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);

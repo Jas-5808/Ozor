@@ -221,11 +221,11 @@ export const router = createBrowserRouter([
   {
     path: "/admin",
     element: (
-      <RequireAuth>
+      <RequireRole roles={["admin", "manager", "ceo"]}>
         <Suspense fallback={<AdminSkeleton rows={10} />}>
           <AdminLayout />
         </Suspense>
-      </RequireAuth>
+      </RequireRole>
     ),
     errorElement: <ErrorPage />,
     children: [

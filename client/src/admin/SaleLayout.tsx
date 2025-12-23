@@ -1,9 +1,15 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import useSEO from '../hooks/useSEO';
 
 export default function SaleLayout() {
   const { profile, logout } = useAuth();
+
+  useSEO({
+    title: 'Sale — OZAR',
+    robots: 'noindex,nofollow',
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
