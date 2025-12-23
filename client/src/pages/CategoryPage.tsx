@@ -49,6 +49,11 @@ export function CategoryPage() {
     ? `Купить ${category.name} в OZAR. Актуальные цены, варианты и быстрая доставка.`
     : "Категория товаров в OZAR. Актуальные цены и быстрая доставка.";
 
+  // Важно: displayedProducts должен быть объявлен ДО использования в JSON-LD (иначе возможен runtime-crash)
+  const displayedProducts = useMemo(() => {
+    return buildDisplayProducts(primaryProducts, variantProducts, displayedCount);
+  }, [primaryProducts, variantProducts, displayedCount]);
+
   const categoryJsonLd = useMemo(() => {
     const name = category?.name || "";
     const parentName = category?.parent_name || "";
@@ -277,10 +282,6 @@ export function CategoryPage() {
   }, [id, category?.id, category?.parent_id, categoryLoading, subcategoriesKey, t, fetchNextCategories]);
 
   const totalProductsCount = useMemo(() => primaryProducts.length + variantProducts.length, [primaryProducts.length, variantProducts.length]);
-
-  const displayedProducts = useMemo(() => {
-    return buildDisplayProducts(primaryProducts, variantProducts, displayedCount);
-  }, [primaryProducts, variantProducts, displayedCount]);
 
   const hasMore = useMemo(() => {
     // есть ещё что показать ИЛИ есть что догрузить по категориям

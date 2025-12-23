@@ -8,11 +8,11 @@ import { Category } from "../types";
 
 export function CatalogPage() {
   const { t } = useTranslation();
+  // Оставляем SEO индексируемым, но возвращаем старый UI/дизайн
   useSEO({
     title: t("catalog.seoTitle"),
-    robots: "noindex,nofollow",
-    canonical:
-      typeof window !== "undefined" ? window.location.origin + "/catalog" : undefined,
+    robots: "index,follow",
+    canonical: typeof window !== "undefined" ? window.location.origin + "/catalog" : undefined,
   });
   
   const navigate = useNavigate();
@@ -30,9 +30,9 @@ export function CatalogPage() {
   const mainCategories = getMainCategories(categories);
   const filteredCategories = useMemo(() => {
     if (searchQuery.trim()) {
-      return mainCategories.filter(cat => 
+      return mainCategories.filter((cat) => 
         cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        getSubcategories(categories, cat.id).some(sub => 
+        getSubcategories(categories, cat.id).some((sub) =>
           sub.name.toLowerCase().includes(searchQuery.toLowerCase())
         )
       );
@@ -40,9 +40,7 @@ export function CatalogPage() {
     return mainCategories;
   }, [searchQuery, mainCategories, categories]);
 
-  const currentSubcategories = activeParent
-    ? getSubcategories(categories, activeParent.id)
-    : [];
+  const currentSubcategories = activeParent ? getSubcategories(categories, activeParent.id) : [];
 
   const handleCategoryClick = (category: Category) => {
     const hasSubcategories = getSubcategories(categories, category.id).length > 0;
@@ -63,7 +61,7 @@ export function CatalogPage() {
       <div className={cn.mobileCatalogSearch}>
         <Link to="/" className={cn.mobileCatalogBack}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
+            <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
         </Link>
         <form onSubmit={handleSearch} className={cn.mobileCatalogSearchForm}>
@@ -76,8 +74,8 @@ export function CatalogPage() {
           />
           <button type="submit" className={cn.mobileCatalogSearchButton}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8"/>
-              <path d="m21 21-4.35-4.35"/>
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
             </svg>
           </button>
         </form>
@@ -100,9 +98,7 @@ export function CatalogPage() {
         </div>
         <div className={cn.mobileCatalogList}>
           {loading ? (
-            <div className={cn.mobileCatalogLoading}>
-              {t("catalog.loading")}
-            </div>
+            <div className={cn.mobileCatalogLoading}>{t("catalog.loading")}</div>
           ) : activeParent ? (
             currentSubcategories.length === 0 ? (
               <div className={cn.mobileCatalogEmpty}>
@@ -131,9 +127,7 @@ export function CatalogPage() {
               const hasSubcategories = subcategories.length > 0;
               return (
                 <div key={category.id} className={cn.mobileCatalogCategory}>
-                  <div 
-                    className={`${cn.mobileCatalogItem} ${hasSubcategories ? cn.mobileCatalogItemWithSub : ''}`}
-                  >
+                  <div className={`${cn.mobileCatalogItem} ${hasSubcategories ? cn.mobileCatalogItemWithSub : ""}`}>
                     <button
                       type="button"
                       onClick={() => handleCategoryClick(category)}
