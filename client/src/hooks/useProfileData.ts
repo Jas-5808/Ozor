@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from './useAuth';
 import { shopAPI, paymentAPI } from '../services/api';
-import { useProducts } from './useProducts';
 import { useFlows } from './useFlows';
 import type { ReferralResponse } from '../types/api';
 import { logger } from '../utils/logger';
@@ -45,7 +44,6 @@ interface ProfileDataReturn {
  */
 export function useProfileData(): ProfileDataReturn {
   const { isAuthenticated } = useAuth();
-  const { products } = useProducts();
   const { flows } = useFlows();
   
   // Referrals state
@@ -56,17 +54,6 @@ export function useProfileData(): ProfileDataReturn {
   // Balance state
   const [userBalance, setUserBalance] = useState<number | null>(null);
   const [balanceLoading, setBalanceLoading] = useState<boolean>(false);
-
-  // Product map for quick lookup
-  const productById = useMemo(() => {
-    const map = new Map<string, typeof products[0]>();
-    (products || []).forEach((p) => {
-      if (p?.product_id) {
-        map.set(p.product_id, p);
-      }
-    });
-    return map;
-  }, [products]);
 
   // Load referrals
   const loadReferrals = async (): Promise<void> => {
@@ -130,14 +117,21 @@ export function useProfileData(): ProfileDataReturn {
         (o) => String(o?.status || '').toLowerCase() === 'delivered'
       ).length;
       const hold = total - paid;
-      const product = productById.get(r.product_id);
-      const commission: number = Number(product?.refferal_price) || 0;
-      const earned = commission > 0 
-        ? commission * paid 
-        : (typeof r?.total_earned === 'number' ? r.total_earned : 0);
-      const productReferalPrice = typeof r?.product_referal_price === 'number' 
-        ? r.product_referal_price 
-        : (commission || 0);
+
+      // Важно: не тянем весь каталог ради расчётов.
+      // Используем комиссию, которую возвращает API по рефералке (если есть),
+      // иначе fallback на total_earned.
+      const productReferalPrice =
+        typeof (r as any)?.product_referal_price === 'number'
+          ? (r as any).product_referal_price
+          : typeof (r as any)?.product_referal_price === 'string'
+          ? Number((r as any).product_referal_price) || 0
+          : 0;
+
+      const earned =
+        productReferalPrice > 0
+          ? productReferalPrice * paid
+          : (typeof (r as any)?.total_earned === 'number' ? (r as any).total_earned : 0);
       
       return {
         id: r.id,
@@ -150,7 +144,7 @@ export function useProfileData(): ProfileDataReturn {
         product_referal_price: productReferalPrice,
       };
     });
-  }, [apiFlows, productById]);
+  }, [apiFlows]);
 
   // Compute totals
   const totals = useMemo(() => {

@@ -84,8 +84,6 @@ export function UpdateProfile() {
         bio: formData.bio.trim() || "",
       };
 
-      console.log("Submitting profile data:", updateData);
-
       await userAPI.updateProfile(updateData);
       setSuccess(true);
 
@@ -93,7 +91,7 @@ export function UpdateProfile() {
         navigate("/");
       }, 2000);
     } catch (err: any) {
-      console.error("Profile update failed:", err);
+      // Ошибка будет обработана ниже через detail/message и показана в UI
 
       if (err.response?.data?.detail) {
         const details = err.response.data.detail;

@@ -14,13 +14,19 @@
     <link rel="dns-prefetch" href="https://fonts.gstatic.com">
     <link rel="dns-prefetch" href="https://images.uzum.uz">
     <link rel="dns-prefetch" href="https://api.ozar.uz">
+    <link rel="dns-prefetch" href="https://lab.ozar.uz">
     
     <!-- Preconnect для критических ресурсов -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://lab.ozar.uz" crossorigin>
     
-    <!-- Оптимизированная загрузка шрифтов - только нужные веса с font-display: swap -->
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Неблокирующая загрузка шрифтов (снимает render-blocking) -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
+    </noscript>
     
     <!-- Основные ресурсы подтянет Vite (modulepreload/ESM). Дополнительный preload убран, чтобы избежать ворнингов. -->
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import i18n from "../i18n";
-import { shopAPI } from "../api";
+import { shopAPI } from "../services/api";
 import { Product } from "../types";
 import { logger } from "../utils/logger";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
@@ -9,6 +9,7 @@ import { buildDisplayProducts, splitProductsIntoPrimaryAndVariants } from "../ut
 const ITEMS_PER_PAGE = 20; // Количество товаров на страницу
 const API_LIMIT = 100; // Максимальный лимит для API запроса
 const FIRST_PAGE_LIMIT = 40; // Быстрая первая страница для улучшения LCP
+const PAGED_LIMIT = 40; // Лимит для постраничной витрины (infinite scroll)
 const CACHE_TTL = 5 * 60 * 1000; // 5 минут кэш
 
 // Простой кэш для продуктов
@@ -18,6 +19,198 @@ let productsCache: {
   timestamp: number;
 } | null = null;
 let productsInFlight: Promise<void> | null = null;
+
+// Кэш + дедуп для витрины с серверной пагинацией (НЕ грузим весь каталог)
+let pagedCache: {
+  raw: any[];
+  offset: number;
+  hasMore: boolean;
+  timestamp: number;
+} | null = null;
+let pagedInFlight: Promise<void> | null = null;
+let pagedLoadMoreInFlight: Promise<void> | null = null;
+
+/**
+ * Витрина (главная): постраничная загрузка с API (infinite scroll).
+ * Важно: НЕ выкачивает весь каталог, чтобы не убивать API и не держать мегабайты в памяти.
+ */
+export const useProductsPaged = () => {
+  const [raw, setRaw] = useState<any[]>([]);
+  const [primaryProducts, setPrimaryProducts] = useState<Product[]>([]);
+  const [variantProducts, setVariantProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [offset, setOffset] = useState<number>(0);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+
+  const hydrateFromRaw = useCallback((items: any[]) => {
+    const { primaryProducts: primary, variantProducts: variants } =
+      splitProductsIntoPrimaryAndVariants(items);
+    setPrimaryProducts(primary);
+    setVariantProducts(variants);
+  }, []);
+
+  const fetchFirstPage = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const now = Date.now();
+      if (pagedCache && (now - pagedCache.timestamp) < CACHE_TTL) {
+        setRaw(pagedCache.raw);
+        hydrateFromRaw(pagedCache.raw);
+        setOffset(pagedCache.offset);
+        setHasMore(pagedCache.hasMore);
+        setLoading(false);
+        return;
+      }
+
+      if (pagedInFlight) {
+        await pagedInFlight;
+        if (pagedCache) {
+          setRaw(pagedCache.raw);
+          hydrateFromRaw(pagedCache.raw);
+          setOffset(pagedCache.offset);
+          setHasMore(pagedCache.hasMore);
+        }
+        setLoading(false);
+        return;
+      }
+
+      const run = async () => {
+        const response = await shopAPI.getProducts({ limit: FIRST_PAGE_LIMIT, offset: 0 });
+        const data = response.data || [];
+        const nextOffset = data.length;
+        // Некоторые бэки игнорируют limit и отдают меньше, но страниц ещё много.
+        // Поэтому не режем hasMore по "=== limit" на первой странице.
+        const nextHasMore = data.length > 0;
+
+        pagedCache = {
+          raw: data,
+          offset: nextOffset,
+          hasMore: nextHasMore,
+          timestamp: Date.now(),
+        };
+
+        setRaw(data);
+        hydrateFromRaw(data);
+        setOffset(nextOffset);
+        setHasMore(nextHasMore);
+      };
+
+      pagedInFlight = run();
+      await pagedInFlight;
+      pagedInFlight = null;
+    } catch (error) {
+      pagedInFlight = null;
+      const appError = handleApiError(error);
+      const errorMessage =
+        getUserFriendlyMessage(appError) || i18n.t("common.errors.productsLoad");
+      setError(errorMessage);
+      logger.errorWithContext(appError, { context: "useProductsPaged.fetchFirstPage" });
+    } finally {
+      setLoading(false);
+    }
+  }, [hydrateFromRaw]);
+
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (pagedLoadMoreInFlight) {
+        await pagedLoadMoreInFlight;
+        return;
+      }
+
+      const run = async () => {
+        const response = await shopAPI.getProducts({ limit: PAGED_LIMIT, offset });
+        const data = response.data || [];
+        const nextOffset = offset + data.length;
+
+        // Дедуп на всякий случай (API может отдавать повторно)
+        const existingKeys = new Set(
+          raw.map((it: any) => `${it?.product_id || it?.id || ""}_${it?.variant_id || it?.variantId || ""}`)
+        );
+        const merged = raw.slice();
+        for (const item of data) {
+          const key = `${item?.product_id || item?.id || ""}_${item?.variant_id || item?.variantId || ""}`;
+          if (!existingKeys.has(key)) {
+            existingKeys.add(key);
+            merged.push(item);
+          }
+        }
+        const grew = merged.length > raw.length;
+        // "hasMore" продолжаем, пока сервер возвращает хоть что-то и список реально растёт.
+        // Это устойчиво к бэкам, которые:
+        // - игнорируют limit
+        // - иногда возвращают дубликаты
+        const nextHasMore = data.length > 0 && grew;
+
+        pagedCache = {
+          raw: merged,
+          offset: nextOffset,
+          hasMore: nextHasMore,
+          timestamp: Date.now(),
+        };
+
+        setRaw(merged);
+        hydrateFromRaw(merged);
+        setOffset(nextOffset);
+        setHasMore(nextHasMore);
+      };
+
+      pagedLoadMoreInFlight = run();
+      await pagedLoadMoreInFlight;
+      pagedLoadMoreInFlight = null;
+    } catch (error) {
+      pagedLoadMoreInFlight = null;
+      const appError = handleApiError(error);
+      const errorMessage =
+        getUserFriendlyMessage(appError) || i18n.t("common.errors.productsLoad");
+      setError(errorMessage);
+      logger.errorWithContext(appError, { context: "useProductsPaged.loadMore" });
+    } finally {
+      setLoading(false);
+    }
+  }, [hasMore, hydrateFromRaw, loading, offset, raw]);
+
+  const refetch = useCallback(() => {
+    pagedCache = null;
+    pagedInFlight = null;
+    pagedLoadMoreInFlight = null;
+    setRaw([]);
+    setOffset(0);
+    setHasMore(true);
+    fetchFirstPage();
+  }, [fetchFirstPage]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchFirstPage().finally(() => {
+      if (cancelled) return;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchFirstPage]);
+
+  const products = useMemo(() => {
+    const total = primaryProducts.length + variantProducts.length;
+    return buildDisplayProducts(primaryProducts, variantProducts, total);
+  }, [primaryProducts, variantProducts]);
+
+  return {
+    products,
+    loading,
+    error,
+    refetch,
+    hasMore,
+    loadMore,
+  };
+};
 
 export const useProducts = () => {
   const [primaryProducts, setPrimaryProducts] = useState<Product[]>([]);
@@ -128,26 +321,8 @@ export const useProducts = () => {
   const hasMore = useMemo(() => {
     const total = primaryProducts.length + variantProducts.length;
     const value = displayedCount < total;
-    console.log("[useProducts] hasMore calc", {
-      displayedCount,
-      total,
-      primary: primaryProducts.length,
-      variants: variantProducts.length,
-      value
-    });
     return value;
   }, [displayedCount, primaryProducts.length, variantProducts.length]);
-
-  useEffect(() => {
-    console.log("[useProducts] state", {
-      displayedCount,
-      products: primaryProducts.length + variantProducts.length,
-      primary: primaryProducts.length,
-      variants: variantProducts.length,
-      hasMore,
-      loading,
-    });
-  }, [displayedCount, primaryProducts.length, variantProducts.length, hasMore, loading]);
 
   // Загрузить следующую порцию - мемоизировано
   const loadMore = useCallback(() => {
@@ -156,14 +331,7 @@ export const useProducts = () => {
         displayedCount + ITEMS_PER_PAGE,
         primaryProducts.length + variantProducts.length
       );
-      console.log("[useProducts] loadMore", {
-        from: displayedCount,
-        to: next,
-        total: primaryProducts.length + variantProducts.length,
-      });
       setDisplayedCount(next);
-    } else {
-      console.log("[useProducts] loadMore skipped", { hasMore, loading });
     }
   }, [hasMore, loading, displayedCount, primaryProducts.length, variantProducts.length]);
 

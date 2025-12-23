@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import i18n from "../i18n";
-import { shopAPI } from "../api";
+import { shopAPI } from "../services/api";
 import { Category } from "../types";
 import { logger } from "../utils/logger";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
@@ -83,7 +83,7 @@ export const useCategoryById = (categoryId: string | undefined) => {
       // Если это ошибка 500 или 404, пытаемся получить базовую информацию из списка категорий
       if (appError.status === 500 || appError.status === 404) {
         // Позволяем компоненту работать без полной информации о категории
-        console.warn(`Category ${categoryId} not found or server error, continuing without category details`);
+        logger.warn?.("Category not found or server error, continuing without category details", { categoryId, status: appError.status });
       }
     } finally {
       setLoading(false);

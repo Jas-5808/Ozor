@@ -5,7 +5,7 @@ import {
   useContext,
   ReactNode,
 } from "react";
-import { authAPI, userAPI } from "../api";
+import { authAPI, userAPI } from "../services/api";
 import i18n from "../i18n";
 
 interface User {
@@ -87,18 +87,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => { cancelled = true; };
   }, []);
   const signin = async (phone: string, password: string) => {
-    console.log("=== useAuth.signin DEBUG ===");
-    console.log("Received parameters:", { 
-      phone: phone, 
-      password: password ? "***" : undefined,
-      phoneType: typeof phone,
-      passwordType: typeof password
-    });
-    
     try {
       setLoading(true);
       setError(null);
-      console.log("Calling authAPI.signin with params:", { phone, password: password ? "***" : undefined });
       const response = await authAPI.signin(phone, password);
       const { access_token, refresh_token } = response.data;
       localStorage.setItem("access_token", access_token);

@@ -1,247 +1,82 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import apiClient from "../services/api";
+import type { Slide } from "./SimpleSliderHeavy";
 
-interface Slide {
-  id: string;
-  title: string;
-  subtitle: string;
-  image: string;
-  link: string;
-}
+const BANNERS_CACHE_KEY = "ozar:banners:v1";
+const BANNERS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
-const fallbackSlides: Slide[] = [];
-const SLIDE_WIDTH_PERCENT = 94; // ширина одного слайда, чтобы по 3% оставалось видно соседей
-const SLIDE_GAP_PERCENT = 1;    // зазор между слайдами
-
-const getBannerBase = () => {
-  // Всегда используем lab-домен как базу для баннеров
-  return "https://lab.ozar.uz/media/banners/";
-};
+const getBannerBase = () => "https://lab.ozar.uz/media/banners/";
 
 const normalizeBannerUrl = (url: string): string => {
   if (!url) return "";
   const base = getBannerBase();
-  // Берем только путь после /media/banners/
   const match = url.match(/\/media\/banners\/(.+)$/);
   const path = match ? match[1] : url;
-  // Если уже абсолютный и совпадает с base — возвращаем как есть
   if (url.startsWith(base)) return url;
-  // Если уже https://ozar.uz/media/banners/... или https://lab.ozar.uz/media/banners/...
   if (/https?:\/\/(ozar\.uz|lab\.ozar\.uz)\/media\/banners\//.test(url)) {
     return `${base}${path}`;
   }
-  // Если относительный путь (products/banners/...), тоже склеиваем
   return `${base}${path}`;
 };
-/*
-  {
-    id: "1",
-    title: "",
-    subtitle: "",
-    image: "https://lab.ozar.uz/media/banners/ChatGPT_Image_18_%D0%B4%D0%B5%D0%BA._2025_%D0%B3._13_31_57.png",
-    link: "#",
-  },
-  {
-    id: "2",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d34iind2llnd6jumo8kg/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "3",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d30hgn7iub35i07kcma0/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "4",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d1h3q78s9rffrfkvbhk0/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "5",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d34jpk7iub35i07lfu50/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "6",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d2tdblj4eu2hs07rovpg/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "7",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d34ehtb4eu2up0aukimg/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "8",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d34el1fiub35i07ldid0/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "9",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d34kv5viub35i07lght0/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "10",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d34f19t2llnd6jummkfg/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "11",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d34i4qr4eu2up0aum370/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "12",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d28amrt2lln1rmfjdk8g/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "13",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d34j3kfiub35i07lfih0/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "14",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d34khnfiub35i07lgbd0/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "15",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d2vqva52llnd6julfnmg/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "16",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d0cs0m0jsv1iusmhoq30/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "17",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d34k38r4eu2up0aun5f0/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "18",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d34kc4t2llnd6jump73g/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "19",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d2mq5hl2llnd6juj88b0/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "20",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d1id8sniub335orlvp1g/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "21",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d2864352lln1rmfjb1gg/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "22",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d34f6152llnd6jummm5g/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "23",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d2vq7at2llnd6julfjcg/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "24",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d34i36b4eu2up0aum240/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "25",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d2vr0sl2llnd6julfo1g/main_page_banner.jpg",
-    link: "#",
-  },
-  {
-    id: "26",
-    title: "",
-    subtitle: "",
-    image: "https://images.uzum.uz/d18fmsq7s4fup34aaj40/main_page_banner.jpg",
-    link: "#",
-  },
-];
-*/
 
+function readCachedSlides(): Slide[] {
+  try {
+    const raw = localStorage.getItem(BANNERS_CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return [];
+    if (typeof parsed.time !== "number" || !Array.isArray(parsed.slides)) return [];
+    if (Date.now() - parsed.time > BANNERS_CACHE_TTL) return [];
+    return parsed.slides as Slide[];
+  } catch {
+    return [];
+  }
+}
+
+function writeCachedSlides(slides: Slide[]) {
+  try {
+    localStorage.setItem(BANNERS_CACHE_KEY, JSON.stringify({ time: Date.now(), slides }));
+  } catch {
+    // ignore
+  }
+}
+
+function preloadImage(url: string) {
+  if (!url || typeof document === "undefined") return;
+  const link = document.createElement("link");
+  link.rel = "preload";
+  link.as = "image";
+  link.href = url;
+  link.setAttribute("fetchpriority", "high");
+  document.head.appendChild(link);
+  const img = new Image();
+  img.src = url;
+}
+
+/**
+ * Lite wrapper: быстро показывает 1-й баннер для LCP,
+ * а тяжелую карусель догружает после первого рендера.
+ */
 export const SimpleSlider: React.FC = () => {
   const { t } = useTranslation();
-  const [remoteSlides, setRemoteSlides] = useState<Slide[]>([]);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [mobileSlideIndex, setMobileSlideIndex] = useState(1); // Начинаем с 1, т.к. первый слайд - дубликат
-  const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
-  const [allImagesLoaded, setAllImagesLoaded] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(true);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState(0);
-  const sliderRef = useRef<HTMLDivElement>(null);
-  const touchStartX = useRef<number>(0);
-  const touchEndX = useRef<number>(0);
-  const wasSwiped = useRef<boolean>(false);
+  const [slides, setSlides] = useState<Slide[]>([]);
+  const [Heavy, setHeavy] = useState<React.ComponentType<{ initialSlides?: Slide[] }> | null>(null);
 
-  // Для мобильной версии создаем массив с дубликатами: последний + все слайды + первый
   useEffect(() => {
+    // 1) Пытаемся показать кэш сразу (ускоряет LCP)
+    const cached = readCachedSlides();
+    if (cached.length > 0) {
+      setSlides(cached);
+      preloadImage(cached[0]?.image);
+    }
+
+    // 2) Обновляем баннеры с API
     const controller = new AbortController();
     const load = async () => {
       try {
         const res = await apiClient.get("/marketing/banners", { signal: controller.signal });
-        const results = res?.data?.results;
+        const results = (res as any)?.data?.results;
         if (Array.isArray(results) && results.length > 0) {
           const mapped: Slide[] = results
             .sort((a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0))
@@ -253,349 +88,70 @@ export const SimpleSlider: React.FC = () => {
               link: b?.link || "#",
             }))
             .filter((s) => s.image);
-          if (mapped.length > 0) setRemoteSlides(mapped);
+          if (mapped.length > 0) {
+            setSlides(mapped);
+            writeCachedSlides(mapped);
+            preloadImage(mapped[0]?.image);
+          }
         }
       } catch {
-        // fallback to static slides silently
+        // silent
       }
     };
     load();
-    return () => controller.abort();
-  }, []);
 
-  const slides = remoteSlides;
+    // 3) Догружаем heavy-карусель после idle (уменьшает стартовый JS)
+    const idle = (cb: () => void) => {
+      const ric = (window as any)?.requestIdleCallback;
+      if (typeof ric === "function") {
+        return ric(cb, { timeout: 1500 });
+      }
+      return window.setTimeout(cb, 400);
+    };
 
-  const infiniteSlides = useMemo(() => {
-    if (slides.length === 0) return [];
-    return [slides[slides.length - 1], ...slides, slides[0]];
-  }, [slides]);
-
-  // Обработка перехода в начало/конец для мобильной версии
-  useEffect(() => {
-    if (!sliderRef.current || infiniteSlides.length === 0) return;
-    
-    if (mobileSlideIndex === 0) {
-      // Достигли начала (дубликат последнего), мгновенно переходим к предпоследнему (реальный последний)
-      setTimeout(() => {
-        setIsTransitioning(false);
-        setMobileSlideIndex(infiniteSlides.length - 2);
-        setTimeout(() => setIsTransitioning(true), 50);
-      }, 500);
-    } else if (mobileSlideIndex === infiniteSlides.length - 1) {
-      // Достигли конца (дубликат первого), мгновенно переходим ко второму (реальный первый)
-      setTimeout(() => {
-        setIsTransitioning(false);
-        setMobileSlideIndex(1);
-        setTimeout(() => setIsTransitioning(true), 50);
-      }, 500);
-    }
-  }, [mobileSlideIndex, infiniteSlides.length]);
-
-  useEffect(() => {
-    if (!slides || slides.length === 0) return;
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-      // Для мобильной версии - просто увеличиваем индекс, переход обработается в useEffect выше
-      setMobileSlideIndex((prev) => prev + 1);
-    }, 4000); // Автопрокрутка каждые 4 секунды
-
-    return () => clearInterval(interval);
-  }, [slides]);
-
-  // Оптимизированная загрузка изображений - только первое и следующие 2 для предзагрузки
-  useEffect(() => {
-    if (!slides || slides.length === 0) {
-      setAllImagesLoaded(true);
-      return;
-    }
-
-    setAllImagesLoaded(false);
-
-    // Загружаем только первое изображение и следующие 2 для предзагрузки
-    const imagesToPreload = [0, 1, 2].filter(i => i < slides.length);
-    
-    const imagePromises = imagesToPreload.map((index) => {
-      const slide = slides[index];
-      return new Promise<void>((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          setLoadingImages((prev) => {
-            const newSet = new Set(prev);
-            newSet.delete(slide.id);
-            return newSet;
-          });
-          resolve();
-        };
-        img.onerror = () => {
-          setLoadingImages((prev) => {
-            const newSet = new Set(prev);
-            newSet.delete(slide.id);
-            return newSet;
-          });
-          resolve();
-        };
-        img.src = slide.image;
+    const idleId = idle(() => {
+      import("./SimpleSliderHeavy").then((m) => {
+        setHeavy(() => m.default as any);
       });
     });
 
-    // Инициализируем состояние загрузки только для предзагружаемых изображений
-    setLoadingImages(new Set(imagesToPreload.map(i => slides[i].id)));
-
-    Promise.all(imagePromises).then(() => {
-      setAllImagesLoaded(true);
-    });
-  }, [slides]);
-
-  const goToSlide = (index: number) => {
-    setCurrentSlide(index);
-    // Для мобильной версии: добавляем 1, т.к. первый слайд - дубликат
-    setMobileSlideIndex(index + 1);
-  };
-
-  // Обработчики свайпа для мобильной версии
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchEndX.current = e.touches[0].clientX;
-    wasSwiped.current = false;
-    setIsDragging(true);
-    setIsTransitioning(false);
-    setDragOffset(0);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
-    e.preventDefault(); // Предотвращаем прокрутку страницы и клики по ссылкам
-    const currentX = e.touches[0].clientX;
-    const offset = currentX - touchStartX.current;
-    setDragOffset(offset);
-    
-    // Если движение превышает 10px, считаем это свайпом
-    if (Math.abs(offset) > 10) {
-      wasSwiped.current = true;
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!isDragging) return;
-    touchEndX.current = e.changedTouches[0].clientX;
-    setIsDragging(false);
-    
-    const minSwipeDistance = 50; // Минимальное расстояние для свайпа
-    const diff = touchEndX.current - touchStartX.current;
-
-    if (Math.abs(diff) > minSwipeDistance) {
-      wasSwiped.current = true;
-      if (diff > 0) {
-        // Свайп вправо - предыдущий слайд
-        setMobileSlideIndex((prev) => prev - 1);
-        setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-      } else {
-        // Свайп влево - следующий слайд
-        setMobileSlideIndex((prev) => prev + 1);
-        setCurrentSlide((prev) => (prev + 1) % slides.length);
+    return () => {
+      controller.abort();
+      if (typeof idleId === "number") {
+        clearTimeout(idleId);
+      } else if (typeof (window as any)?.cancelIdleCallback === "function") {
+        (window as any).cancelIdleCallback(idleId);
       }
-    }
-    
-    setIsTransitioning(true);
-    setDragOffset(0);
-    
-    // Небольшая задержка перед разрешением кликов, если был свайп
-    if (wasSwiped.current) {
-      setTimeout(() => {
-        wasSwiped.current = false;
-      }, 300);
-    }
-  };
+    };
+  }, []);
 
-  const handleLinkClick = (e: React.MouseEvent) => {
-    if (wasSwiped.current || isDragging) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  };
+  const first = useMemo(() => slides?.[0] || null, [slides]);
+
+  if (Heavy) {
+    return <Heavy initialSlides={slides} />;
+  }
+
+  if (!first) return null;
 
   return (
-    <div className="relative w-full aspect-[16/9] rounded-2xl shadow-2xl md:overflow-hidden" style={{ minHeight: '192px', maxHeight: '500px' }}>
-      {/* Индикатор загрузки */}
-      {!allImagesLoaded && (
-        <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10">
-          <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="mt-4 text-gray-600 font-medium">
-            Загрузка изображений...
-          </p>
-        </div>
-      )}
-
-      {/* Мобильная версия с горизонтальной прокруткой (бесконечный слайдер) */}
-      <div 
-        className="md:hidden relative w-full h-full overflow-visible touch-pan-y"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <div className="relative w-full h-full px-0 sm:px-[1%] overflow-hidden sm:overflow-visible">
-          <div
-            ref={sliderRef}
-            className="flex h-full"
-            style={{
-              gap: `${SLIDE_GAP_PERCENT}%`,
-              transform: isDragging 
-                ? `translateX(${-mobileSlideIndex * (SLIDE_WIDTH_PERCENT + SLIDE_GAP_PERCENT) + (dragOffset / (sliderRef.current?.offsetWidth || 1)) * 100}%)`
-                : `translateX(-${mobileSlideIndex * (SLIDE_WIDTH_PERCENT + SLIDE_GAP_PERCENT)}%)`,
-              transition: isTransitioning && !isDragging ? 'transform 500ms ease-out' : 'none',
-            }}
-          >
-            {infiniteSlides.map((slide, index) => (
-              <div
-                key={`${slide.id}-${index}`}
-                className="flex-shrink-0 h-full px-0 sm:px-[1%]"
-                style={{
-                  flexBasis: `${SLIDE_WIDTH_PERCENT}%`,
-                  maxWidth: `${SLIDE_WIDTH_PERCENT}%`,
-                }}
-              >
-              <a
-                href={slide.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full h-full"
-                onClick={handleLinkClick}
-                onTouchStart={(e) => {
-                  // Предотвращаем клик, если началось перетаскивание
-                  if (isDragging) {
-                    e.preventDefault();
-                  }
-                }}
-              >
-                <div className="relative w-full h-full overflow-hidden rounded-2xl">
-                  <img
-                    src={slide.image}
-                    alt={t("slider.bannerAlt")}
-                    className="w-full h-full object-cover"
-                    loading={index === 0 ? "eager" : "lazy"}
-                    fetchPriority={index === 0 ? "high" : "low"}
-                    decoding="async"
-                    style={{
-                      opacity: loadingImages.has(slide.id) ? 0.3 : 1,
-                      transition: "opacity 0.3s ease",
-                    }}
-                  />
-                  {loadingImages.has(slide.id) && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/50">
-                      <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-                    </div>
-                  )}
-                  {/* Gradient overlay for better text readability */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
-                </div>
-              </a>
-            </div>
-          ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Десктопная версия с fade-эффектом */}
-      <div className="hidden md:block relative w-full h-full">
-        {slides.map((slide, index) => (
-          <div
-            key={slide.id}
-            className={`absolute inset-0 w-full h-full transition-opacity duration-700 ease-in-out ${
-              index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
-            }`}
-          >
-            <a
-              href={slide.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full h-full"
-            >
-              <div className="relative w-full h-full overflow-hidden rounded-2xl">
-                <img
-                  src={slide.image}
-                  alt={t("slider.bannerAlt")}
-                  className="w-full h-full object-cover"
-                  loading={index === 0 ? "eager" : "lazy"}
-                  fetchPriority={index === 0 ? "high" : "low"}
-                  decoding="async"
-                  style={{
-                    opacity: loadingImages.has(slide.id) ? 0.3 : 1,
-                    transition: "opacity 0.3s ease",
-                  }}
-                />
-                {loadingImages.has(slide.id) && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/50">
-                    <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-                  </div>
-                )}
-                {/* Gradient overlay for better text readability */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
-              </div>
-            </a>
-          </div>
-        ))}
-      </div>
-
-      {/* Индикаторы */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-        {slides.map((_, index) => (
-          <button
-            key={index}
-            className={`w-2 h-2 rounded-full transition-all duration-300 ${
-              index === currentSlide
-                ? "bg-white shadow-lg scale-125"
-                : "bg-white/50"
-            }`}
-            onClick={() => goToSlide(index)}
-            aria-label={t("slider.goTo", { index: index + 1 })}
-          />
-        ))}
-      </div>
-
-      {/* Navigation arrows - только для десктопной версии */}
-      <button
-        className="hidden md:flex absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full items-center justify-center text-white transition-all duration-200 opacity-100 z-20"
-        onClick={() =>
-          goToSlide((currentSlide - 1 + slides.length) % slides.length)
-        }
-        aria-label={t("slider.prev")}
-      >
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 19l-7-7 7-7"
-          />
-        </svg>
-      </button>
-
-      <button
-        className="hidden md:flex absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full items-center justify-center text-white transition-all duration-200 opacity-100 z-20"
-        onClick={() => goToSlide((currentSlide + 1) % slides.length)}
-        aria-label={t("slider.next")}
-      >
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5l7 7-7 7"
-          />
-        </svg>
-      </button>
+    <div
+      className="relative w-full aspect-[16/9] rounded-2xl shadow-2xl md:overflow-hidden"
+      style={{ minHeight: "192px", maxHeight: "500px" }}
+    >
+      <a href={first.link} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+        <img
+          src={first.image}
+          alt={t("slider.bannerAlt")}
+          className="w-full h-full object-cover rounded-2xl"
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+        />
+      </a>
     </div>
   );
 };
 
 export default SimpleSlider;
+
+

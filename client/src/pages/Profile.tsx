@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../hooks/useAuth";
 import { shopAPI, paymentAPI } from "../services/api";
-import { useProducts } from "../hooks/useProducts";
-import cn from "./profile.module.scss";
+import { useProductsPaged } from "../hooks/useProducts";
+// Полностью переводим страницу профиля на Tailwind (без SCSS-модуля)
 import { formatPrice, getProductImageUrl, getVariantMainImage, shortenUrl } from "../utils/helpers";
 import { logger } from "../utils/logger";
 import { useFlows } from "../hooks/useFlows";
@@ -34,12 +34,25 @@ export function Profile() {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const debouncedSearchQuery = useDebounce(marketSearchQuery, 300);
   const searchInputRef = useRef<HTMLDivElement>(null);
+  // Базовая витрина (постранично), чтобы не тянуть весь каталог в Profile
   const {
-    products,
-    loading: productsLoading,
-    error: productsError,
-  } = useProducts();
+    products: baseProducts,
+    loading: baseProductsLoading,
+    error: baseProductsError,
+    hasMore: baseHasMore,
+    loadMore: baseLoadMore,
+    refetch: baseRefetch,
+  } = useProductsPaged();
   const { flows, removeFlow, clearFlows } = useFlows();
+
+  // Режим поиска в Market (серверный поиск + пагинация)
+  const [marketSearchRaw, setMarketSearchRaw] = useState<any[]>([]);
+  const [marketSearchOffset, setMarketSearchOffset] = useState(0);
+  const [marketSearchHasMore, setMarketSearchHasMore] = useState(true);
+  const [marketSearchLoading, setMarketSearchLoading] = useState(false);
+  const [marketSearchError, setMarketSearchError] = useState<string | null>(null);
+  const MARKET_SEARCH_LIMIT = 40;
+  const isMarketSearchMode = debouncedSearchQuery.trim().length >= 2;
   
   // Состояния для раздела платежей
   const [withdrawalAmount, setWithdrawalAmount] = useState<string>("");
@@ -331,22 +344,25 @@ export function Profile() {
     }));
   }, [referralStats]);
 
-  // Состояние для пагинации в Market
-  const [marketDisplayedCount, setMarketDisplayedCount] = useState<number>(12);
-  const MARKET_ITEMS_PER_PAGE = 12;
+  const marketSourceProducts = useMemo(() => {
+    return isMarketSearchMode ? marketSearchRaw : baseProducts;
+  }, [isMarketSearchMode, marketSearchRaw, baseProducts]);
 
-  // Фильтрация и сортировка продуктов для Market
+  // Фильтрация и сортировка продуктов для Market (поверх текущего источника)
   const filteredAndSortedProducts = useMemo(() => {
     // Фильтрация по поисковому запросу
-    const filtered = products.filter((p: any) => {
+    const filtered = marketSourceProducts.filter((p: any) => {
       // Не показываем товары с нулевым доходом
       if (!p.refferal_price || Number(p.refferal_price) <= 0) return false;
+
+      // Если включён серверный поиск — здесь уже "подборка", доп. фильтр не нужен
+      if (isMarketSearchMode) return true;
 
       if (!marketSearchQuery.trim()) return true;
       const query = marketSearchQuery.toLowerCase().trim();
       const productName = (p.product_name || "").toLowerCase();
-      const categoryName = typeof p.category === "string" 
-        ? p.category.toLowerCase() 
+      const categoryName = typeof p.category === "string"
+        ? p.category.toLowerCase()
         : (p.category?.name || "").toLowerCase();
       const sku = (p.variant_sku || "").toLowerCase();
       return productName.includes(query) || categoryName.includes(query) || sku.includes(query);
@@ -373,27 +389,18 @@ export function Profile() {
     });
 
     return sorted;
-  }, [products, marketSearchQuery, marketSortBy]);
+  }, [marketSourceProducts, marketSearchQuery, marketSortBy, isMarketSearchMode]);
 
-  // Отображаемые продукты с пагинацией
-  const displayedMarketProducts = useMemo(() => {
-    return filteredAndSortedProducts.slice(0, marketDisplayedCount);
-  }, [filteredAndSortedProducts, marketDisplayedCount]);
-
-  // Есть ли еще продукты для загрузки в Market
-  const marketHasMore = marketDisplayedCount < filteredAndSortedProducts.length;
-
-  // Загрузить следующую порцию в Market
+  const marketHasMore = isMarketSearchMode ? marketSearchHasMore : baseHasMore;
+  const marketLoading = isMarketSearchMode ? marketSearchLoading : baseProductsLoading;
+  const marketError = isMarketSearchMode ? marketSearchError : baseProductsError;
   const loadMoreMarket = () => {
-    if (marketHasMore && !productsLoading) {
-      setMarketDisplayedCount(prev => Math.min(prev + MARKET_ITEMS_PER_PAGE, filteredAndSortedProducts.length));
+    if (isMarketSearchMode) {
+      void loadMoreMarketSearch();
+    } else {
+      void baseLoadMore();
     }
   };
-
-  // Сброс счетчика при изменении поиска или сортировки
-  useEffect(() => {
-    setMarketDisplayedCount(MARKET_ITEMS_PER_PAGE);
-  }, [marketSearchQuery, marketSortBy]);
 
   // Закрытие подсказок при клике вне компонента
   useEffect(() => {
@@ -452,10 +459,85 @@ export function Profile() {
     fetchSuggestions();
   }, [debouncedSearchQuery]);
 
-  // Хук для бесконечной прокрутки в Market
+  // Серверный поиск Market (первая страница)
+  useEffect(() => {
+    let cancelled = false;
+    const q = debouncedSearchQuery.trim();
+
+    const run = async () => {
+      if (q.length < 2) {
+        setMarketSearchRaw([]);
+        setMarketSearchOffset(0);
+        setMarketSearchHasMore(true);
+        setMarketSearchError(null);
+        setMarketSearchLoading(false);
+        return;
+      }
+
+      setMarketSearchLoading(true);
+      setMarketSearchError(null);
+      setMarketSearchOffset(0);
+      setMarketSearchHasMore(true);
+
+      try {
+        const response = await shopAPI.searchProducts(q, { offset: 0, limit: MARKET_SEARCH_LIMIT });
+        const raw = (response as any)?.data;
+        const data: any[] = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
+        if (cancelled) return;
+        setMarketSearchRaw(data);
+        setMarketSearchOffset(data.length);
+        setMarketSearchHasMore(data.length === MARKET_SEARCH_LIMIT);
+      } catch (e: any) {
+        if (cancelled) return;
+        setMarketSearchError(e?.response?.data?.message || e?.message || t("search.error"));
+        setMarketSearchRaw([]);
+        setMarketSearchHasMore(false);
+      } finally {
+        if (!cancelled) setMarketSearchLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [MARKET_SEARCH_LIMIT, debouncedSearchQuery, t]);
+
+  const loadMoreMarketSearch = async () => {
+    const q = debouncedSearchQuery.trim();
+    if (marketSearchLoading || !marketSearchHasMore || q.length < 2) return;
+    setMarketSearchLoading(true);
+    setMarketSearchError(null);
+    try {
+      const response = await shopAPI.searchProducts(q, { offset: marketSearchOffset, limit: MARKET_SEARCH_LIMIT });
+      const raw = (response as any)?.data;
+      const data: any[] = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
+
+      const existing = new Set(
+        marketSearchRaw.map((it: any) => `${it?.product_id || it?.id || ""}_${it?.variant_id || it?.variantId || ""}`)
+      );
+      const merged = marketSearchRaw.slice();
+      for (const item of data) {
+        const key = `${item?.product_id || item?.id || ""}_${item?.variant_id || item?.variantId || ""}`;
+        if (!existing.has(key)) {
+          existing.add(key);
+          merged.push(item);
+        }
+      }
+      setMarketSearchRaw(merged);
+      setMarketSearchOffset(marketSearchOffset + data.length);
+      setMarketSearchHasMore(data.length === MARKET_SEARCH_LIMIT);
+    } catch (e: any) {
+      setMarketSearchError(e?.response?.data?.message || e?.message || t("search.error"));
+    } finally {
+      setMarketSearchLoading(false);
+    }
+  };
+
+  // Хук для бесконечной прокрутки в Market (серверная пагинация)
   const { ref: marketSentinelRef } = useInfiniteScroll({
     hasMore: marketHasMore,
-    loading: productsLoading,
+    loading: marketLoading,
     onLoadMore: loadMoreMarket,
     threshold: 200,
   });
@@ -472,7 +554,7 @@ export function Profile() {
 
   return (
     <div className="min-h-screen bg-[#f4f7f9] pb-28">
-      <div className={`mx-auto w-full max-w-[1240px] px-4 sm:px-5 md:px-6 text-gray-800 ${cn.profileWrapper}`}>
+      <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-5 md:px-6 text-gray-800">
         <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-r from-[#003d32] via-[#015a41] to-[#04734b] px-6 py-7 text-white shadow-[0_25px_70px_rgba(0,61,50,0.35)]">
           <div
             className="pointer-events-none absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.5),_transparent_55%)]"
@@ -679,17 +761,17 @@ export function Profile() {
               </div>
             </div>
             
-            {productsLoading && (
+            {marketLoading && (
               <div className="rounded-2xl border border-dashed border-slate-200 p-6">
                 <SkeletonGrid count={8} columns={4} />
               </div>
             )}
-            {productsError && (
+            {marketError && (
               <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                {t("profile.market.error", { message: String(productsError) })}
+                {t("profile.market.error", { message: String(marketError) })}
               </div>
             )}
-            {!productsLoading && !productsError && (
+            {!marketLoading && !marketError && (
               filteredAndSortedProducts.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
                   <p className="text-sm font-semibold text-slate-500">{t("profile.market.search.empty")}</p>
@@ -697,7 +779,7 @@ export function Profile() {
               ) : (
                 <>
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
-                    {displayedMarketProducts.map((p: any, index: number) => {
+                    {filteredAndSortedProducts.map((p: any, index: number) => {
                     const productId = p?.product_id || p?.id || p?.productId || "";
                     const referralValue = formatPrice(p.refferal_price || 0);
                     const priceValue = formatPrice(p.price || 0);
@@ -836,7 +918,7 @@ export function Profile() {
         )}
 
         {activeTab === "oqim" && (
-          <div className={`${cn.glass} ${cn.panel}`}>
+          <section className="mt-6 rounded-[30px] border border-white/80 bg-white p-4 sm:p-5 shadow-[0_25px_80px_rgba(15,23,42,0.05)]">
             {apiFlowsLoading && (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -890,7 +972,7 @@ export function Profile() {
                   return (
                     <div
                       key={r.id}
-                      className={`${cn.glass} ${cn.flowRow} p-3 sm:p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
+                      className="p-3 sm:p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]"
                       style={{ minHeight: 170 }}
                     >
                       <div className="flex flex-col gap-3 max-w-full">
@@ -1005,7 +1087,7 @@ export function Profile() {
                   return (
                     <div
                       key={f.id}
-                      className={`${cn.glass} ${cn.flowRow} p-3 sm:p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]`}
+                      className="p-3 sm:p-4 border border-gray-200 rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)]"
                       style={{ minHeight: 170 }}
                     >
                       <div className="flex flex-col gap-3 max-w-full">
@@ -1096,15 +1178,18 @@ export function Profile() {
                   );
                 })}
                 {flows.length > 0 && (
-                  <div className={`${cn.actions} sm:col-span-2 lg:col-span-3`}>
-                    <button className={`${cn.button} ${cn.secondary} ${cn.compact}`} onClick={clearFlows}>
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <button
+                      className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                      onClick={clearFlows}
+                    >
                       {t("profile.flows.clear")}
                     </button>
                   </div>
                 )}
               </div>
             )}
-          </div>
+          </section>
         )}
 
         {activeTab === "stats" && (
@@ -1367,34 +1452,31 @@ export function Profile() {
 
         {dialog.open && (
           <div
-            className={cn.dialogOverlay}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm"
             onClick={() => setDialog({ open: false })}
           >
             <div
-              className={`${cn.glass} ${cn.dialog}`}
+              className="w-full max-w-[520px] rounded-[32px] border border-white/20 bg-white p-6 shadow-[0_35px_80px_rgba(15,23,42,0.25)]"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className={cn.title} style={{ marginBottom: 8 }}>
-                {dialog.title}
-              </div>
-              <div className={cn.meta} style={{ marginBottom: 10 }}>
-                {t("profile.dialog.subtitle")}
-              </div>
+              <div className="text-lg font-black text-slate-900 mb-2">{dialog.title}</div>
+              <div className="text-sm text-slate-500 mb-3">{t("profile.dialog.subtitle")}</div>
               <input
                 readOnly
                 value={dialog.link || ""}
-                className={cn.copyInput}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none"
                 onFocus={(e) => e.currentTarget.select()}
               />
-              <div className={cn.actions}>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                 <button
-                  className={`${cn.button} ${cn.compact}`}
+                  className="flex-1 rounded-2xl py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(6,78,59,0.25)] transition hover:brightness-110"
+                  style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
                   onClick={() => dialog.link && handleCopy(dialog.link)}
                 >
                   {t("profile.dialog.copy")}
                 </button>
                 <button
-                  className={`${cn.button} ${cn.secondary} ${cn.compact}`}
+                  className="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
                   onClick={() => setDialog({ open: false })}
                 >
                   {t("profile.dialog.close")}

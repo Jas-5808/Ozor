@@ -3,8 +3,6 @@ import { Navigate, useLocation } from "react-router-dom";
 import App from "./App";
 import { ErrorPage } from "./pages/ErrorPage";
 import React, { Suspense, lazy } from 'react';
-import { AdminLayout } from './admin';
-import SaleLayout from './admin/SaleLayout';
 import AdminSkeleton from './admin/AdminSkeleton';
 import PageSkeleton from './components/PageSkeleton';
 
@@ -33,6 +31,8 @@ const AdminCategories = lazy(()=> import('./admin/pages/Categories'));
 const AdminBanners = lazy(()=> import('./admin/pages/Banners'));
 const AdminAudit = lazy(()=> import('./admin/pages/Audit'));
 const AdminPayments = lazy(()=> import('./admin/pages/Payments'));
+const AdminLayout = lazy(()=> import('./admin/AdminLayout'));
+const SaleLayout = lazy(()=> import('./admin/SaleLayout'));
 // other admin pages enabled
 import { useAuth } from './hooks/useAuth';
 import { userAPI } from './services/api';
@@ -40,7 +40,7 @@ import { userAPI } from './services/api';
 function RequireAuth({ children }){
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
-  if (loading) return null;
+  if (loading) return <PageSkeleton />;
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
@@ -87,7 +87,7 @@ function RequireRole({ children, roles }){
     return () => { ignore = true; };
   }, [isAuthenticated, loading, profile, fetching]);
 
-  if (loading) return null;
+  if (loading) return <PageSkeleton />;
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
 
   const normalized = (roleState || '').toLowerCase() === 'sale_operator'
@@ -95,7 +95,7 @@ function RequireRole({ children, roles }){
     : (roleState || '').toLowerCase();
   const allowed = Array.isArray(roles) ? roles.map(r => String(r).toLowerCase()) : [];
 
-  if (!roleState) return null; // ждём роль
+  if (!roleState) return <PageSkeleton />; // ждём роль
   if (!allowed.includes(normalized)) return <Navigate to="/" replace />;
   return children;
 }
@@ -131,7 +131,7 @@ export const router = createBrowserRouter([
         ) 
       },
       { 
-        path: "/product/:id", 
+        path: "product/:id", 
         element: (
           <Suspense fallback={<PageSkeleton />}>
             <Product />
@@ -222,7 +222,9 @@ export const router = createBrowserRouter([
     path: "/admin",
     element: (
       <RequireAuth>
-        <AdminLayout />
+        <Suspense fallback={<AdminSkeleton rows={10} />}>
+          <AdminLayout />
+        </Suspense>
       </RequireAuth>
     ),
     errorElement: <ErrorPage />,
@@ -245,7 +247,9 @@ export const router = createBrowserRouter([
     path: "/sale",
     element: (
       <RequireRole roles={["sale"]}>
-        <SaleLayout />
+        <Suspense fallback={<AdminSkeleton rows={10} />}>
+          <SaleLayout />
+        </Suspense>
       </RequireRole>
     ),
     errorElement: <ErrorPage />,

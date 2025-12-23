@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import cn from "./style.module.scss";
 import ProductCard from "../components/ui/ProductCard";
 import { useApp } from "../context/AppContext";
-import { useProducts } from "../hooks/useProducts";
+import { useProductsByIds } from "../hooks/useProductsByIds";
 import useSEO from "../hooks/useSEO";
 
 export function Favorites() {
@@ -15,17 +15,19 @@ export function Favorites() {
       typeof window !== "undefined" ? window.location.origin + "/favorites" : undefined,
   });
   const { state } = useApp();
-  const { products, loading, error, refetch } = useProducts();
 
   const likedIds = state.likedProducts;
-  const likedProducts = React.useMemo(() => {
-    if (!products || products.length === 0) return [];
-    return products.filter((p: any) => {
-      // Проверяем как по product_id, так и по уникальному идентификатору (product_id + variant_id)
-      const uniqueId = p.variant_id ? `${p.product_id}_${p.variant_id}` : p.product_id;
-      return likedIds.has(uniqueId) || likedIds.has(p.product_id);
+  const likedProductIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    likedIds.forEach((key) => {
+      const raw = String(key || "");
+      const productId = raw.includes("_") ? raw.split("_")[0] : raw;
+      if (productId) ids.add(productId);
     });
-  }, [products, likedIds]);
+    return Array.from(ids);
+  }, [likedIds]);
+
+  const { products: likedProducts, loading, error, refetch } = useProductsByIds(likedProductIds);
 
   if (loading) {
     return (

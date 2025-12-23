@@ -11,6 +11,8 @@ import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
 import { buildDisplayProducts, splitProductsIntoPrimaryAndVariants, transformProductFromApi } from "../utils/productUtils";
 
 const PAGE_SIZE = 20;
+const INITIAL_TARGET_ITEMS = 60; // сколько "сырых" items хотим быстро собрать до первого уверенного UX
+const MAX_CONCURRENT = 3; // чтобы не спамить API
 
 const adaptProductsFromCategory = (items: any[], categoryCtx?: { id?: string; name?: string }) => {
   return (items || []).map((item) => {
@@ -32,11 +34,14 @@ export function CategoryPage() {
   const { t } = useTranslation();
   const { category, loading: categoryLoading, error: categoryError } = useCategoryById(id);
   const { categories } = useCategories();
+  const [rawItems, setRawItems] = useState<any[]>([]);
   const [primaryProducts, setPrimaryProducts] = useState<Product[]>([]);
   const [variantProducts, setVariantProducts] = useState<Product[]>([]);
   const [displayedCount, setDisplayedCount] = useState<number>(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cursor, setCursor] = useState(0); // индекс следующей подкатегории для подгрузки
 
   useSEO({
     title: category ? `${category.name} — OZAR` : "Категория — OZAR",
@@ -54,6 +59,75 @@ export function CategoryPage() {
     return subcategories.map(s => s.id).sort().join(',');
   }, [subcategories]);
 
+  // Список categoryIds (текущая + все подкатегории)
+  const categoryIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (id) ids.add(id);
+    subcategories.forEach((sub) => ids.add(sub.id));
+    return Array.from(ids);
+  }, [id, subcategoriesKey]);
+
+  const mergeRawItems = useCallback((prev: any[], next: any[]) => {
+    const existing = new Set(
+      prev.map((it: any) => `${it?.product_id || it?.id || ""}_${it?.variant_id || it?.variantId || ""}`)
+    );
+    const merged = prev.slice();
+    for (const item of next) {
+      const key = `${item?.product_id || item?.id || ""}_${item?.variant_id || item?.variantId || ""}`;
+      if (!existing.has(key)) {
+        existing.add(key);
+        merged.push(item);
+      }
+    }
+    return merged;
+  }, []);
+
+  const syncDerivedProducts = useCallback((items: any[]) => {
+    const { primaryProducts: primary, variantProducts: variants } =
+      splitProductsIntoPrimaryAndVariants(items);
+    setPrimaryProducts(primary);
+    setVariantProducts(variants);
+  }, []);
+
+  const fetchNextCategories = useCallback(async (opts?: { minTotalRaw?: number }) => {
+    if (!id) return;
+    if (loadingMore) return;
+    if (cursor >= categoryIds.length) return;
+
+    setLoadingMore(true);
+    try {
+      let localCursor = cursor;
+      let localRaw = rawItems;
+
+      while (localCursor < categoryIds.length) {
+        const batch = categoryIds.slice(localCursor, localCursor + MAX_CONCURRENT);
+        const responses = await Promise.all(
+          batch.map((categoryId) =>
+            shopAPI
+              .getProductsByCategory(categoryId, { limit: 80, offset: 0 })
+              .then((r) => r.data || [])
+              .catch(() => [])
+          )
+        );
+
+        const flat = responses.flat();
+        localRaw = mergeRawItems(localRaw, flat);
+        localCursor += batch.length;
+
+        // если нам достаточно для UX — выходим раньше (остальное догрузим по скроллу)
+        if (opts?.minTotalRaw && localRaw.length >= opts.minTotalRaw) {
+          break;
+        }
+      }
+
+      setRawItems(localRaw);
+      syncDerivedProducts(localRaw);
+      setCursor(localCursor);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [categoryIds, cursor, id, loadingMore, mergeRawItems, rawItems, syncDerivedProducts]);
+
   useEffect(() => {
     let cancelled = false;
     
@@ -62,6 +136,16 @@ export function CategoryPage() {
         setLoading(false);
         return;
       }
+
+      // reset on id change
+      setError(null);
+      setLoading(true);
+      setLoadingMore(false);
+      setCursor(0);
+      setRawItems([]);
+      setPrimaryProducts([]);
+      setVariantProducts([]);
+      setDisplayedCount(PAGE_SIZE);
       
       if (categoryLoading && !category) {
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -73,6 +157,7 @@ export function CategoryPage() {
         const mapped = adaptProductsFromCategory(category.products as any[], { id: category.id, name: category.name });
         const { primaryProducts: primary, variantProducts: variants } = splitProductsIntoPrimaryAndVariants(mapped);
         if (!cancelled) {
+          setRawItems(mapped);
           setPrimaryProducts(primary);
           setVariantProducts(variants);
           setDisplayedCount(PAGE_SIZE);
@@ -81,74 +166,18 @@ export function CategoryPage() {
         return;
       }
       
-      // 2) Фоллбек: старый механизм загрузки товаров по категории и её подкатегориям
+      // 2) Фоллбек: прогрессивно собираем товары по текущей категории и подкатегориям
       try {
-        setLoading(true);
         setError(null);
-        
-        const collectedProducts: any[] = [];
-        const categoryIdsSet = new Set<string>([id]);
-
-        // Добавляем все вложенные подкатегории, чтобы категория показывала товары дочерних уровней
-        subcategories.forEach(sub => {
-          categoryIdsSet.add(sub.id);
-        });
-
-        const categoryIds = Array.from(categoryIdsSet);
-
-        const MAX_CONCURRENT = 5;
-        const allResponses: any[] = [];
-
-        for (let i = 0; i < categoryIds.length; i += MAX_CONCURRENT) {
-          const batch = categoryIds.slice(i, i + MAX_CONCURRENT);
-          const productPromises = batch.map(categoryId =>
-            shopAPI.getProductsByCategory(categoryId).catch(err => {
-              console.warn(`Failed to fetch products for category ${categoryId}:`, err);
-              return { data: [] };
-            })
-          );
-
-          const responses = await Promise.all(productPromises);
-          if (cancelled) return;
-
-          allResponses.push(...responses);
-        }
-
-        allResponses.forEach(response => {
-          const items = response.data || [];
-          if (Array.isArray(items)) {
-            collectedProducts.push(...items);
-          }
-        });
-
-        // Убираем дубликаты (одинаковый product_id + variant_id), чтобы не плодить карточки и не ломать пагинацию
-        const uniqueMap = new Map<string, any>();
-        for (const item of collectedProducts) {
-          const key = `${item?.product_id || item?.id || "unknown"}_${item?.variant_id || item?.variantId || ""}`;
-          if (!uniqueMap.has(key)) {
-            uniqueMap.set(key, item);
-          }
-        }
-        const uniqueProducts = Array.from(uniqueMap.values());
-        
-        if (cancelled) return;
-        
-        const { primaryProducts: primary, variantProducts: variants } = splitProductsIntoPrimaryAndVariants(uniqueProducts);
-        
-        if (!cancelled) {
-          setPrimaryProducts(primary);
-          setVariantProducts(variants);
-          setDisplayedCount(PAGE_SIZE);
-        }
+        // быстро подгружаем первые категории до INITIAL_TARGET_ITEMS
+        await fetchNextCategories({ minTotalRaw: INITIAL_TARGET_ITEMS });
       } catch (err) {
         if (!cancelled) {
           console.error("Error fetching products:", err);
           setError(t("common.errors.productsLoad"));
         }
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     };
 
@@ -157,7 +186,7 @@ export function CategoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, category?.id, category?.parent_id, categoryLoading, subcategoriesKey, t]);
+  }, [id, category?.id, category?.parent_id, categoryLoading, subcategoriesKey, t, fetchNextCategories]);
 
   const totalProductsCount = useMemo(() => primaryProducts.length + variantProducts.length, [primaryProducts.length, variantProducts.length]);
 
@@ -166,18 +195,28 @@ export function CategoryPage() {
   }, [primaryProducts, variantProducts, displayedCount]);
 
   const hasMore = useMemo(() => {
-    return displayedCount < totalProductsCount;
-  }, [displayedCount, totalProductsCount]);
+    // есть ещё что показать ИЛИ есть что догрузить по категориям
+    return displayedCount < totalProductsCount || cursor < categoryIds.length;
+  }, [displayedCount, totalProductsCount, cursor, categoryIds.length]);
 
   const loadMore = useCallback(() => {
-    if (hasMore && !loading) {
-      setDisplayedCount(prev => Math.min(prev + PAGE_SIZE, totalProductsCount));
+    if (!hasMore || loading) return;
+
+    // Если у нас уже есть достаточно товаров — просто увеличиваем окно отображения
+    if (displayedCount < totalProductsCount) {
+      setDisplayedCount((prev) => Math.min(prev + PAGE_SIZE, totalProductsCount));
+      return;
     }
-  }, [hasMore, loading, totalProductsCount]);
+
+    // Если показать нечего, но есть что догрузить — догружаем следующую порцию категорий
+    if (cursor < categoryIds.length && !loadingMore) {
+      void fetchNextCategories();
+    }
+  }, [categoryIds.length, cursor, displayedCount, fetchNextCategories, hasMore, loading, loadingMore, totalProductsCount]);
 
   const { ref: sentinelRef } = useInfiniteScroll({
     hasMore,
-    loading,
+    loading: loading || loadingMore,
     onLoadMore: loadMore,
     threshold: 200,
   });

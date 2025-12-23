@@ -37,7 +37,9 @@ export const validateConfig = () => {
     ? []
     : required.filter(key => !import.meta.env[key]);
   if (missing.length > 0) {
-    console.warn('Missing environment variables:', missing);
+    if (import.meta.env.DEV) {
+      console.warn('Missing environment variables:', missing);
+    }
   }
   return missing.length === 0;
 };

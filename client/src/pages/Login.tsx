@@ -31,22 +31,10 @@ export function Login() {
   }, [isAuthenticated, navigate, from]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("=== Login.handleSubmit DEBUG ===");
-    console.log("Initial form values:", { 
-      phone: phone, 
-      password: password ? "***" : undefined,
-      phoneType: typeof phone,
-      passwordType: typeof password
-    });
-    
     setError("");
     setLoading(true);
     try {
       const normalizedPhone = '+' + phone.replace(/\D/g, '');
-      console.log("Normalized phone:", normalizedPhone);
-      console.log("Password:", password ? "***" : "undefined");
-      console.log("Calling signin with:", { phone: normalizedPhone, password: password ? "***" : undefined });
-      
       logger.debug('Login attempt', { phone: normalizedPhone.substring(0, 4) + '***' });
       await signin(normalizedPhone, password);
       logger.info('Login successful');

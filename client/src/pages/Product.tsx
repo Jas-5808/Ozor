@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef, FormEvent, useCallback } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import cn from "./style.module.scss";
 import { formatPrice, getProductImageUrl, storage } from "../utils/helpers";
 import { Product as ProductType, ProductDetail } from "../types";
 import { shopAPI } from "../services/api";

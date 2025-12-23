@@ -28,7 +28,7 @@ export const useInfiniteScroll = ({
   const observerRef = useRef<IntersectionObserver | null>(null);
   const [sentinelNode, setSentinelNode] = useState<HTMLDivElement | null>(null);
   const scrollFallbackRef = useRef<number | null>(null);
-  const LOG_PREFIX = "[inf-scroll]";
+  const canUseObserver = typeof window !== 'undefined' && 'IntersectionObserver' in window;
   
   // Сохраняем последние значения в ref, чтобы избежать пересоздания observer
   const hasMoreRef = useRef(hasMore);
@@ -40,14 +40,12 @@ export const useInfiniteScroll = ({
     hasMoreRef.current = hasMore;
     loadingRef.current = loading;
     onLoadMoreRef.current = onLoadMore;
-    console.log(`${LOG_PREFIX} deps`, { hasMore, loading, threshold, rootMargin });
   }, [hasMore, loading, onLoadMore, threshold, rootMargin]);
 
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries;
       if (target.isIntersecting && hasMoreRef.current && !loadingRef.current) {
-        console.debug(`${LOG_PREFIX} observer -> loadMore`);
         onLoadMoreRef.current();
       }
     },
@@ -64,6 +62,8 @@ export const useInfiniteScroll = ({
       threshold: 0.1,
     };
 
+    if (!canUseObserver) return;
+
     // Удаляем старый observer перед созданием нового
     if (observerRef.current) {
       observerRef.current.disconnect();
@@ -74,37 +74,28 @@ export const useInfiniteScroll = ({
     const currentObserver = observerRef.current;
 
     if (sentinelNode && currentObserver) {
-      console.log(`${LOG_PREFIX} observe sentinel`, { margin, threshold, hasMore });
       currentObserver.observe(sentinelNode);
-    } else {
-      console.log(`${LOG_PREFIX} no sentinel to observe yet`);
     }
 
     return () => {
       if (currentObserver) {
-        console.log(`${LOG_PREFIX} disconnect observer`);
         currentObserver.disconnect();
       }
     };
-  }, [handleObserver, root, rootMargin, threshold, sentinelNode, hasMore]);
+  }, [canUseObserver, handleObserver, root, rootMargin, threshold, sentinelNode]);
 
   // Резервный механизм: если IntersectionObserver не сработал (например, на старых браузерах),
   // слушаем прокрутку окна и проверяем расстояние до низа документа.
   useEffect(() => {
+    if (canUseObserver) return;
+
     const checkPosition = () => {
       if (!hasMoreRef.current || loadingRef.current) return;
       const distanceToBottom =
         document.documentElement.scrollHeight -
         window.scrollY -
         window.innerHeight;
-      console.log(`${LOG_PREFIX} fallback check`, {
-        distanceToBottom,
-        scrollY: window.scrollY,
-        innerHeight: window.innerHeight,
-        scrollHeight: document.documentElement.scrollHeight,
-      });
       if (distanceToBottom <= threshold * 2) {
-        console.log(`${LOG_PREFIX} fallback scroll -> loadMore`, { distanceToBottom });
         onLoadMoreRef.current();
       }
     };
@@ -129,15 +120,10 @@ export const useInfiniteScroll = ({
         cancelAnimationFrame(scrollFallbackRef.current);
       }
     };
-  }, [threshold, hasMore, loading]);
+  }, [canUseObserver, threshold]);
 
   // ref-callback, чтобы поймать момент, когда sentinel появился в DOM
   const setSentinelRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      console.log(`${LOG_PREFIX} set sentinel node`);
-    } else {
-      console.log(`${LOG_PREFIX} unset sentinel node`);
-    }
     setSentinelNode(node);
   }, []);
 

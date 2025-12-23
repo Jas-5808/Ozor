@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { shopAPI } from "../services/api";
@@ -6,17 +6,35 @@ import { Product } from "../types";
 import ProductCard from "../components/ui/ProductCard";
 import useSEO from "../hooks/useSEO";
 import SkeletonGrid from "../components/SkeletonGrid";
+import { splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
+
+const LIMIT = 20;
+const SEARCH_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
+
+type SearchCacheEntry = {
+  time: number;
+  raw: any[];
+  offset: number;
+  hasMore: boolean;
+};
+
+const searchCache = new Map<string, SearchCacheEntry>();
+const searchInFlight = new Map<string, Promise<any[]>>();
+const searchLoadMoreInFlight = new Map<string, Promise<any[]>>();
 
 export function SearchPage() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
   const { t } = useTranslation();
   const [products, setProducts] = useState<Product[]>([]);
+  const [rawItems, setRawItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const limit = 20;
+
+  const normalizedQuery = useMemo(() => query.trim(), [query]);
+  const queryLower = useMemo(() => normalizedQuery.toLowerCase(), [normalizedQuery]);
 
   useSEO({
     title: query ? `${t("search.title")}: ${query} — OZAR` : t("search.title") + " — OZAR",
@@ -24,10 +42,37 @@ export function SearchPage() {
     canonical: typeof window !== "undefined" ? window.location.href : undefined,
   });
 
+  const computeProducts = useCallback(
+    (items: any[]) => {
+      const { primaryProducts } = splitProductsIntoPrimaryAndVariants(items);
+
+      // Сортируем: сначала совпадения по названию, затем товары в наличии
+      const sorted = [...primaryProducts].sort((a, b) => {
+        const aNameMatch = a.product_name?.toLowerCase().includes(queryLower) || false;
+        const bNameMatch = b.product_name?.toLowerCase().includes(queryLower) || false;
+        if (aNameMatch && !bNameMatch) return -1;
+        if (!aNameMatch && bNameMatch) return 1;
+
+        const aInStock = (a.stock ?? 0) > 0;
+        const bInStock = (b.stock ?? 0) > 0;
+        if (aInStock && !bInStock) return -1;
+        if (!aInStock && bInStock) return 1;
+
+        return (a.price ?? 0) - (b.price ?? 0);
+      });
+
+      return sorted;
+    },
+    [queryLower]
+  );
+
   useEffect(() => {
+    let cancelled = false;
+
     const fetchProducts = async () => {
-      if (!query.trim()) {
+      if (!normalizedQuery) {
         setProducts([]);
+        setRawItems([]);
         setLoading(false);
         setError(null);
         return;
@@ -39,150 +84,122 @@ export function SearchPage() {
       setHasMore(true);
 
       try {
-        const response = await shopAPI.searchProducts(query, { offset: 0, limit });
-        const data = response.data || [];
+        const now = Date.now();
+        const cached = searchCache.get(normalizedQuery);
+        if (cached && (now - cached.time) < SEARCH_CACHE_TTL) {
+          if (cancelled) return;
+          setRawItems(cached.raw);
+          setProducts(computeProducts(cached.raw));
+          setOffset(cached.offset);
+          setHasMore(cached.hasMore);
+          return;
+        }
 
-        // Трансформируем продукты
-        const transformedProducts = data.map((item: any): Product => ({
-          product_id: item.product_id || item.id,
-          product_name: item.product_name || item.name,
-          product_description: item.product_description || item.description || "",
-          category: item.category,
-          refferal_price: item.refferal_price || 0,
-          main_image: item.main_image || "",
-          variant_id: item.variant_id || "",
-          variant_sku: item.variant_sku || item.sku || "",
-          price: item.price || item.base_price || 0,
-          stock: item.stock || 0,
-          variant_attributes: item.variant_attributes || [],
-          variant_media: item.variant_media || [],
-        }));
+        const existing = searchInFlight.get(normalizedQuery);
+        const promise =
+          existing ??
+          (async () => {
+            const response = await shopAPI.searchProducts(normalizedQuery, {
+              offset: 0,
+              limit: LIMIT,
+            });
+            return response.data || [];
+          })();
 
-        // Группируем по product_id и выбираем лучший вариант (сначала в наличии)
-        const productsByProductId = new Map<string, Product[]>();
-        transformedProducts.forEach((product) => {
-          const key = product.product_id;
-          if (!productsByProductId.has(key)) {
-            productsByProductId.set(key, []);
-          }
-          productsByProductId.get(key)!.push(product);
+        if (!existing) {
+          searchInFlight.set(normalizedQuery, promise);
+        }
+
+        const data = await promise;
+        searchInFlight.delete(normalizedQuery);
+        if (cancelled) return;
+
+        const nextOffset = data.length;
+        const nextHasMore = data.length === LIMIT;
+
+        searchCache.set(normalizedQuery, {
+          time: Date.now(),
+          raw: data,
+          offset: nextOffset,
+          hasMore: nextHasMore,
         });
 
-        const finalProducts: Product[] = [];
-        productsByProductId.forEach((productVariants) => {
-          // Сортируем: сначала в наличии, потом отсутствующие
-          productVariants.sort((a, b) => {
-            if (a.stock > 0 && b.stock === 0) return -1;
-            if (a.stock === 0 && b.stock > 0) return 1;
-            return 0;
-          });
-          if (productVariants.length > 0) {
-            finalProducts.push(productVariants[0]);
-          }
-        });
-
-        // Сортируем: сначала товары с запросом в названии, потом остальные
-        const queryLower = query.toLowerCase().trim();
-        finalProducts.sort((a, b) => {
-          const aNameMatch = a.product_name?.toLowerCase().includes(queryLower) || false;
-          const bNameMatch = b.product_name?.toLowerCase().includes(queryLower) || false;
-          
-          if (aNameMatch && !bNameMatch) return -1;
-          if (!aNameMatch && bNameMatch) return 1;
-          
-          // Если оба совпадают или оба не совпадают, приоритет товарам в наличии
-          if (a.stock > 0 && b.stock === 0) return -1;
-          if (a.stock === 0 && b.stock > 0) return 1;
-          
-          return 0;
-        });
-
-        setProducts(finalProducts);
-        setHasMore(data.length === limit);
+        setRawItems(data);
+        setProducts(computeProducts(data));
+        setOffset(nextOffset);
+        setHasMore(nextHasMore);
       } catch (err: any) {
-        console.error("Error searching products:", err);
+        if (cancelled) return;
         setError(err?.response?.data?.message || err?.message || t("search.error"));
         setProducts([]);
+        setRawItems([]);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchProducts();
-  }, [query, t]);
+    return () => {
+      cancelled = true;
+    };
+  }, [computeProducts, normalizedQuery, t]);
 
-  const loadMore = async () => {
-    if (loading || !hasMore || !query.trim()) return;
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore || !normalizedQuery) return;
 
     setLoading(true);
     try {
-      const newOffset = offset + limit;
-      const response = await shopAPI.searchProducts(query, { offset: newOffset, limit });
-      const data = response.data || [];
+      const key = `${normalizedQuery}:${offset}`;
+      const existing = searchLoadMoreInFlight.get(key);
+      const promise =
+        existing ??
+        (async () => {
+          const response = await shopAPI.searchProducts(normalizedQuery, {
+            offset,
+            limit: LIMIT,
+          });
+          return response.data || [];
+        })();
 
-      const transformedProducts = data.map((item: any): Product => ({
-        product_id: item.product_id || item.id,
-        product_name: item.product_name || item.name,
-        product_description: item.product_description || item.description || "",
-        category: item.category,
-        refferal_price: item.refferal_price || 0,
-        main_image: item.main_image || "",
-        variant_id: item.variant_id || "",
-        variant_sku: item.variant_sku || item.sku || "",
-        price: item.price || item.base_price || 0,
-        stock: item.stock || 0,
-        variant_attributes: item.variant_attributes || [],
-        variant_media: item.variant_media || [],
-      }));
+      if (!existing) {
+        searchLoadMoreInFlight.set(key, promise);
+      }
 
-      // Группируем и добавляем к существующим
-      const productsByProductId = new Map<string, Product[]>();
-      [...products, ...transformedProducts].forEach((product) => {
-        const key = product.product_id;
-        if (!productsByProductId.has(key)) {
-          productsByProductId.set(key, []);
+      const data = await promise;
+      searchLoadMoreInFlight.delete(key);
+
+      const existingKeys = new Set(
+        rawItems.map((it: any) => `${it?.product_id || it?.id || ""}_${it?.variant_id || it?.variantId || ""}`)
+      );
+      const merged = rawItems.slice();
+      for (const item of data) {
+        const k = `${item?.product_id || item?.id || ""}_${item?.variant_id || item?.variantId || ""}`;
+        if (!existingKeys.has(k)) {
+          existingKeys.add(k);
+          merged.push(item);
         }
-        productsByProductId.get(key)!.push(product);
+      }
+
+      const nextOffset = offset + data.length;
+      const nextHasMore = data.length === LIMIT;
+
+      searchCache.set(normalizedQuery, {
+        time: Date.now(),
+        raw: merged,
+        offset: nextOffset,
+        hasMore: nextHasMore,
       });
 
-      const finalProducts: Product[] = [];
-      productsByProductId.forEach((productVariants) => {
-        productVariants.sort((a, b) => {
-          if (a.stock > 0 && b.stock === 0) return -1;
-          if (a.stock === 0 && b.stock > 0) return 1;
-          return 0;
-        });
-        if (productVariants.length > 0) {
-          finalProducts.push(productVariants[0]);
-        }
-      });
-
-      // Сортируем: сначала товары с запросом в названии, потом остальные
-      const queryLower = query.toLowerCase().trim();
-      finalProducts.sort((a, b) => {
-        const aNameMatch = a.product_name?.toLowerCase().includes(queryLower) || false;
-        const bNameMatch = b.product_name?.toLowerCase().includes(queryLower) || false;
-        
-        if (aNameMatch && !bNameMatch) return -1;
-        if (!aNameMatch && bNameMatch) return 1;
-        
-        // Если оба совпадают или оба не совпадают, приоритет товарам в наличии
-        if (a.stock > 0 && b.stock === 0) return -1;
-        if (a.stock === 0 && b.stock > 0) return 1;
-        
-        return 0;
-      });
-
-      setProducts(finalProducts);
-      setOffset(newOffset);
-      setHasMore(data.length === limit);
+      setRawItems(merged);
+      setProducts(computeProducts(merged));
+      setOffset(nextOffset);
+      setHasMore(nextHasMore);
     } catch (err: any) {
-      console.error("Error loading more products:", err);
       setError(err?.response?.data?.message || err?.message || t("search.error"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [computeProducts, hasMore, loading, normalizedQuery, offset, rawItems, t]);
 
   // Подсчет уникальных категорий
   const uniqueCategoriesCount = useMemo(() => {
@@ -195,7 +212,7 @@ export function SearchPage() {
     return categoryIds.size;
   }, [products]);
 
-  if (!query.trim()) {
+  if (!normalizedQuery) {
     return (
       <div className="container mx-auto px-4 py-6">
         <div className="max-w-4xl mx-auto">

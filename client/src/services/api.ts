@@ -74,41 +74,7 @@ apiClient.interceptors.request.use(
   (config) => {
     const fullUrl = `${config.baseURL}${config.url}`;
     
-    // Detailed logging for POST /auth/signin requests
-    if (config.method?.toUpperCase() === 'POST' && config.url?.includes('/auth/signin')) {
-      console.log("=== REQUEST INTERCEPTOR DEBUG ===");
-      console.log("URL:", fullUrl);
-      console.log("Method:", config.method);
-      console.log("Headers:", config.headers);
-      console.log("Data type:", typeof config.data);
-      console.log("Data constructor:", config.data?.constructor?.name);
-      
-      if (config.data instanceof URLSearchParams) {
-        console.log("✅ Data is URLSearchParams");
-        console.log("Data.toString():", config.data.toString().replace(/password=[^&]*/, 'password=***'));
-        console.log("Data.get('phone'):", config.data.get("phone"));
-        console.log("Data.get('password'):", config.data.get("password") ? "***" : "undefined");
-        
-        // Ensure both credentials are present
-        const phone = config.data.get("phone");
-        const password = config.data.get("password");
-        if (!phone || !password) {
-          console.error("❌ Missing data in URLSearchParams!");
-          console.error("   phone:", phone);
-          console.error("   password:", password ? "***" : "undefined");
-        } else {
-          console.log("✅ URLSearchParams payload is valid");
-        }
-      } else if (typeof config.data === 'string') {
-        console.log("Data is string:", config.data.replace(/password=[^&]*/, 'password=***'));
-      } else if (config.data && typeof config.data === 'object') {
-        console.log("Data is object:", JSON.stringify(config.data).replace(/password":"[^"]*/, 'password":"***'));
-      } else {
-        console.log("Data:", config.data);
-      }
-      console.log("=== REQUEST INTERCEPTOR DEBUG END ===");
-    }
-    
+    // NOTE: avoid noisy request-debug logging in runtime; keep only structured logger usage.
     logger.api(config.method?.toUpperCase() || 'UNKNOWN', fullUrl, config.data);
     const token = localStorage.getItem("access_token");
     if (token) {
@@ -234,11 +200,44 @@ export const shopAPI = {
     apiClient.get("/shop/products/search", { params: { q: query, ...params } }),
   getProductById: (id: string): Promise<TypedAxiosResponse<ProductResponse>> => 
     apiClient.get(`/shop/product/${id}`),
-  getProductsByCategory: (
-    categoryId: string, 
-    params: Record<string, unknown> = {}
-  ): Promise<TypedAxiosResponse<ProductResponse[]>> =>
-    apiClient.get(`/shop/products`, { params: { category: categoryId, ...params } }),
+  getProductsByCategory: (() => {
+    const cache = new Map<
+      string,
+      {
+        time: number;
+        response: TypedAxiosResponse<ProductResponse[]>;
+        promise: Promise<TypedAxiosResponse<ProductResponse[]>> | null;
+      }
+    >();
+    const TTL = 120_000; // 2 minutes
+    return (
+      categoryId: string,
+      params: Record<string, unknown> = {}
+    ): Promise<TypedAxiosResponse<ProductResponse[]>> => {
+      const key = `${String(categoryId || "")}:${JSON.stringify(params || {})}`;
+      const now = Date.now();
+      const entry = cache.get(key);
+      if (entry && entry.response && now - entry.time < TTL) {
+        return Promise.resolve(entry.response);
+      }
+      if (entry && entry.promise) {
+        return entry.promise;
+      }
+      const promise = apiClient
+        .get(`/shop/products`, { params: { category: categoryId, ...params } })
+        .then((res) => {
+          const typedRes = res as TypedAxiosResponse<ProductResponse[]>;
+          cache.set(key, { time: Date.now(), response: typedRes, promise: null });
+          return typedRes;
+        })
+        .catch((e) => {
+          cache.delete(key);
+          throw e;
+        });
+      cache.set(key, { time: 0, response: null as unknown as TypedAxiosResponse<ProductResponse[]>, promise });
+      return promise;
+    };
+  })(),
   getCategories: (() => {
     // simple in-memory cache with TTL
     let cached: { 
@@ -327,48 +326,21 @@ export const shopAPI = {
 
 export const authAPI = {
   signin: (phone: string, password: string): Promise<TypedAxiosResponse<AuthResponse>> => {
-    // Verbose logging for debugging
-    console.log("=== SIGNIN DEBUG START ===");
-    console.log("1. Function parameters:", { 
-      phone: phone, 
-      password: password ? "***" : undefined,
-      phoneType: typeof phone,
-      passwordType: typeof password,
-      phoneLength: phone?.length,
-      passwordLength: password?.length
-    });
-
     // Ensure both fields are provided
     if (!phone || !password) {
-      console.error("❌ Missing phone or password", { 
-        phone: phone, 
-        password: password ? "***" : undefined,
-        phoneExists: !!phone,
-        passwordExists: !!password
-      });
       logger.error("Missing phone or password", { phone: !!phone, password: !!password });
       throw new Error("Phone and password are required");
     }
 
     // Build URLSearchParams payload
     const formData = new URLSearchParams();
-    console.log("2. URLSearchParams created, appending fields...");
-    
     formData.append("phone", phone);
     formData.append("password", password);
-    
-    console.log("3. Form data appended:");
-    console.log("   - phone:", formData.get("phone"));
-    console.log("   - password:", formData.get("password") ? "***" : "undefined");
-    console.log("   - formData.toString():", formData.toString().replace(/password=[^&]*/, 'password=***'));
 
     logger.debug("Form data prepared", { 
       phone: formData.get("phone")?.substring(0, 4) + '***', 
       hasPassword: !!formData.get("password") 
     });
-
-    console.log("4. Sending request with form data payload");
-    console.log("=== SIGNIN DEBUG END ===");
 
     // Axios will serialize the URLSearchParams payload automatically
     return apiClient.post("/auth/signin", formData, {
