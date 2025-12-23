@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useCallback, useEffect, useState } from "react";
+import React, { memo, useMemo, useCallback, useEffect, useRef, useState } from "react";
 import { useProductsPaged } from "../hooks/useProducts";
 import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
 import ProductCard from "./ui/ProductCard";
@@ -21,13 +21,16 @@ const getColumns = (width: number) => {
   return 2;
 };
 
-// Примерная высота одной строки карточек (фиксированная оценка для windowing)
+// Примерная высота одной строки карточек (уточняем измерением первой карточки)
 const ESTIMATED_ROW_HEIGHT = 460;
 const OVERSCAN_ROWS = 4;
 
 const ProductsListComponent: React.FC = () => {
   const { t } = useTranslation();
   const { products, loading, error, refetch, hasMore, loadMore } = useProductsPaged();
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const measureRef = useRef<HTMLDivElement | null>(null);
+  const [rowHeight, setRowHeight] = useState<number>(ESTIMATED_ROW_HEIGHT);
   
   const { ref: sentinelRef } = useInfiniteScroll({
     hasMore,
@@ -42,6 +45,7 @@ const ProductsListComponent: React.FC = () => {
     width: typeof window !== "undefined" ? window.innerWidth : 1280,
     height: typeof window !== "undefined" ? window.innerHeight : 800,
     scrollY: typeof window !== "undefined" ? window.scrollY : 0,
+    listTop: 0,
   }));
 
   useEffect(() => {
@@ -50,21 +54,42 @@ const ProductsListComponent: React.FC = () => {
       if (raf) return;
       raf = window.requestAnimationFrame(() => {
         raf = 0;
+        const top = listRef.current
+          ? listRef.current.getBoundingClientRect().top + window.scrollY
+          : 0;
         setViewport({
           width: window.innerWidth,
           height: window.innerHeight,
           scrollY: window.scrollY,
+          listTop: top,
         });
       });
     };
     window.addEventListener("scroll", onUpdate, { passive: true });
     window.addEventListener("resize", onUpdate, { passive: true });
+    // первичный расчёт
+    onUpdate();
     return () => {
       window.removeEventListener("scroll", onUpdate);
       window.removeEventListener("resize", onUpdate);
       if (raf) window.cancelAnimationFrame(raf);
     };
   }, []);
+
+  // Уточняем высоту строки по первой отрендеренной карточке (плюс vertical gap)
+  useEffect(() => {
+    if (!measureRef.current) return;
+    const el = measureRef.current;
+    const ro = new ResizeObserver(() => {
+      const rect = el.getBoundingClientRect();
+      if (!rect.height) return;
+      // + gap между рядами (примерно 16px; точность не критична, но снижает "прыжки")
+      const next = Math.max(240, Math.round(rect.height + 16));
+      setRowHeight(next);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [products.length]);
 
   
   const handleToggleLike = useCallback((_productId: string) => {
@@ -78,20 +103,21 @@ const ProductsListComponent: React.FC = () => {
     const cols = getColumns(viewport.width);
     const total = products.length;
     const totalRows = Math.ceil(total / cols);
-    const rowHeight = ESTIMATED_ROW_HEIGHT;
+    const effectiveRowHeight = rowHeight;
+    const relativeScroll = Math.max(0, viewport.scrollY - (viewport.listTop || 0));
 
-    const startRow = Math.max(0, Math.floor(viewport.scrollY / rowHeight) - OVERSCAN_ROWS);
-    const visibleRows = Math.ceil(viewport.height / rowHeight) + OVERSCAN_ROWS * 2;
+    const startRow = Math.max(0, Math.floor(relativeScroll / effectiveRowHeight) - OVERSCAN_ROWS);
+    const visibleRows = Math.ceil(viewport.height / effectiveRowHeight) + OVERSCAN_ROWS * 2;
     const endRow = Math.min(totalRows, startRow + visibleRows);
 
     const startIndex = startRow * cols;
     const endIndex = Math.min(total, endRow * cols);
 
-    const top = startRow * rowHeight;
-    const bottom = Math.max(0, (totalRows - endRow) * rowHeight);
+    const top = startRow * effectiveRowHeight;
+    const bottom = Math.max(0, (totalRows - endRow) * effectiveRowHeight);
 
-    return { cols, startIndex, endIndex, top, bottom, totalRows, rowHeight };
-  }, [products.length, viewport.height, viewport.scrollY, viewport.width]);
+    return { cols, startIndex, endIndex, top, bottom, totalRows, rowHeight: effectiveRowHeight };
+  }, [products.length, rowHeight, viewport.height, viewport.listTop, viewport.scrollY, viewport.width]);
 
   const windowedCards = useMemo(() => {
     if (!products || products.length === 0) return null;
@@ -102,11 +128,9 @@ const ProductsListComponent: React.FC = () => {
         ? `${product.product_id}_${product.variant_id}`
         : product?.product_id || `product-${absoluteIndex}`;
       return (
-        <ProductCard
-          key={uniqueKey}
-          product={product}
-          onToggleLike={handleToggleLike}
-        />
+        <div key={uniqueKey} ref={absoluteIndex === 0 ? measureRef : undefined}>
+          <ProductCard product={product} onToggleLike={handleToggleLike} />
+        </div>
       );
     });
   }, [products, windowed.endIndex, windowed.startIndex, handleToggleLike]);
@@ -145,7 +169,7 @@ const ProductsListComponent: React.FC = () => {
   
   return (
     <>
-      <div style={{ paddingTop: windowed.top, paddingBottom: windowed.bottom }}>
+      <div ref={listRef} style={{ paddingTop: windowed.top, paddingBottom: windowed.bottom }}>
         <div
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 items-stretch"
         >
