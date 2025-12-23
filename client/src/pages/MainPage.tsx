@@ -27,6 +27,26 @@ export function MainPage() {
       "twitter:title": pageTitle,
       "twitter:description": pageDescription,
     },
+    jsonLd: [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "OZAR",
+        url: origin ? `${origin}/` : undefined,
+        potentialAction: {
+          "@type": "SearchAction",
+          target: origin ? `${origin}/search?q={search_term_string}` : undefined,
+          "query-input": "required name=search_term_string",
+        },
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        name: "OZAR",
+        url: origin ? `${origin}/` : undefined,
+        logo: origin ? `${origin}/img/logo.png` : undefined,
+      },
+    ],
   });
 
   // Восстанавливаем позицию скролла, если вернулись со страницы товара
