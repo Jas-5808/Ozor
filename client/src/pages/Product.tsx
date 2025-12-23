@@ -13,6 +13,7 @@ import ProductPageSkeleton from "../components/ProductPageSkeleton";
 import { logger } from "../utils/logger";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
 import { ERROR_MESSAGES } from "../constants";
+import { splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
 
 type LocationState = { product?: ProductType };
 
@@ -334,6 +335,11 @@ export function Product() {
     return null;
   }, [productFromState, fetchedProduct]);
 
+  const categoryId = useMemo(() => {
+    if (!product?.category) return "";
+    return typeof product.category === "string" ? product.category : String((product.category as any)?.id || "");
+  }, [product?.category]);
+
   const { addToCart, updateCartItem, removeFromCart, state: appState } = useApp();
 
   const locationLabel = appState.location.data?.address || appState.location.data?.city || t("product.locationMissing");
@@ -341,36 +347,8 @@ export function Product() {
 
   // Прокрутка вверх при открытии товара
   useEffect(() => {
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-
-    const timer1 = setTimeout(() => {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    }, 50);
-
-    return () => clearTimeout(timer1);
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [id]);
-
-  useEffect(() => {
-    if (product && !loading) {
-      const timer = setTimeout(() => {
-        window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
-
-        setTimeout(() => {
-          window.scrollTo(0, 0);
-          document.documentElement.scrollTop = 0;
-          document.body.scrollTop = 0;
-        }, 100);
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [product, loading]);
 
   // SEO image
   const primaryImage = useMemo(() => {
@@ -527,38 +505,40 @@ export function Product() {
 
   // Рекомендации по категории
   useEffect(() => {
-    const categoryId =
-      typeof product?.category === "string"
-        ? product.category
-        : (product?.category as any)?.id || "";
     if (!categoryId) return;
     let ignore = false;
     setRecommendedLoading(true);
     setRecommendedError(null);
     shopAPI
-      .getProductsByCategory(categoryId, { offset: 0, limit: 10 })
+      // Берём больше кандидатов, чтобы выбрать лучшие и убрать дубли
+      .getProductsByCategory(categoryId, { offset: 0, limit: 30 })
       .then((res) => {
         if (ignore) return;
         const results = (res as any)?.data?.results ?? (res as any)?.data ?? [];
-        const list: ProductType[] = Array.isArray(results)
-          ? results
-              .filter((p: any) => p?.product_id && p.product_id !== product?.product_id && typeof p?.price === "number" && p.price > 0)
-              .map((p: any) => ({
-                product_id: p.product_id,
-                product_name: p.product_name,
-                product_description: p.product_description,
-                category: p.category,
-                refferal_price: p.refferal_price,
-                main_image: p.main_image,
-                variant_id: p.variant_id,
-                variant_sku: p.variant_sku,
-                price: p.price,
-                stock: p.stock,
-                variant_attributes: p.variant_attributes || [],
-                variant_media: p.variant_media || [],
-              }))
-          : [];
-        setRecommended(list);
+        const raw: any[] = Array.isArray(results) ? results : [];
+
+        // Убираем текущий товар из кандидатов (по product_id или id)
+        const filteredRaw = raw.filter((p: any) => {
+          const pid = String(p?.product_id || p?.id || "");
+          return pid && pid !== String(product?.product_id || "");
+        });
+
+        // Берём по одному "лучшему" варианту на product_id (в наличии/дешевле)
+        const { primaryProducts } = splitProductsIntoPrimaryAndVariants(filteredRaw);
+
+        // Лёгкая "рандомизация" внутри группы, чтобы блок не был одинаковым всегда
+        const shuffled = primaryProducts
+          .slice()
+          .sort((a, b) => {
+            const aIn = (a.stock ?? 0) > 0;
+            const bIn = (b.stock ?? 0) > 0;
+            if (aIn && !bIn) return -1;
+            if (!aIn && bIn) return 1;
+            return Math.random() - 0.5;
+          })
+          .slice(0, 12);
+
+        setRecommended(shuffled);
       })
       .catch((err: any) => {
         if (ignore) return;
@@ -571,7 +551,7 @@ export function Product() {
     return () => {
       ignore = true;
     };
-  }, [product?.category, product?.product_id]);
+  }, [categoryId, product?.product_id]);
 
   // Галерея
   const galleryImages: string[] = useMemo(() => {
@@ -1600,23 +1580,62 @@ export function Product() {
 
           {/* Recommendations */}
           <section className="rounded-3xl bg-white border border-slate-200 shadow-sm p-4 md:p-5">
-            <h3 className="text-base sm:text-lg font-bold text-slate-900">{t("product.sections.recommendations")}</h3>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">{t("product.sections.recommendations")}</h3>
+              {categoryId ? (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/category/${categoryId}`)}
+                  className="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
+                >
+                  {t("common.actions.viewAll") || "Смотреть все"}
+                </button>
+              ) : null}
+            </div>
             {recommendedLoading && <p className="mt-2 text-sm text-slate-500">Загрузка рекомендаций...</p>}
             {recommendedError && <p className="mt-2 text-sm text-rose-500">{recommendedError}</p>}
             {!recommendedLoading && !recommendedError && recommended.length === 0 && (
               <p className="mt-2 text-sm text-slate-500">Нет рекомендаций.</p>
             )}
-            {!recommendedLoading && !recommendedError && recommended.length > 0 && (
+            {recommendedLoading && (
               <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                {recommended.map((p) => {
-                  const uniqueKey = p.variant_id ? `${p.product_id}_${p.variant_id}` : p.product_id;
-                  return (
-                    <div key={uniqueKey} className="min-w-0">
-                      <ProductCard product={p} size="compact" />
-                    </div>
-                  );
-                })}
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="h-32 rounded-xl bg-slate-200/60" />
+                    <div className="mt-3 h-4 w-2/3 rounded bg-slate-200/70" />
+                    <div className="mt-2 h-4 w-1/3 rounded bg-slate-200/70" />
+                  </div>
+                ))}
               </div>
+            )}
+            {!recommendedLoading && !recommendedError && recommended.length > 0 && (
+              <>
+                {/* Mobile: горизонтальная лента */}
+                <div className="mt-3 -mx-4 px-4 overflow-x-auto md:hidden">
+                  <div className="flex gap-3">
+                    {recommended.map((p) => {
+                      const uniqueKey = p.variant_id ? `${p.product_id}_${p.variant_id}` : p.product_id;
+                      return (
+                        <div key={uniqueKey} className="w-[160px] flex-shrink-0">
+                          <ProductCard product={p} size="compact" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Desktop: grid */}
+                <div className="mt-3 hidden md:grid grid-cols-4 gap-4">
+                  {recommended.map((p) => {
+                    const uniqueKey = p.variant_id ? `${p.product_id}_${p.variant_id}` : p.product_id;
+                    return (
+                      <div key={uniqueKey} className="min-w-0">
+                        <ProductCard product={p} size="compact" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </section>
         </div>

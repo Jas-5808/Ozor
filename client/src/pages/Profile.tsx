@@ -12,7 +12,6 @@ import useSEO from "../hooks/useSEO";
 import { Link, useNavigate } from "react-router-dom";
 import { useProfileData } from "../hooks/useProfileData";
 import { useReferralActions } from "../hooks/useReferralActions";
-import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
 import { useDebounce } from "../hooks/useDebounce";
 
 export function Profile() {
@@ -534,13 +533,7 @@ export function Profile() {
     }
   };
 
-  // Хук для бесконечной прокрутки в Market (серверная пагинация)
-  const { ref: marketSentinelRef } = useInfiniteScroll({
-    hasMore: marketHasMore,
-    loading: marketLoading,
-    onLoadMore: loadMoreMarket,
-    threshold: 200,
-  });
+  // Market: используем кнопку "Показать ещё" вместо infinite scroll
 
   if (!isAuthenticated) {
     return (
@@ -683,13 +676,19 @@ export function Profile() {
                     type="text"
                     value={marketSearchQuery}
                     onChange={(e) => setMarketSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        setMarketSearchQuery("");
+                        setShowSearchSuggestions(false);
+                      }
+                    }}
                     onFocus={() => {
                       if (searchSuggestions.length > 0 && debouncedSearchQuery.trim().length >= 2) {
                         setShowSearchSuggestions(true);
                       }
                     }}
                     placeholder={t("profile.market.search.placeholder")}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pl-11 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-10 py-3 pl-11 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
                     autoComplete="off"
                   />
                   <svg
@@ -705,6 +704,20 @@ export function Profile() {
                       d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                     />
                   </svg>
+
+                  {marketSearchQuery.trim().length > 0 && (
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+                      onClick={() => {
+                        setMarketSearchQuery("");
+                        setShowSearchSuggestions(false);
+                      }}
+                      aria-label={t("common.actions.clearAll") || "Очистить"}
+                    >
+                      ×
+                    </button>
+                  )}
                   
                   {/* Выпадающий список подсказок */}
                   {showSearchSuggestions && searchSuggestions.length > 0 && (
@@ -761,7 +774,7 @@ export function Profile() {
               </div>
             </div>
             
-            {marketLoading && (
+            {marketLoading && filteredAndSortedProducts.length === 0 && (
               <div className="rounded-2xl border border-dashed border-slate-200 p-6">
                 <SkeletonGrid count={8} columns={4} />
               </div>
@@ -903,12 +916,24 @@ export function Profile() {
                     );
                   })}
                   </div>
-                  {/* Элемент-триггер для бесконечной прокрутки */}
-                  <div ref={marketSentinelRef} className="h-4 w-full" />
-                  {/* Индикатор загрузки при подгрузке */}
+                  {/* Кнопка вместо infinite scroll */}
                   {marketHasMore && (
-                    <div className="flex justify-center items-center py-8">
-                      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#04734b]"></div>
+                    <div className="mt-6 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={loadMoreMarket}
+                        disabled={marketLoading}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {marketLoading ? (
+                          <>
+                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-[#04734b]" />
+                            {t("common.loading") || "Загрузка..."}
+                          </>
+                        ) : (
+                          t("common.actions.loadMore") || "Показать ещё"
+                        )}
+                      </button>
                     </div>
                   )}
                 </>
