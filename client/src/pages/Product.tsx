@@ -667,13 +667,32 @@ export function Product() {
   }, [isQuickOrderOpen]);
 
   // Лайтбокс
+  const lightboxHistoryStateRef = useRef<boolean>(false);
+  const isClosingFromPopStateRef = useRef<boolean>(false);
+  
   const openLightbox = (index: number) => {
     setLightboxIndex(index);
     setLightboxZoom(1);
     setLightboxOpen(true);
     document.body.style.overflow = "hidden";
+    
+    // Добавляем запись в историю для обработки кнопки "назад"
+    if (!lightboxHistoryStateRef.current) {
+      window.history.pushState({ lightbox: true }, "");
+      lightboxHistoryStateRef.current = true;
+    }
   };
+  
   const closeLightbox = () => {
+    // Если закрываем через popstate, не трогаем историю
+    if (isClosingFromPopStateRef.current) {
+      isClosingFromPopStateRef.current = false;
+    } else if (lightboxHistoryStateRef.current) {
+      // Если закрываем через клик/Escape, удаляем запись из истории
+      window.history.replaceState(null, "", window.location.href);
+      lightboxHistoryStateRef.current = false;
+    }
+    
     setLightboxOpen(false);
     setLightboxZoom(1);
     setLightboxPan({ x: 0, y: 0 });
@@ -759,6 +778,42 @@ export function Product() {
       touchStartY.current = null;
     }
   };
+
+  // Обработка кнопки "назад" браузера для закрытия lightbox
+  useEffect(() => {
+    const handlePopState = () => {
+      // Если lightbox открыт и это наша запись в истории, закрываем lightbox
+      if (lightboxOpen && lightboxHistoryStateRef.current) {
+        isClosingFromPopStateRef.current = true;
+        lightboxHistoryStateRef.current = false;
+        setLightboxOpen(false);
+        setLightboxZoom(1);
+        setLightboxPan({ x: 0, y: 0 });
+        document.body.style.overflow = "";
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [lightboxOpen]);
+
+  // Очистка истории при размонтировании компонента
+  useEffect(() => {
+    return () => {
+      // Если компонент размонтируется с открытым lightbox, очищаем историю
+      if (lightboxHistoryStateRef.current) {
+        try {
+          window.history.replaceState(null, "", window.location.href);
+        } catch (e) {
+          // Игнорируем ошибки при очистке
+        }
+        lightboxHistoryStateRef.current = false;
+        document.body.style.overflow = "";
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!lightboxOpen) return;

@@ -48,55 +48,79 @@ function RequireAuth({ children }){
 }
 
 function RequireRole({ children, roles }){
-  const { isAuthenticated, loading, profile } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
-  const [roleState, setRoleState] = React.useState<string | null>(null);
-  const [fetching, setFetching] = React.useState<boolean>(false);
+  const [roleState, setRoleState] = React.useState(null);
+  const [fetching, setFetching] = React.useState(false);
+  const hasFetchedRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (!isAuthenticated || loading) return;
-    const localRole = String((profile && (profile.role || profile.user_role || (profile.data && profile.data.role))) || '').toLowerCase();
-    if (localRole) {
-      setRoleState(localRole);
+    // Если пользователь не аутентифицирован или идет загрузка, сбрасываем состояние
+    if (!isAuthenticated || loading) {
+      setRoleState(null);
+      setFetching(false);
+      hasFetchedRef.current = false;
       return;
     }
-    const uid = (profile && (profile.id || profile.user_id || (profile.data && profile.data.id))) || null;
-    if (!uid || fetching) return;
+    
+    // Если уже загружаем роль, не делаем повторный запрос
+    if (fetching) return;
+    
+    // Если роль уже загружена, не загружаем снова
+    if (hasFetchedRef.current) return;
+    
     let ignore = false;
+    hasFetchedRef.current = true; // Помечаем сразу, чтобы предотвратить повторные запросы
+    
     const fetchRole = async () => {
       try {
         setFetching(true);
-        // Try user-info first
+        // Всегда загружаем роль через API /api/v1/profile/user-info
         const info = await userAPI.getUsersInfo();
         const roleFromInfo = String(info?.data?.role || '').toLowerCase();
-        if (!ignore && roleFromInfo) {
-          setRoleState(roleFromInfo);
-          return;
+        if (!ignore) {
+          setRoleState(roleFromInfo || '');
         }
-        // Fallback to users/{id}
-        const res = await userAPI.getUserById(String(uid));
-        const apiRole = String(res?.data?.role || '').toLowerCase();
-        if (!ignore) setRoleState(apiRole);
-      } catch {
-        if (!ignore) setRoleState(null);
+      } catch (error) {
+        // Если API не вернул роль, устанавливаем пустую строку
+        // Это позволит компоненту перенаправить пользователя
+        if (!ignore) {
+          setRoleState('');
+        }
       } finally {
         if (!ignore) setFetching(false);
       }
     };
+    
     fetchRole();
-    return () => { ignore = true; };
-  }, [isAuthenticated, loading, profile, fetching]);
+    return () => { 
+      ignore = true;
+      // Не сбрасываем hasFetchedRef здесь, чтобы не делать повторный запрос при размонтировании
+    };
+  }, [isAuthenticated, loading]);
 
-  if (loading) return <PageSkeleton />;
+  if (loading || fetching) return <PageSkeleton />;
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
 
+  // Если роль еще не загружена (null), показываем скелетон
+  if (roleState === null) return <PageSkeleton />;
+  
+  // Если роль пустая строка (загрузка завершена, но роль не найдена), перенаправляем
+  if (roleState === '') return <Navigate to="/" replace />;
+
+  // Нормализуем роль: sale_operator -> sale
   const normalized = (roleState || '').toLowerCase() === 'sale_operator'
     ? 'sale'
     : (roleState || '').toLowerCase();
+  
+  // Проверяем разрешенные роли (в нижнем регистре)
   const allowed = Array.isArray(roles) ? roles.map(r => String(r).toLowerCase()) : [];
+  
+  // Проверяем как нормализованную роль, так и оригинальную (для sale_operator)
+  const roleLower = (roleState || '').toLowerCase();
+  const hasAccess = allowed.includes(normalized) || allowed.includes(roleLower);
 
-  if (!roleState) return <PageSkeleton />; // ждём роль
-  if (!allowed.includes(normalized)) return <Navigate to="/" replace />;
+  if (!hasAccess) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -221,7 +245,7 @@ export const router = createBrowserRouter([
   {
     path: "/admin",
     element: (
-      <RequireRole roles={["admin", "manager", "ceo"]}>
+      <RequireRole roles={["ceo", "sale_manager", "driver_manager", "driver", "sale_operator", "warehouse_manager", "admin", "manager"]}>
         <Suspense fallback={<AdminSkeleton rows={10} />}>
           <AdminLayout />
         </Suspense>
