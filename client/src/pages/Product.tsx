@@ -178,7 +178,7 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
           <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4">
             <div className="flex gap-3">
               <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-white shadow-inner">
-                <img src={summaryImage} alt="" className="h-full w-full object-cover" />
+                <img src={summaryImage} alt={product.product_name} className="h-full w-full object-cover" />
               </div>
               <div className="flex flex-1 flex-col">
                 <p className="line-clamp-2 text-sm font-semibold text-gray-900">{product.product_name}</p>
@@ -363,10 +363,14 @@ export function Product() {
 
   useSEO(
     useMemo(() => {
-      const title = product ? `${product.product_name} — OZAR` : "Tovar — OZAR";
-      const desc = product?.product_description ? product.product_description.slice(0, 200) : "Tovar tavsifi.";
+      const siteName = t("common.appName") || "OZAR";
+      const title = product ? `${product.product_name} - ${siteName}` : siteName;
+      const rawDesc = product?.product_description?.trim() || product?.product_name || t("home.seoDescription");
+      const desc = rawDesc ? rawDesc.slice(0, 200) : undefined;
       const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const url = origin + (typeof window !== "undefined" ? window.location.pathname + window.location.search : "");
+      const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+      const canonicalUrl = origin && pathname ? `${origin}${pathname}` : origin;
+      const url = canonicalUrl || "";
       const price = (selectedVariant?.price ?? product?.price ?? 0) || 0;
       const inStock = selectedVariant ? selectedVariant.stock > 0 : product ? product.stock > 0 : false;
 
@@ -392,12 +396,12 @@ export function Product() {
       return {
         title,
         description: desc,
-        canonical: url,
+        canonical: canonicalUrl || undefined,
         openGraph: {
           "og:type": "product",
           "og:title": title,
           "og:description": desc,
-          "og:url": url,
+          "og:url": canonicalUrl || undefined,
           ...(primaryImage ? { "og:image": primaryImage } : {}),
         },
         twitter: {
@@ -1084,7 +1088,11 @@ export function Product() {
                       aria-label={t("product.lightbox.preview", { index: i + 1 })}
                       onClick={() => setLightboxIndex(i)}
                     >
-                      <img src={img} alt="" className="w-full h-full object-cover rounded-[12px]" />
+                      <img
+                        src={img}
+                        alt={`${product.product_name} - ${t("product.lightbox.preview", { index: i + 1 })}`}
+                        className="w-full h-full object-cover rounded-[12px]"
+                      />
                     </button>
                   ))}
                 </div>

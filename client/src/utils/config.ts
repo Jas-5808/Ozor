@@ -20,6 +20,9 @@ export const config = {
     googleAnalytics: import.meta.env.VITE_GOOGLE_ANALYTICS_ID || '',
     sentry: import.meta.env.VITE_SENTRY_DSN || '',
   },
+  media: {
+    baseUrl: import.meta.env.VITE_MEDIA_BASE_URL || 'https://lab.ozar.uz/media',
+  },
   dev: {
     mode: import.meta.env.VITE_DEV_MODE === 'true',
     hotReload: import.meta.env.VITE_ENABLE_HOT_RELOAD === 'true',

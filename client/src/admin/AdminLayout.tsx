@@ -129,15 +129,15 @@ const ACTION_ICON_MAP = {
 type NavIconKey = keyof typeof NAV_ICON_MAP;
 
 const NAV_ITEMS: Array<{ to: string; labelKey: string; icon: NavIconKey; roles: string[] }> = [
-  { to: '/admin', labelKey: 'admin.nav.dashboard', icon: 'dashboard', roles: ['admin', 'manager'] },
-  { to: '/admin/orders', labelKey: 'admin.nav.orders', icon: 'orders', roles: ['admin', 'manager'] },
-  { to: '/admin/users', labelKey: 'admin.nav.users', icon: 'users', roles: ['admin'] },
-  { to: '/admin/products', labelKey: 'admin.nav.products', icon: 'products', roles: ['admin', 'manager'] },
-  { to: '/admin/warehouse', labelKey: 'admin.nav.warehouse', icon: 'warehouse', roles: ['admin', 'manager'] },
-  { to: '/admin/categories', labelKey: 'admin.nav.categories', icon: 'categories', roles: ['admin'] },
-  { to: '/admin/banners', labelKey: 'admin.nav.banners', icon: 'banners', roles: ['admin'] },
-  { to: '/admin/audit', labelKey: 'admin.nav.audit', icon: 'audit', roles: ['admin'] },
-  { to: '/admin/payments', labelKey: 'admin.nav.payments', icon: 'payments', roles: ['ceo', 'admin'] },
+  { to: '/admin', labelKey: 'admin.nav.dashboard', icon: 'dashboard', roles: ['admin', 'manager', 'seo', 'ceo'] },
+  { to: '/admin/orders', labelKey: 'admin.nav.orders', icon: 'orders', roles: ['admin', 'manager', 'seo', 'ceo'] },
+  { to: '/admin/users', labelKey: 'admin.nav.users', icon: 'users', roles: ['admin', 'seo', 'ceo'] },
+  { to: '/admin/products', labelKey: 'admin.nav.products', icon: 'products', roles: ['admin', 'manager', 'seo', 'ceo'] },
+  { to: '/admin/warehouse', labelKey: 'admin.nav.warehouse', icon: 'warehouse', roles: ['admin', 'manager', 'seo', 'ceo'] },
+  { to: '/admin/categories', labelKey: 'admin.nav.categories', icon: 'categories', roles: ['admin', 'seo', 'ceo'] },
+  { to: '/admin/banners', labelKey: 'admin.nav.banners', icon: 'banners', roles: ['admin', 'seo', 'ceo'] },
+  { to: '/admin/audit', labelKey: 'admin.nav.audit', icon: 'audit', roles: ['admin', 'seo', 'ceo'] },
+  { to: '/admin/payments', labelKey: 'admin.nav.payments', icon: 'payments', roles: ['ceo', 'admin', 'seo'] },
 ];
 
 export default function AdminLayout() {

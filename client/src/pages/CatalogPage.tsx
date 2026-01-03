@@ -11,6 +11,7 @@ export function CatalogPage() {
   // Оставляем SEO индексируемым, но возвращаем старый UI/дизайн
   useSEO({
     title: t("catalog.seoTitle"),
+    description: t("home.seoDescription"),
     robots: "index,follow",
     canonical: typeof window !== "undefined" ? window.location.origin + "/catalog" : undefined,
   });

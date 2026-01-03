@@ -84,6 +84,9 @@ export default function Orders() {
   const [roleState, setRoleState] = useState<string>(roleRaw || "");
   const normalizedRole = roleState === "sale_operator" ? "sale" : roleState;
   const isSale = normalizedRole === "sale";
+  const canViewAdminOrders = normalizedRole === "admin" || normalizedRole === "manager" || normalizedRole === "seo" || normalizedRole === "ceo";
+  const hasAccess = canViewAdminOrders || isSale;
+  const roleReady = Boolean(roleState || roleRaw);
 
   const [items, setItems] = useState<Order[]>(
     adminStore.load<Order[]>("admin_orders", [])
@@ -309,6 +312,7 @@ export default function Orders() {
   useEffect(() => {
     let ignore = false;
     const fetchOrders = async () => {
+      if (!canViewAdminOrders) return;
       try {
         setLoading(true);
         const res = await shopAPI.getAllOrders();
@@ -325,7 +329,7 @@ export default function Orders() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [canViewAdminOrders]);
 
   // Функция для загрузки информации о продукте по variant_id
   const loadProductByVariantId = useCallback(async (variantId: string) => {
@@ -466,6 +470,7 @@ export default function Orders() {
   useEffect(() => {
     let ignore = false;
     const tick = async () => {
+      if (!canViewAdminOrders) return;
       try {
         const res = await shopAPI.getAllOrders();
         if (ignore) return;
@@ -480,7 +485,23 @@ export default function Orders() {
       ignore = true;
       clearInterval(id);
     };
-  }, []);
+  }, [canViewAdminOrders]);
+
+  if (!roleReady) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+        Access denied.
+      </div>
+    );
+  }
 
   useEffect(() => {
     let ignore = false;

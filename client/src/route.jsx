@@ -48,11 +48,13 @@ function RequireAuth({ children }){
 }
 
 function RequireRole({ children, roles }){
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, profile } = useAuth();
   const location = useLocation();
   const [roleState, setRoleState] = React.useState(null);
   const [fetching, setFetching] = React.useState(false);
   const hasFetchedRef = React.useRef(false);
+  const [roleResolved, setRoleResolved] = React.useState(false);
+  const profileRoleRaw = String(profile?.role || profile?.user_role || profile?.data?.role || '').toLowerCase();
 
   React.useEffect(() => {
     // Если пользователь не аутентифицирован или идет загрузка, сбрасываем состояние
@@ -60,6 +62,7 @@ function RequireRole({ children, roles }){
       setRoleState(null);
       setFetching(false);
       hasFetchedRef.current = false;
+      setRoleResolved(false);
       return;
     }
     
@@ -69,6 +72,14 @@ function RequireRole({ children, roles }){
     // Если роль уже загружена, не загружаем снова
     if (hasFetchedRef.current) return;
     
+    if (profileRoleRaw) {
+      setRoleState(profileRoleRaw);
+      setFetching(false);
+      hasFetchedRef.current = true;
+      setRoleResolved(true);
+      return;
+    }
+
     let ignore = false;
     hasFetchedRef.current = true; // Помечаем сразу, чтобы предотвратить повторные запросы
     
@@ -77,15 +88,25 @@ function RequireRole({ children, roles }){
         setFetching(true);
         // Всегда загружаем роль через API /api/v1/profile/user-info
         const info = await userAPI.getUsersInfo();
-        const roleFromInfo = String(info?.data?.role || '').toLowerCase();
+        const roleFromInfo = String(info?.data?.role || info?.data?.user_role || '').toLowerCase();
+        if (!ignore && roleFromInfo) {
+          setRoleState(roleFromInfo);
+          setRoleResolved(true);
+          return;
+        }
+
+        const prof = await userAPI.getProfile();
+        const roleFromProfile = String(prof?.data?.role || prof?.data?.user_role || '').toLowerCase();
         if (!ignore) {
-          setRoleState(roleFromInfo || '');
+          setRoleState(roleFromProfile || '');
+          setRoleResolved(true);
         }
       } catch (error) {
         // Если API не вернул роль, устанавливаем пустую строку
         // Это позволит компоненту перенаправить пользователя
         if (!ignore) {
           setRoleState('');
+          setRoleResolved(true);
         }
       } finally {
         if (!ignore) setFetching(false);
@@ -97,7 +118,7 @@ function RequireRole({ children, roles }){
       ignore = true;
       // Не сбрасываем hasFetchedRef здесь, чтобы не делать повторный запрос при размонтировании
     };
-  }, [isAuthenticated, loading]);
+  }, [isAuthenticated, loading, profileRoleRaw]);
 
   if (loading || fetching) return <PageSkeleton />;
   if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
@@ -106,7 +127,7 @@ function RequireRole({ children, roles }){
   if (roleState === null) return <PageSkeleton />;
   
   // Если роль пустая строка (загрузка завершена, но роль не найдена), перенаправляем
-  if (roleState === '') return <Navigate to="/" replace />;
+  if (roleState === '' && roleResolved) return <Navigate to="/" replace />;
 
   // Нормализуем роль: sale_operator -> sale
   const normalized = (roleState || '').toLowerCase() === 'sale_operator'
@@ -245,7 +266,7 @@ export const router = createBrowserRouter([
   {
     path: "/admin",
     element: (
-      <RequireRole roles={["ceo", "sale_manager", "driver_manager", "driver", "sale_operator", "warehouse_manager", "admin", "manager"]}>
+      <RequireRole roles={["ceo", "sale_manager", "driver_manager", "driver", "sale_operator", "warehouse_manager", "admin", "manager", "seo"]}>
         <Suspense fallback={<AdminSkeleton rows={10} />}>
           <AdminLayout />
         </Suspense>
@@ -253,18 +274,102 @@ export const router = createBrowserRouter([
     ),
     errorElement: <ErrorPage />,
     children: [
-      { path: "/admin", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminDashboard /></Suspense> },
-      { path: "/admin/orders", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminOrders /></Suspense> },
-      { path: "/admin/users", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminUsers /></Suspense> },
-      { path: "/admin/products", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminProducts /></Suspense> },
-      { path: "/admin/warehouse", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminWarehouse /></Suspense> },
-      { path: "/admin/warehouse/orders", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminWarehouse /></Suspense> },
-      { path: "/admin/warehouse/add", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminWarehouse /></Suspense> },
-      { path: "/admin/warehouse/locations", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminWarehouse /></Suspense> },
-      { path: "/admin/categories", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminCategories /></Suspense> },
-      { path: "/admin/banners", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminBanners /></Suspense> },
-      { path: "/admin/audit", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminAudit /></Suspense> },
-      { path: "/admin/payments", element: <Suspense fallback={<AdminSkeleton rows={10} />}><AdminPayments /></Suspense> },
+      {
+        path: "/admin",
+        element: (
+          <RequireRole roles={["admin", "manager", "seo", "ceo"]}>
+            <Suspense fallback={<AdminSkeleton rows={10} />}><AdminDashboard /></Suspense>
+          </RequireRole>
+        )
+      },
+      {
+        path: "/admin/orders",
+        element: (
+          <RequireRole roles={["admin", "manager", "seo", "ceo"]}>
+            <Suspense fallback={<AdminSkeleton rows={10} />}><AdminOrders /></Suspense>
+          </RequireRole>
+        )
+      },
+      {
+        path: "/admin/users",
+        element: (
+          <RequireRole roles={["admin", "seo", "ceo"]}>
+            <Suspense fallback={<AdminSkeleton rows={10} />}><AdminUsers /></Suspense>
+          </RequireRole>
+        )
+      },
+      {
+        path: "/admin/products",
+        element: (
+          <RequireRole roles={["admin", "manager", "seo", "ceo"]}>
+            <Suspense fallback={<AdminSkeleton rows={10} />}><AdminProducts /></Suspense>
+          </RequireRole>
+        )
+      },
+      {
+        path: "/admin/warehouse",
+        element: (
+          <RequireRole roles={["admin", "manager", "seo", "ceo"]}>
+            <Suspense fallback={<AdminSkeleton rows={10} />}><AdminWarehouse /></Suspense>
+          </RequireRole>
+        )
+      },
+      {
+        path: "/admin/warehouse/orders",
+        element: (
+          <RequireRole roles={["admin", "manager", "seo", "ceo"]}>
+            <Suspense fallback={<AdminSkeleton rows={10} />}><AdminWarehouse /></Suspense>
+          </RequireRole>
+        )
+      },
+      {
+        path: "/admin/warehouse/add",
+        element: (
+          <RequireRole roles={["admin", "manager", "seo", "ceo"]}>
+            <Suspense fallback={<AdminSkeleton rows={10} />}><AdminWarehouse /></Suspense>
+          </RequireRole>
+        )
+      },
+      {
+        path: "/admin/warehouse/locations",
+        element: (
+          <RequireRole roles={["admin", "manager", "seo", "ceo"]}>
+            <Suspense fallback={<AdminSkeleton rows={10} />}><AdminWarehouse /></Suspense>
+          </RequireRole>
+        )
+      },
+      {
+        path: "/admin/categories",
+        element: (
+          <RequireRole roles={["admin", "seo", "ceo"]}>
+            <Suspense fallback={<AdminSkeleton rows={10} />}><AdminCategories /></Suspense>
+          </RequireRole>
+        )
+      },
+      {
+        path: "/admin/banners",
+        element: (
+          <RequireRole roles={["admin", "seo", "ceo"]}>
+            <Suspense fallback={<AdminSkeleton rows={10} />}><AdminBanners /></Suspense>
+          </RequireRole>
+        )
+      },
+      {
+        path: "/admin/audit",
+        element: (
+          <RequireRole roles={["admin", "seo", "ceo"]}>
+            <Suspense fallback={<AdminSkeleton rows={10} />}><AdminAudit /></Suspense>
+          </RequireRole>
+        )
+      },
+      {
+        path: "/admin/payments",
+        element: (
+          <RequireRole roles={["ceo", "admin", "seo"]}>
+            <Suspense fallback={<AdminSkeleton rows={10} />}><AdminPayments /></Suspense>
+          </RequireRole>
+        )
+      },
     ],
   },
   {

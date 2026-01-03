@@ -1,4 +1,6 @@
 
+import { config } from "./config";
+
 export const formatPrice = (price: number, currency: string = 'UZS'): string => {
   return new Intl.NumberFormat('ru-RU').format(price) + ' ' + currency;
 };
@@ -105,8 +107,8 @@ export const getProductImageUrl = (imagePath: string): string => {
     return imagePath;
   }
   // API возвращает относительные пути вида products/... или variants/...
-  const baseUrl = 'https://lab.ozar.uz/media';
-  return `${baseUrl}/${imagePath}`;
+  const baseUrl = config.media.baseUrl;
+  return `${baseUrl.replace(/\/+$/, "")}/${imagePath}`;
 };
 
 // Безопасное извлечение изображения варианта (если приходит variant_media)

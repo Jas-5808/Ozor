@@ -75,7 +75,7 @@ apiClient.interceptors.request.use(
     const fullUrl = `${config.baseURL}${config.url}`;
     
     // NOTE: avoid noisy request-debug logging in runtime; keep only structured logger usage.
-    logger.api(config.method?.toUpperCase() || 'UNKNOWN', fullUrl, config.data);
+    logger.api(config.method?.toUpperCase() || 'UNKNOWN', fullUrl);
     const token = localStorage.getItem("access_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -108,7 +108,7 @@ const processQueue = (error: AxiosError | null, token: string | null = null) => 
 
 apiClient.interceptors.response.use(
   (response) => {
-    logger.apiResponse(response.status, response.config.url || '', response.data);
+    logger.apiResponse(response.status, response.config.url || '');
     return response;
   },
   async (error: AxiosError<ApiErrorResponse>) => {

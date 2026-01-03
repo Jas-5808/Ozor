@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { adminStore } from "../storage";
 import { userAPI } from "../../services/api";
+import { useAuth } from "../../hooks/useAuth";
 
 type User = {
   id: string;
@@ -53,6 +54,11 @@ const badgeInactive =
 
 export default function Users() {
   const { t } = useTranslation();
+  const { profile } = useAuth() as any;
+  const roleRaw = String(profile?.role || profile?.user_role || profile?.data?.role || "");
+  const normalizedRole = roleRaw.toLowerCase() === "sale_operator" ? "sale" : roleRaw.toLowerCase();
+  const hasAccess = normalizedRole === "admin" || normalizedRole === "seo" || normalizedRole === "ceo";
+  const roleReady = Boolean(roleRaw);
 
   const [items, setItems] = useState<User[]>(
     adminStore.load<User[]>("admin_users", [])
@@ -88,6 +94,11 @@ export default function Users() {
     let ignore = false;
 
     const fetchUsers = async () => {
+      if (!hasAccess) {
+        setItems([]);
+        setTotalPages(1);
+        return;
+      }
       try {
         setLoading(true);
 
@@ -142,7 +153,23 @@ export default function Users() {
     return () => {
       ignore = true;
     };
-  }, [debouncedQ, role, page, limit, t]);
+  }, [debouncedQ, role, page, limit, t, hasAccess]);
+
+  if (!roleReady) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+        Access denied.
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">

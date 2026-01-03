@@ -35,11 +35,13 @@ export function SearchPage() {
 
   const normalizedQuery = useMemo(() => query.trim(), [query]);
   const queryLower = useMemo(() => normalizedQuery.toLowerCase(), [normalizedQuery]);
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   useSEO({
     title: query ? `${t("search.title")}: ${query} — OZAR` : t("search.title") + " — OZAR",
-    robots: "index,follow",
-    canonical: typeof window !== "undefined" ? window.location.href : undefined,
+    description: query ? `${t("search.title")}: ${query}` : t("search.title"),
+    robots: "noindex,follow",
+    canonical: origin ? `${origin}/search` : undefined,
   });
 
   const computeProducts = useCallback(

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import apiClient from "../../services/api";
 import { formatPrice, getProductImageUrl } from "../../utils/helpers";
+import { useAuth } from "../../hooks/useAuth";
 
 type Statement = {
   id: string;
@@ -31,6 +32,11 @@ const statusBadge = (type: Statement["type"]) => {
 
 export default function Payments() {
   const { t } = useTranslation();
+  const { profile } = useAuth() as any;
+  const roleRaw = String(profile?.role || profile?.user_role || profile?.data?.role || "");
+  const normalizedRole = roleRaw.toLowerCase() === "sale_operator" ? "sale" : roleRaw.toLowerCase();
+  const hasAccess = normalizedRole === "admin" || normalizedRole === "ceo" || normalizedRole === "seo";
+  const roleReady = Boolean(roleRaw);
   const [items, setItems] = useState<Statement[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +60,11 @@ export default function Payments() {
   }, [items, status, sortAsc]);
 
   const load = async () => {
+    if (!hasAccess) {
+      setItems([]);
+      setTotal(0);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -71,7 +82,23 @@ export default function Payments() {
 
   useEffect(() => {
     load();
-  }, [offset, limit]);
+  }, [offset, limit, hasAccess]);
+
+  if (!roleReady) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+        Access denied.
+      </div>
+    );
+  }
 
   const handleUpdate = async (statement: Statement, next: { type?: string; description?: string; image_file?: File | null }) => {
     const form = new FormData();
