@@ -53,7 +53,7 @@ src/
 
 ### Основные эндпоинты:
 - `GET /api/v1/shop/products` - Получение списка продуктов
-- `GET /api/v1/shop/products/:id` - Получение продукта по ID
+- `GET /api/v1/shop/product/:id` - Получение продукта по ID
 - `GET /api/v1/shop/categories` - Получение категорий
 - `GET /api/v1/shop/category/:id` - Получение категории по ID
 - `GET /api/v1/cart` - Корзина пользователя
@@ -69,9 +69,31 @@ interface Product {
     name: string;
   };
   name: string;
-  description: string;
-  base_price: number;
+  name_ru: string;
+  description_uz: string;
+  description_ru: string;
   refferal_price: number;
+  main_image: string;
+  attributes: Array<Record<string, unknown>>;
+  variants: ProductVariant[];
+}
+
+interface ProductVariant {
+  id: string;
+  product_id: string;
+  sku: string;
+  price: number;
+  base_price: number | null;
+  stock: number;
+  attribute_values: Array<Record<string, unknown>>;
+  media: VariantMedia[];
+}
+
+interface VariantMedia {
+  id: string;
+  file: string;
+  type: string;
+  is_main: boolean;
 }
 ```
 

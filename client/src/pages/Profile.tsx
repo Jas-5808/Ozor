@@ -6,6 +6,7 @@ import { useProductsPaged } from "../hooks/useProducts";
 // Полностью переводим страницу профиля на Tailwind (без SCSS-модуля)
 import { formatPrice, getProductImageUrl, getVariantMainImage, shortenUrl } from "../utils/helpers";
 import { logger } from "../utils/logger";
+import { resolveProductDescription, resolveProductName } from "../utils/productUtils";
 import { useFlows } from "../hooks/useFlows";
 import SkeletonGrid from "../components/SkeletonGrid";
 import useSEO from "../hooks/useSEO";
@@ -819,12 +820,13 @@ export function Profile() {
                       try {
                         setLoadingProductId(productId);
                         const response = await shopAPI.getProductById(productId);
-                        const productData = response.data as any;
+                        const payload = response.data as any;
+                        const productData = payload?.data ?? payload;
                         const firstVariant = productData.variants?.[0];
                         const productForState = {
                           product_id: productId,
-                          product_name: productData.name || p.product_name,
-                          product_description: productData.description || p.product_description,
+                          product_name: resolveProductName(productData) || p.product_name,
+                          product_description: resolveProductDescription(productData) || p.product_description,
                           category: productData.category || p.category,
                           refferal_price: productData.refferal_price ?? p.refferal_price ?? 0,
                           main_image: productData.main_image || p.main_image,

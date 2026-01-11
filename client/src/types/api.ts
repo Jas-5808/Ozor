@@ -95,6 +95,39 @@ export interface ProductResponse {
   variant_media?: VariantMedia[];
 }
 
+export interface ProductAttributeResponse {
+  id: string;
+  name: string;
+  unit?: string;
+}
+
+export interface ProductVariantResponse {
+  id: string;
+  product_id: string;
+  sku: string;
+  price: number | null;
+  base_price: number | null;
+  stock: number;
+  attribute_values: ProductAttributeValue[];
+  media: VariantMedia[];
+}
+
+export interface ProductDetailResponse {
+  id: string;
+  category: {
+    id: string;
+    name: string;
+  };
+  name: string;
+  name_ru?: string;
+  description_uz?: string;
+  description_ru?: string;
+  refferal_price: number;
+  main_image?: string;
+  attributes: ProductAttributeResponse[];
+  variants: ProductVariantResponse[];
+}
+
 export interface ProductAttributeValue {
   id: string;
   variant_id: string;

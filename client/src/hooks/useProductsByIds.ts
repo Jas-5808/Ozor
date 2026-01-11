@@ -4,6 +4,7 @@ import { shopAPI } from "../services/api";
 import type { Product } from "../types";
 import { logger } from "../utils/logger";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
+import { resolveProductDescription, resolveProductName } from "../utils/productUtils";
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const MAX_CONCURRENT = 4;
@@ -17,27 +18,28 @@ type CacheEntry = {
 const cache = new Map<string, CacheEntry>();
 
 function mapProductDetailToProduct(data: any): Product {
-  const firstVariant = Array.isArray(data?.variants) ? data.variants[0] : null;
+  const payload = data?.data ?? data;
+  const firstVariant = Array.isArray(payload?.variants) ? payload.variants[0] : null;
   return {
-    product_id: String(data?.id || data?.product_id || ""),
-    product_name: data?.name || data?.product_name || "",
-    product_description: data?.description || data?.product_description || "",
-    category: data?.category || { id: String(data?.category_id || ""), name: String(data?.category_name || "") },
-    refferal_price: Number(data?.refferal_price || 0),
-    main_image: data?.main_image || "",
-    variant_id: String(firstVariant?.id || data?.variant_id || ""),
-    variant_sku: String(firstVariant?.sku || data?.variant_sku || ""),
-    price: Number(firstVariant?.price ?? data?.price ?? data?.base_price ?? 0),
-    stock: Number(firstVariant?.stock ?? data?.stock ?? 0),
+    product_id: String(payload?.id || payload?.product_id || ""),
+    product_name: resolveProductName(payload),
+    product_description: resolveProductDescription(payload),
+    category: payload?.category || { id: String(payload?.category_id || ""), name: String(payload?.category_name || "") },
+    refferal_price: Number(payload?.refferal_price || 0),
+    main_image: payload?.main_image || "",
+    variant_id: String(firstVariant?.id || payload?.variant_id || ""),
+    variant_sku: String(firstVariant?.sku || payload?.variant_sku || ""),
+    price: Number(firstVariant?.price ?? payload?.price ?? payload?.base_price ?? 0),
+    stock: Number(firstVariant?.stock ?? payload?.stock ?? 0),
     variant_attributes: Array.isArray(firstVariant?.attribute_values)
       ? firstVariant.attribute_values
-      : Array.isArray(data?.variant_attributes)
-      ? data.variant_attributes
+      : Array.isArray(payload?.variant_attributes)
+      ? payload.variant_attributes
       : [],
     variant_media: Array.isArray(firstVariant?.media)
       ? firstVariant.media
-      : Array.isArray(data?.variant_media)
-      ? data.variant_media
+      : Array.isArray(payload?.variant_media)
+      ? payload.variant_media
       : [],
   };
 }

@@ -7,6 +7,7 @@ import type {
   UserProfile,
   UpdateProfileRequest,
   ProductResponse,
+  ProductDetailResponse,
   CategoryResponse,
   CartItemResponse,
   OrderResponse,
@@ -198,7 +199,7 @@ export const shopAPI = {
     params: { offset?: number; limit?: number } = {}
   ): Promise<TypedAxiosResponse<ProductResponse[]>> => 
     apiClient.get("/shop/products/search", { params: { q: query, ...params } }),
-  getProductById: (id: string): Promise<TypedAxiosResponse<ProductResponse>> => 
+  getProductById: (id: string): Promise<TypedAxiosResponse<ProductDetailResponse>> => 
     apiClient.get(`/shop/product/${id}`),
   getProductsByCategory: (() => {
     const cache = new Map<

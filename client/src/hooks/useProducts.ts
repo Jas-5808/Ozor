@@ -4,7 +4,7 @@ import { shopAPI } from "../services/api";
 import { Product } from "../types";
 import { logger } from "../utils/logger";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
-import { buildDisplayProducts, splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
+import { buildDisplayProducts, resolveProductDescription, resolveProductName, splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
 
 const ITEMS_PER_PAGE = 20; // Количество товаров на страницу
 const API_LIMIT = 100; // Максимальный лимит для API запроса
@@ -363,7 +363,31 @@ export const useProductById = (productId: string | undefined) => {
       setLoading(true);
       setError(null);
       const response = await shopAPI.getProductById(productId);
-      setProduct(response.data);
+      const payload: any = (response as any)?.data ?? response;
+      const data: any = payload?.data ?? payload;
+      const firstVariant = Array.isArray(data?.variants) ? data.variants[0] : null;
+      setProduct({
+        product_id: String(data?.id || data?.product_id || ""),
+        product_name: resolveProductName(data),
+        product_description: resolveProductDescription(data),
+        category: data?.category || { id: String(data?.category_id || ""), name: String(data?.category_name || "") },
+        refferal_price: Number(data?.refferal_price || 0),
+        main_image: data?.main_image || "",
+        variant_id: String(firstVariant?.id || data?.variant_id || ""),
+        variant_sku: String(firstVariant?.sku || data?.variant_sku || ""),
+        price: Number(firstVariant?.price ?? data?.price ?? data?.base_price ?? 0),
+        stock: Number(firstVariant?.stock ?? data?.stock ?? 0),
+        variant_attributes: Array.isArray(firstVariant?.attribute_values)
+          ? firstVariant.attribute_values
+          : Array.isArray(data?.variant_attributes)
+          ? data.variant_attributes
+          : [],
+        variant_media: Array.isArray(firstVariant?.media)
+          ? firstVariant.media
+          : Array.isArray(data?.variant_media)
+          ? data.variant_media
+          : [],
+      });
     } catch (error) {
       const appError = handleApiError(error);
       const errorMessage = getUserFriendlyMessage(appError) || i18n.t("common.errors.productLoad");

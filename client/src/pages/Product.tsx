@@ -13,7 +13,7 @@ import ProductPageSkeleton from "../components/ProductPageSkeleton";
 import { logger } from "../utils/logger";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
 import { ERROR_MESSAGES } from "../constants";
-import { splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
+import { resolveProductDescription, resolveProductName, splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
 
 type LocationState = { product?: ProductType };
 
@@ -23,7 +23,8 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
     logger.debug("Loading product", { productId });
 
     const response = await shopAPI.getProductById(productId);
-    const productData: any = (response as any)?.data ?? response;
+    const payload: any = (response as any)?.data ?? response;
+    const productData: any = payload?.data ?? payload;
     logger.debug("Product API response", { productId, hasData: !!productData });
 
     if (!productData) return null;
@@ -81,8 +82,8 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
 
     const productDetail: ProductDetail = {
       product_id: String(productData.id || productData.product_id || productId),
-      product_name: productData.name || productData.product_name,
-      product_description: productData.description || productData.product_description,
+      product_name: resolveProductName(productData),
+      product_description: resolveProductDescription(productData),
       category: productData.category,
       refferal_price: productData.refferal_price ?? 0,
       main_image: productData.main_image || "",
@@ -1554,7 +1555,7 @@ export function Product() {
               {activeTab === "description" ? (
                 <div className="space-y-3">
                   {product.product_description ? (
-                    product.product_description.split("\r\n\r\n").map((paragraph, index) => (
+                    product.product_description.split(/\r?\n\r?\n/).map((paragraph, index) => (
                       <p key={index} className="text-slate-700">
                         {paragraph}
                       </p>

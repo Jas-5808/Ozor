@@ -5,6 +5,7 @@ import { shopAPI, userAPI } from "../../services/api";
 import apiClient from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
 import { getProductImageUrl } from "../../utils/helpers";
+import { resolveProductDescription, resolveProductName } from "../../utils/productUtils";
 
 type OrderStatus =
   | "pending"
@@ -348,7 +349,7 @@ export default function Orders() {
 
     try {
       const res = await apiClient.get(`/shop/product/${variantId}`);
-      const productData = res.data;
+      const productData = (res.data as any)?.data ?? res.data;
 
       // Находим нужный вариант
       const variant = productData.variants?.find((v: any) => v.id === variantId) || productData.variants?.[0];
@@ -366,9 +367,9 @@ export default function Orders() {
       setProductCache((prev) => ({
         ...prev,
         [variantId]: {
-          name: productData.name || "",
+          name: resolveProductName(productData),
           image: imageUrl ? getProductImageUrl(imageUrl) : "",
-          description: productData.description || "",
+          description: resolveProductDescription(productData),
           price: variant?.price || 0,
           base_price: variant?.base_price || 0,
           stock: variant?.stock || 0,
