@@ -1091,7 +1091,7 @@ export function Product() {
             {galleryImages.length > 1 && (
               <div className="w-full">
                 <div
-                  className="flex w-full  overflow-x-auto overflow-y-hidden scroll-smooth pb-1 pr-1 touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  className="flex w-full overflow-x-auto overflow-y-hidden scroll-smooth pb-1 pr-1 touch-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                   ref={thumbsScrollRef}
                 >
                   {galleryImages.map((img, i) => (
