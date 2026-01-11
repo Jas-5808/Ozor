@@ -25,6 +25,7 @@ const adaptProductsFromCategory = (items: any[], categoryCtx?: { id?: string; na
         id: categoryId,
         name: categoryName,
       },
+      __categoryId: categoryId,
     };
   });
 };
@@ -37,6 +38,8 @@ export function CategoryPage() {
   const [rawItems, setRawItems] = useState<any[]>([]);
   const [primaryProducts, setPrimaryProducts] = useState<Product[]>([]);
   const [variantProducts, setVariantProducts] = useState<Product[]>([]);
+  const [otherPrimaryProducts, setOtherPrimaryProducts] = useState<Product[]>([]);
+  const [otherVariantProducts, setOtherVariantProducts] = useState<Product[]>([]);
   const [displayedCount, setDisplayedCount] = useState<number>(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -64,6 +67,11 @@ export function CategoryPage() {
   const displayedProducts = useMemo(() => {
     return buildDisplayProducts(primaryProducts, variantProducts, displayedCount);
   }, [primaryProducts, variantProducts, displayedCount]);
+
+  const otherDisplayedProducts = useMemo(() => {
+    const total = otherPrimaryProducts.length + otherVariantProducts.length;
+    return buildDisplayProducts(otherPrimaryProducts, otherVariantProducts, total);
+  }, [otherPrimaryProducts, otherVariantProducts]);
 
   const categoryJsonLd = useMemo(() => {
     const name = category?.name || "";
@@ -201,11 +209,31 @@ export function CategoryPage() {
   }, []);
 
   const syncDerivedProducts = useCallback((items: any[]) => {
+    const currentId = String(id || "");
+    const categoryItems: any[] = [];
+    const otherItems: any[] = [];
+
+    (items || []).forEach((item) => {
+      const itemCategoryId = String(
+        item?.category_id || item?.category?.id || item?.categoryId || item?.__categoryId || ""
+      );
+      if (currentId && itemCategoryId === currentId) {
+        categoryItems.push(item);
+      } else {
+        otherItems.push(item);
+      }
+    });
+
     const { primaryProducts: primary, variantProducts: variants } =
-      splitProductsIntoPrimaryAndVariants(items);
+      splitProductsIntoPrimaryAndVariants(categoryItems);
+    const { primaryProducts: otherPrimary, variantProducts: otherVariants } =
+      splitProductsIntoPrimaryAndVariants(otherItems);
+
     setPrimaryProducts(primary);
     setVariantProducts(variants);
-  }, []);
+    setOtherPrimaryProducts(otherPrimary);
+    setOtherVariantProducts(otherVariants);
+  }, [id]);
 
   const fetchNextCategories = useCallback(async (opts?: { minTotalRaw?: number }) => {
     if (!id) return;
@@ -224,7 +252,11 @@ export function CategoryPage() {
           batch.map((categoryId) =>
             shopAPI
               .getProductsByCategory(categoryId, { limit: 80, offset: 0 })
-              .then((r) => r.data || [])
+              .then((r) => {
+                const data = (r as any)?.data ?? r;
+                const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+                return items.map((item: any) => ({ ...item, __categoryId: categoryId }));
+              })
               .catch(() => [])
           )
         );
@@ -267,6 +299,8 @@ export function CategoryPage() {
       setRawItems([]);
       setPrimaryProducts([]);
       setVariantProducts([]);
+      setOtherPrimaryProducts([]);
+      setOtherVariantProducts([]);
       setDisplayedCount(PAGE_SIZE);
       // sync refs too
       rawItemsRef.current = [];
@@ -281,11 +315,9 @@ export function CategoryPage() {
       // 1) Если API /shop/category/{id} уже вернул товары, используем их (требование заказчика)
       if (category?.products && Array.isArray(category.products)) {
         const mapped = adaptProductsFromCategory(category.products as any[], { id: category.id, name: category.name });
-        const { primaryProducts: primary, variantProducts: variants } = splitProductsIntoPrimaryAndVariants(mapped);
         if (!cancelled) {
           setRawItems(mapped);
-          setPrimaryProducts(primary);
-          setVariantProducts(variants);
+          syncDerivedProducts(mapped);
           setDisplayedCount(PAGE_SIZE);
           setLoading(false);
         }
@@ -312,9 +344,13 @@ export function CategoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, category?.id, category?.parent_id, categoryLoading, subcategoriesKey, t, fetchNextCategories]);
+  }, [id, category?.id, category?.parent_id, categoryLoading, subcategoriesKey, t, fetchNextCategories, syncDerivedProducts]);
 
   const totalProductsCount = useMemo(() => primaryProducts.length + variantProducts.length, [primaryProducts.length, variantProducts.length]);
+  const otherProductsCount = useMemo(
+    () => otherPrimaryProducts.length + otherVariantProducts.length,
+    [otherPrimaryProducts.length, otherVariantProducts.length]
+  );
 
   // Кандидаты "других категорий" (для удержания, если в текущей категории мало товаров)
   const otherCategoryCandidates = useMemo(() => {
@@ -517,7 +553,7 @@ export function CategoryPage() {
             {t("common.actions.retry")}
           </button>
         </div>
-      ) : totalProductsCount === 0 ? (
+      ) : totalProductsCount === 0 && otherProductsCount === 0 ? (
         <div className="text-center py-12">
           <div className="text-5xl mb-4">📦</div>
           <p className="text-slate-500 text-lg">{t("catalog.noProducts")}</p>
@@ -530,18 +566,34 @@ export function CategoryPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {displayedProducts.map((product) => (
-              <ProductCard 
-                key={`${product.product_id}_${product.variant_id || ''}`} 
-                product={product} 
-              />
-            ))}
-          </div>
+          {totalProductsCount > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {displayedProducts.map((product) => (
+                <ProductCard 
+                  key={`${product.product_id}_${product.variant_id || ''}`} 
+                  product={product} 
+                />
+              ))}
+            </div>
+          )}
           <div ref={sentinelRef} className="h-4 w-full" />
           {hasMore && (
             <div className="flex justify-center items-center py-8">
               <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#04734b]"></div>
+            </div>
+          )}
+
+          {otherProductsCount > 0 && (
+            <div className="mt-10">
+              <div className="mb-4 text-lg font-semibold text-slate-900">Другие товары</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {otherDisplayedProducts.map((product) => (
+                  <ProductCard 
+                    key={`other_${product.product_id}_${product.variant_id || ''}`} 
+                    product={product} 
+                  />
+                ))}
+              </div>
             </div>
           )}
 
