@@ -84,6 +84,10 @@ async function fetchAllProductVariants(productId: string): Promise<ProductDetail
       product_id: String(productData.id || productData.product_id || productId),
       product_name: resolveProductName(productData),
       product_description: resolveProductDescription(productData),
+      name_uz: productData.name || productData.name_uz || productData.product_name,
+      name_ru: productData.name_ru || productData.product_name_ru,
+      description_uz: productData.description_uz || productData.product_description_uz || productData.description || productData.product_description,
+      description_ru: productData.description_ru || productData.product_description_ru || productData.description || productData.product_description,
       category: productData.category,
       refferal_price: productData.refferal_price ?? 0,
       main_image: productData.main_image || "",
@@ -274,7 +278,7 @@ export function Product() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const referralCode = useMemo(() => new URLSearchParams(location.search).get("ref") || "", [location.search]);
 
@@ -325,16 +329,28 @@ export function Product() {
   const productFromState = routeState?.product;
 
   const product = useMemo<ProductDetail | null>(() => {
-    if (fetchedProduct) return fetchedProduct;
-    if (productFromState) {
-      return {
-        ...(productFromState as any),
-        attributes: [],
-        variants: [],
-      };
+    const base = fetchedProduct
+      ? fetchedProduct
+      : productFromState
+      ? {
+          ...(productFromState as any),
+          attributes: [],
+          variants: [],
+        }
+      : null;
+    if (!base) return null;
+
+    const localizedName = resolveProductName(base) || base.product_name;
+    const localizedDescription = resolveProductDescription(base) || base.product_description;
+    if (localizedName === base.product_name && localizedDescription === base.product_description) {
+      return base;
     }
-    return null;
-  }, [productFromState, fetchedProduct]);
+    return {
+      ...base,
+      product_name: localizedName,
+      product_description: localizedDescription,
+    };
+  }, [productFromState, fetchedProduct, i18n.language]);
 
   const categoryId = useMemo(() => {
     if (!product?.category) return "";

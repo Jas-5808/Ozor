@@ -2,6 +2,10 @@ export interface Product {
   product_id: string;
   product_name: string;
   product_description: string;
+  name_uz?: string;
+  name_ru?: string;
+  description_uz?: string;
+  description_ru?: string;
   category: {
     id: string;
     name: string;

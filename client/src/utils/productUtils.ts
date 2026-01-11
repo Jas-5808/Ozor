@@ -20,7 +20,7 @@ const stripHtml = (value: string): string => {
 
 export const resolveProductName = (item: any): string => {
   const locale = getLocaleCode();
-  const nameUz = String(item?.name || item?.product_name || "");
+  const nameUz = String(item?.name_uz || item?.name || item?.product_name || item?.product_name_uz || "");
   const nameRu = String(item?.name_ru || item?.product_name_ru || "");
   if (locale === "uz") {
     return nameUz || nameRu || "";
@@ -30,8 +30,8 @@ export const resolveProductName = (item: any): string => {
 
 export const resolveProductDescription = (item: any): string => {
   const locale = getLocaleCode();
-  const descUz = item?.description_uz || item?.description || item?.product_description || "";
-  const descRu = item?.description_ru || item?.description || item?.product_description || "";
+  const descUz = item?.description_uz || item?.product_description_uz || item?.description || item?.product_description || "";
+  const descRu = item?.description_ru || item?.product_description_ru || item?.description || item?.product_description || "";
   const raw = locale === "uz" ? descUz || descRu : descRu || descUz;
   return stripHtml(String(raw || ""));
 };
@@ -43,6 +43,10 @@ export const transformProductFromApi = (item: any): Product => ({
   product_id: item.product_id || item.id,
   product_name: resolveProductName(item),
   product_description: resolveProductDescription(item),
+  name_uz: item?.name_uz || item?.name || item?.product_name || item?.product_name_uz,
+  name_ru: item?.name_ru || item?.product_name_ru,
+  description_uz: item?.description_uz || item?.product_description_uz || item?.description || item?.product_description,
+  description_ru: item?.description_ru || item?.product_description_ru || item?.description || item?.product_description,
   category: item.category,
   refferal_price: item.refferal_price || 0,
   main_image: item.main_image || "",
