@@ -557,7 +557,8 @@ export const paymentAPI = {
       card_holder_name: string;
       card_number: string;
       amount: number;
-      type: string;
+      status: string;
+      type?: string;
       description?: string;
       image?: string | null;
       created_at: string;

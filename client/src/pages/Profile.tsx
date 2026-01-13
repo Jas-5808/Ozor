@@ -74,7 +74,8 @@ export function Profile() {
     card_holder_name: string;
     card_number: string;
     amount: number;
-    type: string;
+    status?: string;
+    type?: string;
     description?: string;
     created_at: string;
   }>>([]);
@@ -239,7 +240,14 @@ export function Profile() {
       const data = (response as any)?.data;
       const items = data?.items || data?.data?.items || [];
       const total = data?.total ?? items.length;
-      setStatements(Array.isArray(items) ? items : []);
+      const sortedItems = Array.isArray(items)
+        ? items.slice().sort((a: any, b: any) => {
+            const aTime = a?.created_at ? new Date(a.created_at).getTime() : 0;
+            const bTime = b?.created_at ? new Date(b.created_at).getTime() : 0;
+            return bTime - aTime;
+          })
+        : [];
+      setStatements(sortedItems);
       setStatementsPagination({ offset, limit, total });
       if (opts?.status !== undefined) {
         setStatementsStatus(status);
@@ -1465,32 +1473,40 @@ export function Profile() {
                           </td>
                         </tr>
                       ) : (
-                        statements.map((s) => (
-                          <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
-                            <td className="py-3 px-2 text-slate-600">{new Date(s.created_at).toLocaleString()}</td>
-                            <td className="py-3 px-2 font-semibold text-slate-900">{formatPrice(s.amount, "UZS")}</td>
-                            <td className="py-3 px-2 text-slate-600">**** {s.card_number.slice(-4)}</td>
-                            <td className="py-3 px-2 text-slate-600">{s.card_holder_name}</td>
-                            <td className="py-3 px-2">
-                          <span
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
-                              s.type === "approved"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : s.type === "pending"
-                                ? "bg-amber-100 text-amber-700"
-                                : s.type === "rejected"
-                                ? "bg-rose-100 text-rose-700"
-                                : "bg-slate-100 text-slate-700"
-                            }`}
-                          >
-                            {t(`profile.payments.statements.status.${s.type}`, { defaultValue: s.type })}
-                          </span>
-                            </td>
-                            <td className="py-3 px-2 text-slate-600">
-                              {s.type === "pending" && s.description === "string" ? "—" : (s.description || "—")}
-                            </td>
-                          </tr>
-                        ))
+                        statements.map((s) => {
+                          const statusValue = s.status || s.type || "";
+                          const normalizedDescription =
+                            (s.description || "").trim().toLowerCase() === "string"
+                              ? "----"
+                              : (s.description || "----");
+
+                          return (
+                            <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
+                              <td className="py-3 px-2 text-slate-600">{new Date(s.created_at).toLocaleString()}</td>
+                              <td className="py-3 px-2 font-semibold text-slate-900">{formatPrice(s.amount, "UZS")}</td>
+                              <td className="py-3 px-2 text-slate-600">**** {s.card_number.slice(-4)}</td>
+                              <td className="py-3 px-2 text-slate-600">{s.card_holder_name}</td>
+                              <td className="py-3 px-2">
+                                <span
+                                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+                                    statusValue === "approved"
+                                      ? "bg-emerald-100 text-emerald-700"
+                                      : statusValue === "pending"
+                                      ? "bg-amber-100 text-amber-700"
+                                      : statusValue === "rejected"
+                                      ? "bg-rose-100 text-rose-700"
+                                      : "bg-slate-100 text-slate-700"
+                                  }`}
+                                >
+                                  {t(`profile.payments.statements.status.${statusValue}`, { defaultValue: statusValue || "----" })}
+                                </span>
+                              </td>
+                              <td className="py-3 px-2 text-slate-600">
+                                {normalizedDescription}
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -1717,3 +1733,4 @@ export function Profile() {
 }
 
 export default Profile;
+
