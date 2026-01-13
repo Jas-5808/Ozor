@@ -49,8 +49,8 @@ export function Favorites() {
   }
 
   return (
-    <div className="container">
-      <div className={cn.main}>
+    <div className="container mx-auto">
+      <div className={`${cn.main} mx-auto`}>
         <div className={cn.main_content}>
           {likedProducts.length === 0 ? (
             <div className="grid gap-3 p-6 bg-white border border-gray-200 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)]">

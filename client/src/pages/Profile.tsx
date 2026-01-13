@@ -558,7 +558,7 @@ export function Profile() {
           />
           <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="flex items-start gap-4">
-              <img
+              {/* <img
                 className="h-20 w-20 rounded-[24px] border-2 border-white/70 object-cover shadow-2xl"
                 src={profileAvatar}
                 alt={fullName}
@@ -566,7 +566,7 @@ export function Profile() {
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
                 }}
-              />
+              /> */}
               <div>
                 <p className="text-xs uppercase tracking-[0.35em] text-white/60">{t("profile.hero.badge")}</p>
                 <h1 className="text-3xl font-black leading-tight">{fullName}</h1>

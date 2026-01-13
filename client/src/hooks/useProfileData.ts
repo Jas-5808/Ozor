@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from './useAuth';
-import { shopAPI, paymentAPI } from '../services/api';
-import { useFlows } from './useFlows';
+import { shopAPI } from '../services/api';
 import type { ReferralResponse } from '../types/api';
 import { logger } from '../utils/logger';
 
@@ -43,16 +42,13 @@ interface ProfileDataReturn {
  * Выносит логику из компонента Profile для улучшения чистоты кода
  */
 export function useProfileData(): ProfileDataReturn {
-  const { isAuthenticated } = useAuth();
-  const { flows } = useFlows();
+  const { isAuthenticated, profile, fetchUserProfile } = useAuth();
   
   // Referrals state
   const [apiFlows, setApiFlows] = useState<ReferralResponse[]>([]);
   const [apiFlowsLoading, setApiFlowsLoading] = useState<boolean>(false);
   const [apiFlowsError, setApiFlowsError] = useState<string | null>(null);
   
-  // Balance state
-  const [userBalance, setUserBalance] = useState<number | null>(null);
   const [balanceLoading, setBalanceLoading] = useState<boolean>(false);
 
   // Load referrals
@@ -76,17 +72,12 @@ export function useProfileData(): ProfileDataReturn {
     }
   };
 
-  // Load balance
   const refreshBalance = async (): Promise<void> => {
+    if (!isAuthenticated) return;
     try {
       setBalanceLoading(true);
-      const res = await paymentAPI.getUserBalance();
-      const value = typeof res?.data?.balance === 'number' 
-        ? res.data.balance 
-        : 0;
-      setUserBalance(value);
+      await fetchUserProfile();
     } catch (error) {
-      setUserBalance(null);
       logger.errorWithContext(error, { context: 'refreshBalance' });
     } finally {
       setBalanceLoading(false);
@@ -101,12 +92,9 @@ export function useProfileData(): ProfileDataReturn {
     }
   }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load balance on mount
-  useEffect(() => {
-    if (isAuthenticated) {
-      refreshBalance();
-    }
-  }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
+  const userBalance = useMemo(() => {
+    return typeof profile?.balance === 'number' ? profile.balance : null;
+  }, [profile?.balance]);
 
   // Compute referral stats
   const referralStats = useMemo(() => {

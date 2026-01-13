@@ -31,7 +31,7 @@ export function Cart() {
 
   if (!items || items.length === 0) {
     return (
-      <div className="container">
+      <div className="container mx-auto">
         <div className={cn.main}>
           <div className={cn.main_content}>
             <div className="grid gap-3 p-6 bg-white border border-gray-200 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
