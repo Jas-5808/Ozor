@@ -4,6 +4,7 @@ import cn from "./style.module.scss";
 import ProductCard from "../components/ui/ProductCard";
 import { useApp } from "../context/AppContext";
 import { useProductsByIds } from "../hooks/useProductsByIds";
+import { useProductsPaged } from "../hooks/useProducts";
 import useSEO from "../hooks/useSEO";
 
 export function Favorites() {
@@ -28,6 +29,41 @@ export function Favorites() {
   }, [likedIds]);
 
   const { products: likedProducts, loading, error, refetch } = useProductsByIds(likedProductIds);
+  const {
+    products: catalogProducts,
+    loading: catalogLoading,
+    error: catalogError,
+    hasMore: catalogHasMore,
+    loadMore: loadMoreCatalog,
+  } = useProductsPaged();
+
+  const loadMoreRef = React.useRef<HTMLDivElement | null>(null);
+
+  const recommendedProducts = React.useMemo(() => {
+    const likedSet = new Set(likedProductIds);
+    return catalogProducts
+      .filter((product: any) => {
+        const productId = String(product?.product_id || "");
+        return productId && !likedSet.has(productId);
+      });
+  }, [catalogProducts, likedProductIds]);
+
+  const isCatalogInitialLoading = catalogLoading && catalogProducts.length === 0;
+
+  React.useEffect(() => {
+    if (!catalogHasMore || catalogLoading || !loadMoreRef.current) return;
+    const node = loadMoreRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadMoreCatalog();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [catalogHasMore, catalogLoading, loadMoreCatalog]);
 
   if (loading) {
     return (
@@ -76,7 +112,7 @@ export function Favorites() {
                   {t("favorites.title")}
                 </h2>
               </div>
-              <div className={cn.products_grid}>
+              <div className={`${cn.products_grid} px-3 sm:px-0`}>
                 {likedProducts.map((product: any) => {
                   // Создаем уникальный ключ на основе product_id и variant_id
                   const uniqueKey = product.variant_id 
@@ -91,6 +127,57 @@ export function Favorites() {
                   );
                 })}
               </div>
+              <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                  {t("product.sections.recommendations")}
+                </h3>
+
+                {isCatalogInitialLoading && (
+                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 px-3 sm:px-0">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <div className="h-32 rounded-xl bg-slate-200/60" />
+                        <div className="mt-3 h-4 w-2/3 rounded bg-slate-200/70" />
+                        <div className="mt-2 h-4 w-1/3 rounded bg-slate-200/70" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {catalogError && catalogProducts.length === 0 && (
+                  <p className="mt-2 text-sm text-rose-500">{catalogError}</p>
+                )}
+
+                {!isCatalogInitialLoading && !catalogError && recommendedProducts.length === 0 && (
+                  <p className="mt-2 text-sm text-slate-500">{t("catalog.empty")}</p>
+                )}
+
+                {recommendedProducts.length > 0 && (
+                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 px-3 sm:px-0">
+                    {recommendedProducts.map((product: any) => {
+                      const uniqueKey = product.variant_id
+                        ? `${product.product_id}_${product.variant_id}`
+                        : product.product_id;
+                      return (
+                        <div key={uniqueKey} className="min-w-0">
+                          <ProductCard product={product} size="compact" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {catalogLoading && catalogProducts.length > 0 && (
+                  <div className="mt-4 flex items-center justify-center text-sm text-slate-500">
+                    {t("common.loading") || "Loading..."}
+                  </div>
+                )}
+                {catalogError && catalogProducts.length > 0 && (
+                  <p className="mt-2 text-sm text-rose-500">{catalogError}</p>
+                )}
+                {catalogHasMore && (
+                  <div ref={loadMoreRef} className="h-8" />
+                )}
+              </section>
             </>
           )}
         </div>

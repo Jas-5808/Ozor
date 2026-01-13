@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import SideCatalog from "../SideCatalog";
 import LanguageSwitcher from "../LanguageSwitcher";
@@ -17,6 +17,11 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
   const location = useLocation();
   const [isSideCatalogOpen, setIsSideCatalogOpen] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [headerOffset, setHeaderOffset] = useState(0);
+  const lastScrollYRef = useRef(0);
+  const lastEventRef = useRef<{ type: string; target: string } | null>(null);
+  const headerContainerRef = useRef<HTMLDivElement | null>(null);
   const { t } = useTranslation();
   
   // Определяем активные маршруты
@@ -26,19 +31,218 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
   const isFavoritesActive = location.pathname === '/favorites';
   const isProfileActive = location.pathname === '/profile' || location.pathname === '/login';
   const isProductPage = location.pathname.startsWith('/product');
+  const headerVisible = !isHomeActive || isHeaderVisible;
   
+  useLayoutEffect(() => {
+    if (showOnlyNavbar) return;
+    const el = headerContainerRef.current;
+    if (!el || typeof window === "undefined") return;
+
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      const styles = window.getComputedStyle(el);
+      const marginTop = Number.parseFloat(styles.marginTop || "0") || 0;
+      const marginBottom = Number.parseFloat(styles.marginBottom || "0") || 0;
+      setHeaderOffset(rect.height + marginTop + marginBottom);
+    };
+
+    update();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", update);
+      return () => window.removeEventListener("resize", update);
+    }
+
+    const ro = new ResizeObserver(() => update());
+    ro.observe(el);
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [showOnlyNavbar]);
+
   // Для мобильной версии скрываем поисковик на отдельных страницах
   const shouldHideSearchBarMobile = isCartActive || isFavoritesActive || isProfileActive || isProductPage;
   // На десктопе оставляем поиск всегда видимым по просьбе заказчика
   const shouldHideSearchBarDesktop = false;
   useEffect(() => {
-    const onScroll = () => {
-      setIsCompact(window.scrollY > 10);
+    const mainEl = typeof document !== "undefined" ? document.getElementById("main-content") : null;
+    const mainHasScrollableOverflow =
+      !!mainEl && ["auto", "scroll", "overlay"].includes(window.getComputedStyle(mainEl).overflowY);
+    const debugEnabled =
+      typeof window !== "undefined" &&
+      (window.location.search.includes("debugHeader=1") ||
+        window.localStorage.getItem("debugHeader") === "1");
+    const debugLog = (...args: unknown[]) => {
+      if (!debugEnabled) return;
+      console.log("[HeaderScroll]", ...args);
     };
+    const getScrollSource = () => {
+      if (mainEl && mainHasScrollableOverflow && mainEl.scrollHeight > mainEl.clientHeight) {
+        return "main-content";
+      }
+      return "document";
+    };
+    const getScrollY = () => {
+      // Prefer the document scroll; use main-content only if it is explicitly scrollable.
+      if (mainEl && mainHasScrollableOverflow && mainEl.scrollHeight > mainEl.clientHeight) {
+        return mainEl.scrollTop;
+      }
+      const scrollingElement = document.scrollingElement || document.documentElement;
+      return scrollingElement.scrollTop || window.scrollY || document.body.scrollTop || 0;
+    };
+
+    let raf = 0;
+    const onScroll = (event?: Event) => {
+      if (event) {
+        const targetLabel =
+          event.target instanceof Element
+            ? event.target.id || event.target.tagName.toLowerCase()
+            : "window";
+        lastEventRef.current = { type: event.type, target: targetLabel };
+      } else {
+        lastEventRef.current = { type: "manual", target: "manual" };
+      }
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        const currentY = getScrollY();
+        const delta = currentY - lastScrollYRef.current;
+        const source = getScrollSource();
+        const eventInfo = lastEventRef.current;
+        debugLog("scroll", {
+          event: eventInfo,
+          source,
+          currentY,
+          lastY: lastScrollYRef.current,
+          delta,
+          isHomeActive,
+        });
+        const nextCompact = currentY > 10;
+        setIsCompact((prev) => {
+          if (prev !== nextCompact) {
+            debugLog("compact", { prev, next: nextCompact, currentY });
+          }
+          return nextCompact;
+        });
+
+        if (!isHomeActive) {
+          setIsHeaderVisible((prev) => {
+            if (!prev) {
+              debugLog("visibility", {
+                prev,
+                next: true,
+                reason: "not-home",
+                currentY,
+                delta,
+                source,
+              });
+            }
+            return true;
+          });
+          lastScrollYRef.current = currentY;
+          return;
+        }
+
+        const hideThreshold = 10;
+
+        setIsHeaderVisible((prev) => {
+          let next = prev;
+          let reason = "no-change";
+          if (currentY <= 0) {
+            next = true;
+            reason = "top";
+          } else if (delta < 0) {
+            next = true;
+            reason = "scroll-up";
+          } else if (delta > hideThreshold) {
+            next = false;
+            reason = "scroll-down";
+          }
+          if (prev !== next) {
+            debugLog("visibility", {
+              prev,
+              next,
+              reason,
+              currentY,
+              delta,
+              source,
+            });
+          }
+          return next;
+        });
+
+        lastScrollYRef.current = currentY;
+      });
+    };
+    const onWheel = (event: WheelEvent) => {
+      if (!isHomeActive) return;
+      const currentY = getScrollY();
+      const source = getScrollSource();
+      debugLog("wheel", { deltaY: event.deltaY, currentY, source, isHomeActive });
+      if (event.deltaY < 0) {
+        setIsHeaderVisible((prev) => {
+          if (!prev) {
+            debugLog("visibility", {
+              prev,
+              next: true,
+              reason: "wheel-up",
+              currentY,
+              delta: currentY - lastScrollYRef.current,
+              source,
+            });
+          }
+          return true;
+        });
+      } else if (event.deltaY > 0 && currentY > 10) {
+        setIsHeaderVisible((prev) => {
+          if (prev) {
+            debugLog("visibility", {
+              prev,
+              next: false,
+              reason: "wheel-down",
+              currentY,
+              delta: currentY - lastScrollYRef.current,
+              source,
+            });
+          }
+          return false;
+        });
+      }
+      lastScrollYRef.current = currentY;
+    };
+
+    lastScrollYRef.current = getScrollY();
+    debugLog("init", {
+      path: location.pathname,
+      isHomeActive,
+      mainHasScrollableOverflow,
+      mainScrollHeight: mainEl?.scrollHeight ?? null,
+      mainClientHeight: mainEl?.clientHeight ?? null,
+      docScrollHeight: document.documentElement?.scrollHeight ?? null,
+    });
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    document.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    window.addEventListener("wheel", onWheel, { passive: true });
+    if (mainEl && mainHasScrollableOverflow) {
+      mainEl.addEventListener("scroll", onScroll, { passive: true });
+      mainEl.addEventListener("wheel", onWheel, { passive: true });
+    }
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("scroll", onScroll, { capture: true });
+      window.removeEventListener("wheel", onWheel);
+      if (mainEl && mainHasScrollableOverflow) {
+        mainEl.removeEventListener("scroll", onScroll);
+        mainEl.removeEventListener("wheel", onWheel);
+      }
+      if (raf) {
+        window.cancelAnimationFrame(raf);
+      }
+    };
+  }, [isHomeActive]);
   // Если нужно показать только навбар, возвращаем только его
   if (showOnlyNavbar) {
     return (
@@ -139,12 +343,17 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
 
   return (
     <>
-      <header
-      style={{ background: 'linear-gradient(92.41deg, #003d32, #04734b)' }}
-      className={`hidden md:block sticky top-0 z-50 transition-all duration-300 ${
-          isCompact ? "pt-2" : "pt-3"
-        } pb-2 md:pb-3 text-white border-b border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.22)] backdrop-blur-xl mb-3 md:mb-4`}
+      <div aria-hidden="true" style={{ height: headerOffset }} />
+      <div
+        ref={headerContainerRef}
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          headerVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
+        }`}
       >
+        <header
+          style={{ background: 'linear-gradient(92.41deg, #003d32, #04734b)' }}
+          className={`hidden md:block w-full ${isCompact ? "pt-2" : "pt-3"} pb-2 md:pb-3 text-white border-b border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.22)] backdrop-blur-xl`}
+        >
         <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-5 md:px-6">
             <div className="flex flex-col space-y-2 md:space-y-3">
               <div className="relative flex items-center justify-between gap-2 md:gap-3">
@@ -206,7 +415,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
       </header>
       
       {/* Мобильная версия хедера с поиском */}
-      <div className="md:hidden sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+      <div className="md:hidden bg-white border-b border-gray-200 shadow-sm">
         <div className="px-4 py-3 space-y-3">
           {/* Верхняя строка: локация и переключатель языка */}
           <div className="flex items-center justify-between">
@@ -250,6 +459,7 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
             </div>
           )}
         </div>
+      </div>
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
