@@ -1161,7 +1161,7 @@ export function Product() {
                     <button
                       id={`thumb-${i}`}
                       key={i}
-                      className={`shrink-0 w-[72px]  sm:w-[72px]  md:w-[80px]  lg:w-[88px]  xl:w-[96px]  rounded-[16px] border-2 bg-white shadow-sm grid place-items-center transition relative ${
+                      className={`shrink-0 w-[96px] sm:w-[104px] md:w-[116px] lg:w-[128px] xl:w-[140px] rounded-[16px] border-2 bg-white shadow-sm grid place-items-center transition relative ${
                         i === lightboxIndex ? "border-emerald-600 shadow-md" : "border-slate-200 hover:-translate-y-0.5 hover:shadow-md"
                       }`}
                       type="button"
@@ -1169,13 +1169,13 @@ export function Product() {
                       onClick={() => setLightboxIndex(i)}
                     >
                       {m.kind === "video" ? (
-                        <div className="relative w-full h-full">
+                        <div className="relative w-full">
                           <video
                             src={m.url}
                             muted
                             playsInline
                             preload="metadata"
-                            className="w-full h-full object-cover rounded-[12px] bg-black"
+                            className="w-full h-auto object-contain rounded-[12px] bg-black"
                           />
                           <div className="absolute inset-0 grid place-items-center">
                             <div className="h-7 w-7 rounded-full bg-black/55 text-white grid place-items-center text-sm">
@@ -1187,7 +1187,7 @@ export function Product() {
                         <img
                           src={m.url}
                           alt={`${product.product_name} - ${t("product.lightbox.preview", { index: i + 1 })}`}
-                          className="w-full h-full object-cover rounded-[12px]"
+                          className="w-full h-auto object-contain rounded-[12px]"
                         />
                       )}
                     </button>
