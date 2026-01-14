@@ -1013,7 +1013,12 @@ export function Profile() {
                 {referralStats.map((r) => {
                   const linkedFlow = apiFlows.find((flow) => flow.id === r.id);
                   const origin = typeof window !== "undefined" ? window.location.origin : "";
-                  const shareLink = linkedFlow ? `${origin}/product/${linkedFlow.product_id}?ref=${r.code}` : "";
+                  const referralCode = String(linkedFlow?.code || "").trim();
+                  const shareLink = linkedFlow?.link
+                    ? String(linkedFlow.link)
+                    : (linkedFlow && linkedFlow.product_id && referralCode)
+                    ? `${origin}/r/${encodeURIComponent(String(linkedFlow.product_id))}/${encodeURIComponent(referralCode)}`
+                    : "";
                   const createdAt = linkedFlow?.created_at || (linkedFlow as any)?.createdAt;
                   // Получаем название товара из первого заказа или из linkedFlow
                   const productName = linkedFlow?.orders?.[0]?.items?.[0]?.product_name 

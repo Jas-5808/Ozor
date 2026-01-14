@@ -313,7 +313,8 @@ export default function Orders() {
   useEffect(() => {
     let ignore = false;
     const fetchOrders = async () => {
-      if (!canViewAdminOrders) return;
+      // Для sale_operator тоже показываем /shop/orders/all (требование)
+      if (!hasAccess) return;
       try {
         setLoading(true);
         const res = await shopAPI.getAllOrders();
@@ -330,7 +331,7 @@ export default function Orders() {
     return () => {
       ignore = true;
     };
-  }, [canViewAdminOrders]);
+  }, [hasAccess]);
 
   // Функция для загрузки информации о продукте по variant_id
   const loadProductByVariantId = useCallback(async (variantId: string) => {
@@ -471,7 +472,7 @@ export default function Orders() {
   useEffect(() => {
     let ignore = false;
     const tick = async () => {
-      if (!canViewAdminOrders) return;
+      if (!hasAccess) return;
       try {
         const res = await shopAPI.getAllOrders();
         if (ignore) return;
@@ -486,24 +487,9 @@ export default function Orders() {
       ignore = true;
       clearInterval(id);
     };
-  }, [canViewAdminOrders]);
+  }, [hasAccess]);
 
-  if (!roleReady) {
-    return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
-        Loading...
-      </div>
-    );
-  }
-
-  if (!hasAccess) {
-    return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-        Access denied.
-      </div>
-    );
-  }
-
+  // ВАЖНО: хук должен вызываться до любых ранних return, иначе ломается порядок хуков.
   useEffect(() => {
     let ignore = false;
     const loadServerTime = async () => {
@@ -523,6 +509,22 @@ export default function Orders() {
       clearInterval(tmr);
     };
   }, []);
+
+  if (!roleReady) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+        Access denied.
+      </div>
+    );
+  }
 
   const formatDateTime = (iso?: string) => {
     if (!iso) return "—";

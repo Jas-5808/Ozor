@@ -69,6 +69,20 @@ const ModernMap: React.FC<ModernMapProps> = ({
   const [searchType, setSearchType] = useState<'address' | 'poi'>('address');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchQueryRef = useRef(searchQuery);
+  const searchResultsRef = useRef<any[]>([]);
+  const getCurrentLocationRef = useRef<() => void>(() => undefined);
+  const handleSearchResultSelectRef = useRef<(result: any) => void | Promise<void>>(() => undefined);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    searchQueryRef.current = searchQuery;
+  }, [searchQuery]);
+  useEffect(() => {
+    searchResultsRef.current = searchResults;
+  }, [searchResults]);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
   // Manual address input
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualCity, setManualCity] = useState('');
@@ -302,6 +316,9 @@ const ModernMap: React.FC<ModernMapProps> = ({
       }
     );
   };
+  useEffect(() => {
+    getCurrentLocationRef.current = getCurrentLocation;
+  }, [getCurrentLocation]);
   const toggleFavorite = (location: any) => {
     const isFavorite = favoritePlaces.some(fav => 
       fav.latitude === location.latitude && fav.longitude === location.longitude
@@ -394,20 +411,6 @@ const ModernMap: React.FC<ModernMapProps> = ({
           setSelectedLocation(locationData);
         }
       });
-      const handleKeyPress = (e: KeyboardEvent) => {
-        if (e.key === 'Enter' && searchQuery) {
-          e.preventDefault();
-          if (searchResults.length > 0) {
-            handleSearchResultSelect(searchResults[0]);
-          }
-        } else if (e.key === 'Escape') {
-          onClose();
-        } else if (e.key === 'g' && e.ctrlKey) {
-          e.preventDefault();
-          getCurrentLocation();
-        }
-      };
-      document.addEventListener('keydown', handleKeyPress);
       const getInitialAddress = async () => {
         const initialLocationData = await getAddressFromCoords(defaultLat, defaultLng);
         if (initialLocationData) {
@@ -436,20 +439,6 @@ const ModernMap: React.FC<ModernMapProps> = ({
     initMap();
     
     return () => {
-      const cleanupHandler = (e: KeyboardEvent) => {
-        if (e.key === 'Enter' && searchQuery) {
-          e.preventDefault();
-          if (searchResults.length > 0) {
-            handleSearchResultSelect(searchResults[0]);
-          }
-        } else if (e.key === 'Escape') {
-          onClose();
-        } else if (e.key === 'g' && e.ctrlKey) {
-          e.preventDefault();
-          getCurrentLocation();
-        }
-      };
-      document.removeEventListener('keydown', cleanupHandler);
       // Clear pending timers when unmounting
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -460,7 +449,7 @@ const ModernMap: React.FC<ModernMapProps> = ({
         setMarker(null);
       }
     };
-  }, [isOpen, initialLocation, mapboxLoaded, currentMapStyle, searchQuery, searchResults]);
+  }, [isOpen, initialLocation, mapboxLoaded]);
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
@@ -500,6 +489,29 @@ const ModernMap: React.FC<ModernMapProps> = ({
     setShowSearchResults(false);
     setShowSearchHistory(false);
   };
+  useEffect(() => {
+    handleSearchResultSelectRef.current = handleSearchResultSelect;
+  }, [handleSearchResultSelect]);
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyPress = (e: KeyboardEvent) => {
+      const currentQuery = searchQueryRef.current;
+      const currentResults = searchResultsRef.current;
+      if (e.key === 'Enter' && currentQuery) {
+        e.preventDefault();
+        if (currentResults.length > 0) {
+          handleSearchResultSelectRef.current(currentResults[0]);
+        }
+      } else if (e.key === 'Escape') {
+        onCloseRef.current();
+      } else if (e.key === 'g' && e.ctrlKey) {
+        e.preventDefault();
+        getCurrentLocationRef.current();
+      }
+    };
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [isOpen]);
   const handleConfirm = () => {
     if (selectedLocation) {
       onLocationSelect(selectedLocation);

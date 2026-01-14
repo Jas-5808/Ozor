@@ -56,7 +56,11 @@ apiClient.get = ((url, config) => {
   const safeConfig: AxiosRequestConfig = config ?? {};
   try {
     const paramsKey = stableStringify(safeConfig.params ?? {});
-    const key = `${url}?${paramsKey}`;
+    const baseKey = safeConfig.baseURL || apiClient.defaults.baseURL || "";
+    const headersKey = stableStringify(safeConfig.headers ?? {});
+    const authToken =
+      typeof localStorage !== "undefined" ? localStorage.getItem("access_token") || "" : "";
+    const key = `${baseKey}${url}?${paramsKey}|headers:${headersKey}|token:${authToken}`;
     const cached = inflightGet.get(key);
     if (cached) {
       return cached;

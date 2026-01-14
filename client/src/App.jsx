@@ -52,13 +52,6 @@ function AppContent() {
     setDeliveryMethod(deliveryData.type, deliveryData.address);
   };
 
-  // После успешного входа пытаемся автоматически определить геолокацию
-  useEffect(() => {
-    if (isAuthenticated && !state.location.data) {
-      requestLocationPermission();
-    }
-  }, [isAuthenticated, state.location.data, requestLocationPermission]);
-
   // Когда геолокация получена, записываем её в контекст и закрываем модалку
   useEffect(() => {
     if (
@@ -76,9 +69,6 @@ function AppContent() {
         isManual: false,
       });
       hideLocationModal();
-    } else if (geoLocation?.error && isAuthenticated && !state.location.data) {
-      // Если не удалось получить геопозицию — показываем модалку выбора вручную
-      showLocationModal();
     }
   }, [
     geoLocation,
@@ -86,7 +76,6 @@ function AppContent() {
     state.location.data,
     setLocation,
     hideLocationModal,
-    showLocationModal,
   ]);
 
   return (

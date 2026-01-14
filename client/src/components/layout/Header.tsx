@@ -34,16 +34,21 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
   const headerVisible = !isHomeActive || isHeaderVisible;
   
   useLayoutEffect(() => {
-    if (showOnlyNavbar) return;
+    if (typeof document === "undefined") return;
+    if (showOnlyNavbar) {
+      document.documentElement.style.setProperty("--app-header-offset", "0px");
+      setHeaderOffset(0);
+      return;
+    }
     const el = headerContainerRef.current;
     if (!el || typeof window === "undefined") return;
 
     const update = () => {
       const rect = el.getBoundingClientRect();
-      const styles = window.getComputedStyle(el);
-      const marginTop = Number.parseFloat(styles.marginTop || "0") || 0;
-      const marginBottom = Number.parseFloat(styles.marginBottom || "0") || 0;
-      setHeaderOffset(rect.height + marginTop + marginBottom);
+      // Высота нужна, чтобы схлопывать место под хедер, когда он скрыт
+      const h = Math.max(0, Math.round(rect.height));
+      setHeaderOffset(h);
+      document.documentElement.style.setProperty("--app-header-offset", `${h}px`);
     };
 
     update();
@@ -343,7 +348,6 @@ export function Header({ showOnlyNavbar = false }: { showOnlyNavbar?: boolean })
 
   return (
     <>
-      <div aria-hidden="true" style={{ height: headerOffset }} />
       <div
         ref={headerContainerRef}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${

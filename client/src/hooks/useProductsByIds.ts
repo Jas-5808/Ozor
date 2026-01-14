@@ -6,12 +6,16 @@ import { logger } from "../utils/logger";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
 import { resolveProductDescription, resolveProductName } from "../utils/productUtils";
 
+const getLocaleKey = () => (i18n.language?.split("-")[0] || "ru").toLowerCase();
+
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const MAX_CONCURRENT = 4;
 
 type CacheEntry = {
   time: number;
   product: Product;
+  raw: any;
+  language: string;
   promise: Promise<Product> | null;
 };
 
@@ -51,9 +55,17 @@ function mapProductDetailToProduct(data: any): Product {
 async function fetchOne(productId: string): Promise<Product> {
   const key = String(productId || "");
   const now = Date.now();
+  const locale = getLocaleKey();
   const entry = cache.get(key);
   if (entry?.product && now - entry.time < CACHE_TTL) {
-    return entry.product;
+    if (entry.language === locale) {
+      return entry.product;
+    }
+    if (entry.raw) {
+      const product = mapProductDetailToProduct(entry.raw);
+      cache.set(key, { ...entry, product, language: locale });
+      return product;
+    }
   }
   if (entry?.promise) {
     return entry.promise;
@@ -61,9 +73,11 @@ async function fetchOne(productId: string): Promise<Product> {
 
   const promise = shopAPI
     .getProductById(key)
-    .then((res) => mapProductDetailToProduct((res as any)?.data ?? res))
-    .then((product) => {
-      cache.set(key, { time: Date.now(), product, promise: null });
+    .then((res) => {
+      const raw = (res as any)?.data ?? res;
+      const product = mapProductDetailToProduct(raw);
+      const resolvedLocale = getLocaleKey();
+      cache.set(key, { time: Date.now(), product, raw, language: resolvedLocale, promise: null });
       return product;
     })
     .catch((e) => {
@@ -71,7 +85,7 @@ async function fetchOne(productId: string): Promise<Product> {
       throw e;
     });
 
-  cache.set(key, { time: 0, product: null as unknown as Product, promise });
+  cache.set(key, { time: 0, product: null as unknown as Product, raw: null, language: locale, promise });
   return promise;
 }
 
@@ -97,6 +111,7 @@ export function useProductsByIds(productIds: string[]) {
       .filter(Boolean);
     return Array.from(new Set(ids)).sort();
   }, [productIds]);
+  const locale = getLocaleKey();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -124,7 +139,7 @@ export function useProductsByIds(productIds: string[]) {
     } finally {
       setLoading(false);
     }
-  }, [normalized]);
+  }, [normalized, locale]);
 
   useEffect(() => {
     let cancelled = false;

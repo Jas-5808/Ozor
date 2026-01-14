@@ -5,6 +5,8 @@
 }
 .main {
   flex: 1 1 auto;
+  /* Reserve space for fixed header (set by Header.tsx) */
+  padding-top: var(--app-header-offset, 0px);
 }
 
 /* Header responsive fixes */
@@ -34,8 +36,6 @@ header .header-container {
 
   /* Ensure proper spacing on mobile */
   .main {
-    padding-top: 0;
-    margin-top: 0;
     padding-bottom: 80px; /* Отступ для навбара внизу */
   }
 

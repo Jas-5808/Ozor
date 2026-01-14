@@ -41,27 +41,17 @@ export function CategoryPage() {
   const [otherPrimaryProducts, setOtherPrimaryProducts] = useState<Product[]>([]);
   const [otherVariantProducts, setOtherVariantProducts] = useState<Product[]>([]);
   const [displayedCount, setDisplayedCount] = useState<number>(PAGE_SIZE);
+  const [otherDisplayedCount, setOtherDisplayedCount] = useState<number>(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState(0); // индекс следующей подкатегории для подгрузки
-  const [extraProducts, setExtraProducts] = useState<Product[]>([]);
-  const [extraLoading, setExtraLoading] = useState(false);
-  const [extraError, setExtraError] = useState<string | null>(null);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const categoryUrl = origin && id ? `${origin}/category/${id}` : undefined;
   const categoryTitle = category?.name ? `${category.name} — OZAR` : "Категория — OZAR";
   const categoryDescription = category?.name
     ? `Купить ${category.name} в OZAR. Актуальные цены, варианты и быстрая доставка.`
     : "Категория товаров в OZAR. Актуальные цены и быстрая доставка.";
-
-  const tt = useCallback(
-    (key: string, fallback: string) => {
-      const v = t(key as any) as unknown as string;
-      return v === key ? fallback : v;
-    },
-    [t]
-  );
 
   // Важно: displayedProducts должен быть объявлен ДО использования в JSON-LD (иначе возможен runtime-crash)
   const displayedProducts = useMemo(() => {
@@ -70,8 +60,8 @@ export function CategoryPage() {
 
   const otherDisplayedProducts = useMemo(() => {
     const total = otherPrimaryProducts.length + otherVariantProducts.length;
-    return buildDisplayProducts(otherPrimaryProducts, otherVariantProducts, total);
-  }, [otherPrimaryProducts, otherVariantProducts]);
+    return buildDisplayProducts(otherPrimaryProducts, otherVariantProducts, Math.min(otherDisplayedCount, total));
+  }, [otherDisplayedCount, otherPrimaryProducts, otherVariantProducts]);
 
   const categoryJsonLd = useMemo(() => {
     const name = category?.name || "";
@@ -302,6 +292,7 @@ export function CategoryPage() {
       setOtherPrimaryProducts([]);
       setOtherVariantProducts([]);
       setDisplayedCount(PAGE_SIZE);
+      setOtherDisplayedCount(PAGE_SIZE);
       // sync refs too
       rawItemsRef.current = [];
       cursorRef.current = 0;
@@ -352,77 +343,6 @@ export function CategoryPage() {
     [otherPrimaryProducts.length, otherVariantProducts.length]
   );
 
-  // Кандидаты "других категорий" (для удержания, если в текущей категории мало товаров)
-  const otherCategoryCandidates = useMemo(() => {
-    const exclude = new Set<string>((categoryIds || []).map(String));
-    return (categories || [])
-      .filter((c) => c?.id && !exclude.has(String(c.id)))
-      .filter((c) => (c.products_count ?? 0) > 0)
-      .map((c) => String(c.id));
-  }, [categories, categoryIds]);
-
-  useEffect(() => {
-    // сбрасываем подбор при смене категории
-    setExtraProducts([]);
-    setExtraError(null);
-    setExtraLoading(false);
-  }, [id]);
-
-  useEffect(() => {
-    // Если товаров в категории достаточно — не подгружаем "другие"
-    const SHOULD_ENRICH_THRESHOLD = 18;
-    if (loading) return;
-    if (totalProductsCount >= SHOULD_ENRICH_THRESHOLD) return;
-    if (extraLoading) return;
-    if (extraProducts.length > 0) return;
-    if (!id) return;
-    if (otherCategoryCandidates.length === 0) return;
-
-    let ignore = false;
-    const pickSome = (arr: string[], n: number) => {
-      const copy = arr.slice();
-      copy.sort(() => 0.5 - Math.random());
-      return copy.slice(0, n);
-    };
-
-    const fetchExtras = async () => {
-      setExtraLoading(true);
-      setExtraError(null);
-      try {
-        const chosen = pickSome(otherCategoryCandidates, 3);
-        const responses = await Promise.all(
-          chosen.map((cid) =>
-            shopAPI
-              .getProductsByCategory(cid, { limit: 30, offset: 0 })
-              .then((r) => (r as any)?.data || [])
-              .catch(() => [])
-          )
-        );
-
-        const flat = responses.flat();
-        const transformed = flat
-          .filter((p: any) => p?.product_id && typeof p?.price === "number" && p.price > 0)
-          .map(transformProductFromApi);
-
-        const { primaryProducts: uniquePrimary } = splitProductsIntoPrimaryAndVariants(transformed);
-        const existingIds = new Set(displayedProducts.map((p) => String(p.product_id)));
-        const deduped = uniquePrimary.filter((p) => p?.product_id && !existingIds.has(String(p.product_id)));
-        const final = deduped.slice(0, 12);
-
-        if (!ignore) setExtraProducts(final);
-      } catch (e: any) {
-        if (!ignore) setExtraError(e?.message || (t("common.errors.productsLoad") as any) || "Ошибка загрузки");
-      } finally {
-        if (!ignore) setExtraLoading(false);
-      }
-    };
-
-    void fetchExtras();
-    return () => {
-      ignore = true;
-    };
-  }, [displayedProducts, extraLoading, extraProducts.length, id, loading, otherCategoryCandidates, t, totalProductsCount]);
-
   const hasMore = useMemo(() => {
     // есть ещё что показать ИЛИ есть что догрузить по категориям
     return displayedCount < totalProductsCount || cursor < categoryIds.length;
@@ -450,8 +370,36 @@ export function CategoryPage() {
     threshold: 200,
   });
 
+  // Infinite scroll для "Boshqa mahsulotlar" (товары из подкатегорий / других подгруженных категорий)
+  const hasMoreOther = useMemo(() => {
+    return otherDisplayedCount < otherProductsCount || cursor < categoryIds.length;
+  }, [categoryIds.length, cursor, otherDisplayedCount, otherProductsCount]);
+
+  const loadMoreOther = useCallback(() => {
+    if (loading) return;
+    if (!hasMoreOther) return;
+
+    // 1) сначала просто раскрываем уже загруженные товары
+    if (otherDisplayedCount < otherProductsCount) {
+      setOtherDisplayedCount((prev) => Math.min(prev + PAGE_SIZE, otherProductsCount));
+      return;
+    }
+
+    // 2) если показать нечего, но есть что догрузить — догружаем следующую порцию категорий
+    if (cursor < categoryIds.length && !loadingMore) {
+      void fetchNextCategories();
+    }
+  }, [categoryIds.length, cursor, fetchNextCategories, hasMoreOther, loading, loadingMore, otherDisplayedCount, otherProductsCount]);
+
+  const { ref: otherSentinelRef } = useInfiniteScroll({
+    hasMore: hasMoreOther,
+    loading: loading || loadingMore,
+    onLoadMore: loadMoreOther,
+    threshold: 200,
+  });
+
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6">
       {/* Breadcrumb */}
       <nav className="mb-4 text-sm">
         <ol className="flex items-center gap-2 text-slate-500">
@@ -567,12 +515,11 @@ export function CategoryPage() {
       ) : (
         <>
           {totalProductsCount > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 items-stretch">
               {displayedProducts.map((product) => (
-                <ProductCard 
-                  key={`${product.product_id}_${product.variant_id || ''}`} 
-                  product={product} 
-                />
+                <div key={`${product.product_id}_${product.variant_id || ''}`} className="min-w-0">
+                  <ProductCard product={product} size="compact" />
+                </div>
               ))}
             </div>
           )}
@@ -585,55 +532,20 @@ export function CategoryPage() {
 
           {otherProductsCount > 0 && (
             <div className="mt-10">
-              <div className="mb-4 text-lg font-semibold text-slate-900">Другие товары</div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="mb-4 text-lg font-semibold text-slate-900">
+                {t("catalog.otherProducts")}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 items-stretch">
                 {otherDisplayedProducts.map((product) => (
-                  <ProductCard 
-                    key={`other_${product.product_id}_${product.variant_id || ''}`} 
-                    product={product} 
-                  />
+                  <div key={`other_${product.product_id}_${product.variant_id || ''}`} className="min-w-0">
+                    <ProductCard product={product} size="compact" />
+                  </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Удержание: товары из других категорий, если в текущей мало */}
-          {(extraLoading || extraProducts.length > 0 || extraError) && (
-            <div className="mt-10">
-              <div className="mb-4 flex items-end justify-between gap-3">
-                <div>
-                  <h2 className="text-lg md:text-xl font-extrabold text-slate-900">
-                    {tt("catalog.alsoLike", "Вам может понравиться")}
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    {tt("catalog.alsoLikeSubtitle", "Популярные товары из других категорий")}
-                  </p>
-                </div>
-                <Link
-                  to="/catalog"
-                  className="shrink-0 text-sm font-semibold text-[#04734b] hover:brightness-110 transition"
-                >
-                  {t("catalog.backToCatalog") || "Каталог"} →
-                </Link>
-              </div>
-
-              {extraError && (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                  {extraError}
-                </div>
-              )}
-
-              {extraLoading && extraProducts.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-slate-200 p-6">
-                  <SkeletonGrid count={6} />
-                </div>
-              )}
-
-              {extraProducts.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {extraProducts.map((p) => (
-                    <ProductCard key={`extra_${p.product_id}_${p.variant_id || ""}`} product={p} />
-                  ))}
+              <div ref={otherSentinelRef} className="h-4 w-full" />
+              {hasMoreOther && (
+                <div className="flex justify-center items-center py-8">
+                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#04734b]"></div>
                 </div>
               )}
             </div>

@@ -13,6 +13,7 @@ const Registration = lazy(() => import('./pages/Registration').then(m => ({ defa
 const Product = lazy(() => import('./pages/Product').then(m => ({ default: m.Product })));
 const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
 const UpdateProfile = lazy(() => import('./pages/UpdateProfile').then(m => ({ default: m.UpdateProfile })));
+const ReferralRedirect = lazy(() => import('./pages/ReferralRedirect').then(m => ({ default: m.ReferralRedirect })));
 const Favorites = lazy(() => import('./pages/Favorites'));
 const Cart = lazy(() => import('./pages/Cart'));
 const CatalogPage = lazy(() => import('./pages/CatalogPage').then(m => ({ default: m.CatalogPage })));
@@ -47,7 +48,7 @@ function RequireAuth({ children }){
   return children;
 }
 
-function RequireRole({ children, roles }){
+function RequireRole({ children, roles, denyRoles }){
   const { isAuthenticated, loading, profile } = useAuth();
   const location = useLocation();
   const [roleState, setRoleState] = React.useState(null);
@@ -136,9 +137,22 @@ function RequireRole({ children, roles }){
   
   // Проверяем разрешенные роли (в нижнем регистре)
   const allowed = Array.isArray(roles) ? roles.map(r => String(r).toLowerCase()) : [];
+  const denied = Array.isArray(denyRoles) ? denyRoles.map(r => String(r).toLowerCase()) : [];
   
   // Проверяем как нормализованную роль, так и оригинальную (для sale_operator)
   const roleLower = (roleState || '').toLowerCase();
+
+  // CEO может заходить куда угодно
+  if (normalized === 'ceo' || roleLower === 'ceo') return children;
+
+  const isDenied = denied.includes(normalized) || denied.includes(roleLower);
+  if (isDenied) return <Navigate to="/" replace />;
+
+  // Если roles не заданы, но задан denyRoles — значит "разрешено всем, кроме запрещенных"
+  if ((!allowed || allowed.length === 0) && denied.length > 0) {
+    return children;
+  }
+
   const hasAccess = allowed.includes(normalized) || allowed.includes(roleLower);
 
   if (!hasAccess) return <Navigate to="/" replace />;
@@ -182,6 +196,14 @@ export const router = createBrowserRouter([
             <Product />
           </Suspense>
         ) 
+      },
+      {
+        path: "r/:productId/:code",
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <ReferralRedirect />
+          </Suspense>
+        ),
       },
       { 
         path: "profile", 
@@ -266,7 +288,7 @@ export const router = createBrowserRouter([
   {
     path: "/admin",
     element: (
-      <RequireRole roles={["ceo", "sale_manager", "driver_manager", "driver", "sale_operator", "warehouse_manager", "admin", "manager", "seo"]}>
+      <RequireRole denyRoles={["user", "client"]}>
         <Suspense fallback={<AdminSkeleton rows={10} />}>
           <AdminLayout />
         </Suspense>
@@ -277,7 +299,7 @@ export const router = createBrowserRouter([
       {
         path: "/admin",
         element: (
-          <RequireRole roles={["admin", "manager", "seo", "ceo"]}>
+          <RequireRole denyRoles={["user", "client"]}>
             <Suspense fallback={<AdminSkeleton rows={10} />}><AdminDashboard /></Suspense>
           </RequireRole>
         )
@@ -285,7 +307,7 @@ export const router = createBrowserRouter([
       {
         path: "/admin/orders",
         element: (
-          <RequireRole roles={["admin", "manager", "seo", "ceo"]}>
+          <RequireRole roles={["sale_operator"]}>
             <Suspense fallback={<AdminSkeleton rows={10} />}><AdminOrders /></Suspense>
           </RequireRole>
         )
@@ -293,7 +315,7 @@ export const router = createBrowserRouter([
       {
         path: "/admin/users",
         element: (
-          <RequireRole roles={["admin", "seo", "ceo"]}>
+          <RequireRole denyRoles={["user", "client"]}>
             <Suspense fallback={<AdminSkeleton rows={10} />}><AdminUsers /></Suspense>
           </RequireRole>
         )
@@ -301,7 +323,7 @@ export const router = createBrowserRouter([
       {
         path: "/admin/products",
         element: (
-          <RequireRole roles={["admin", "manager", "seo", "ceo"]}>
+          <RequireRole denyRoles={["user", "client"]}>
             <Suspense fallback={<AdminSkeleton rows={10} />}><AdminProducts /></Suspense>
           </RequireRole>
         )
@@ -309,7 +331,7 @@ export const router = createBrowserRouter([
       {
         path: "/admin/warehouse",
         element: (
-          <RequireRole roles={["admin", "manager", "seo", "ceo"]}>
+          <RequireRole roles={["admin", "warehouse_manager", "ceo"]}>
             <Suspense fallback={<AdminSkeleton rows={10} />}><AdminWarehouse /></Suspense>
           </RequireRole>
         )
@@ -317,7 +339,7 @@ export const router = createBrowserRouter([
       {
         path: "/admin/warehouse/orders",
         element: (
-          <RequireRole roles={["admin", "manager", "seo", "ceo"]}>
+          <RequireRole roles={["admin", "warehouse_manager", "ceo"]}>
             <Suspense fallback={<AdminSkeleton rows={10} />}><AdminWarehouse /></Suspense>
           </RequireRole>
         )
@@ -325,7 +347,7 @@ export const router = createBrowserRouter([
       {
         path: "/admin/warehouse/add",
         element: (
-          <RequireRole roles={["admin", "manager", "seo", "ceo"]}>
+          <RequireRole roles={["admin", "warehouse_manager", "ceo"]}>
             <Suspense fallback={<AdminSkeleton rows={10} />}><AdminWarehouse /></Suspense>
           </RequireRole>
         )
@@ -333,7 +355,7 @@ export const router = createBrowserRouter([
       {
         path: "/admin/warehouse/locations",
         element: (
-          <RequireRole roles={["admin", "manager", "seo", "ceo"]}>
+          <RequireRole roles={["admin", "warehouse_manager", "ceo"]}>
             <Suspense fallback={<AdminSkeleton rows={10} />}><AdminWarehouse /></Suspense>
           </RequireRole>
         )
@@ -341,7 +363,7 @@ export const router = createBrowserRouter([
       {
         path: "/admin/categories",
         element: (
-          <RequireRole roles={["admin", "seo", "ceo"]}>
+          <RequireRole denyRoles={["user", "client"]}>
             <Suspense fallback={<AdminSkeleton rows={10} />}><AdminCategories /></Suspense>
           </RequireRole>
         )
@@ -349,7 +371,7 @@ export const router = createBrowserRouter([
       {
         path: "/admin/banners",
         element: (
-          <RequireRole roles={["admin", "seo", "ceo"]}>
+          <RequireRole denyRoles={["user", "client"]}>
             <Suspense fallback={<AdminSkeleton rows={10} />}><AdminBanners /></Suspense>
           </RequireRole>
         )
@@ -357,7 +379,7 @@ export const router = createBrowserRouter([
       {
         path: "/admin/audit",
         element: (
-          <RequireRole roles={["admin", "seo", "ceo"]}>
+          <RequireRole denyRoles={["user", "client"]}>
             <Suspense fallback={<AdminSkeleton rows={10} />}><AdminAudit /></Suspense>
           </RequireRole>
         )
@@ -365,7 +387,7 @@ export const router = createBrowserRouter([
       {
         path: "/admin/payments",
         element: (
-          <RequireRole roles={["ceo", "admin", "seo"]}>
+          <RequireRole denyRoles={["user", "client"]}>
             <Suspense fallback={<AdminSkeleton rows={10} />}><AdminPayments /></Suspense>
           </RequireRole>
         )
@@ -375,7 +397,7 @@ export const router = createBrowserRouter([
   {
     path: "/sale",
     element: (
-      <RequireRole roles={["sale"]}>
+      <RequireRole roles={["sale_operator"]}>
         <Suspense fallback={<AdminSkeleton rows={10} />}>
           <SaleLayout />
         </Suspense>

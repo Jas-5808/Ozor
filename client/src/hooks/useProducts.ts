@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import i18n from "../i18n";
 import { shopAPI } from "../services/api";
 import { Product } from "../types";
 import { logger } from "../utils/logger";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
 import { buildDisplayProducts, resolveProductDescription, resolveProductName, splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
+
+const getLocaleKey = () => (i18n.language?.split("-")[0] || "ru").toLowerCase();
 
 const ITEMS_PER_PAGE = 20; // Количество товаров на страницу
 const API_LIMIT = 100; // Максимальный лимит для API запроса
@@ -14,9 +16,11 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 минут кэш
 
 // Простой кэш для продуктов
 let productsCache: {
+  raw: any[];
   primary: Product[];
   variants: Product[];
   timestamp: number;
+  language: string;
 } | null = null;
 let productsInFlight: Promise<void> | null = null;
 
@@ -42,6 +46,7 @@ export const useProductsPaged = () => {
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState<number>(0);
   const [hasMore, setHasMore] = useState<boolean>(true);
+  const locale = getLocaleKey();
 
   const hydrateFromRaw = useCallback((items: any[]) => {
     const { primaryProducts: primary, variantProducts: variants } =
@@ -197,6 +202,11 @@ export const useProductsPaged = () => {
     };
   }, [fetchFirstPage]);
 
+  useEffect(() => {
+    if (!raw.length) return;
+    hydrateFromRaw(raw);
+  }, [raw, hydrateFromRaw, locale]);
+
   const products = useMemo(() => {
     const total = primaryProducts.length + variantProducts.length;
     return buildDisplayProducts(primaryProducts, variantProducts, total);
@@ -218,6 +228,8 @@ export const useProducts = () => {
   const [displayedCount, setDisplayedCount] = useState<number>(ITEMS_PER_PAGE);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const rawProductsRef = useRef<any[]>([]);
+  const locale = getLocaleKey();
   
   const fetchProducts = useCallback(async () => {
     // Если уже есть кэш — используем его сразу
@@ -228,8 +240,22 @@ export const useProducts = () => {
       // Проверяем кэш
       const now = Date.now();
       if (productsCache && (now - productsCache.timestamp) < CACHE_TTL) {
-        setPrimaryProducts(productsCache.primary);
-        setVariantProducts(productsCache.variants);
+        rawProductsRef.current = productsCache.raw || [];
+        if (productsCache.language !== activeLocale && rawProductsRef.current.length) {
+          const { primaryProducts: primary, variantProducts: variants } =
+            splitProductsIntoPrimaryAndVariants(rawProductsRef.current);
+          productsCache = {
+            ...productsCache,
+            primary,
+            variants,
+            language: activeLocale,
+          };
+          setPrimaryProducts(primary);
+          setVariantProducts(variants);
+        } else {
+          setPrimaryProducts(productsCache.primary);
+          setVariantProducts(productsCache.variants);
+        }
         setDisplayedCount(ITEMS_PER_PAGE);
         setLoading(false);
         return;
@@ -240,8 +266,22 @@ export const useProducts = () => {
         await productsInFlight;
         const cached = productsCache;
         if (cached) {
-          setPrimaryProducts(cached.primary);
-          setVariantProducts(cached.variants);
+          rawProductsRef.current = cached.raw || [];
+          if (cached.language !== activeLocale && rawProductsRef.current.length) {
+            const { primaryProducts: primary, variantProducts: variants } =
+              splitProductsIntoPrimaryAndVariants(rawProductsRef.current);
+            productsCache = {
+              ...cached,
+              primary,
+              variants,
+              language: activeLocale,
+            };
+            setPrimaryProducts(primary);
+            setVariantProducts(variants);
+          } else {
+            setPrimaryProducts(cached.primary);
+            setVariantProducts(cached.variants);
+          }
           setDisplayedCount(ITEMS_PER_PAGE);
         }
         setLoading(false);
@@ -254,6 +294,7 @@ export const useProducts = () => {
         const firstResponse = await shopAPI.getProducts({ limit: FIRST_PAGE_LIMIT, offset: 0 });
         const firstData = firstResponse.data || [];
         allFetchedProducts.push(...firstData);
+        rawProductsRef.current = allFetchedProducts;
 
         // Отдаем первую партию сразу
         const { primaryProducts: firstPrimary, variantProducts: firstVariants } =
@@ -283,10 +324,14 @@ export const useProducts = () => {
         // Финализируем полную выдачу и кэшируем
         const { primaryProducts: primary, variantProducts: variants } =
           splitProductsIntoPrimaryAndVariants(allFetchedProducts);
+        rawProductsRef.current = allFetchedProducts;
+        const resolvedLocale = getLocaleKey();
         productsCache = {
+          raw: allFetchedProducts,
           primary,
           variants,
           timestamp: Date.now(),
+          language: resolvedLocale,
         };
         setPrimaryProducts(primary);
         setVariantProducts(variants);
@@ -311,6 +356,23 @@ export const useProducts = () => {
     fetchProducts().finally(()=>{ if (cancelled) return; });
     return ()=>{ cancelled = true; };
   }, [fetchProducts]);
+
+  useEffect(() => {
+    if (!rawProductsRef.current.length) return;
+    const { primaryProducts: primary, variantProducts: variants } =
+      splitProductsIntoPrimaryAndVariants(rawProductsRef.current);
+    setPrimaryProducts(primary);
+    setVariantProducts(variants);
+    if (productsCache) {
+      productsCache = {
+        ...productsCache,
+        raw: rawProductsRef.current,
+        primary,
+        variants,
+        language: locale,
+      };
+    }
+  }, [locale]);
 
   // Отображаемые продукты (пагинация на клиенте) - мемоизировано
   const products = useMemo(() => {
@@ -338,6 +400,7 @@ export const useProducts = () => {
   const refetch = useCallback(() => {
     // Очищаем кэш при принудительном обновлении
     productsCache = null;
+    rawProductsRef.current = [];
     fetchProducts();
   }, [fetchProducts]);
 
