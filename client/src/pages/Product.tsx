@@ -151,9 +151,21 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
   if (!open) return null;
   const { t } = useTranslation();
 
+  // В media могут быть видео — в summary нужна именно картинка
   const summaryImage = getProductImageUrl(
-    (variant?.variant_media || []).find((m: any) => m?.is_main)?.file ||
-      variant?.variant_media?.[0]?.file ||
+    (variant?.variant_media || [])
+      .filter(
+        (m: any) =>
+          String(m?.type || "").toLowerCase() !== "video" &&
+          !String(m?.file || "").toLowerCase().endsWith(".mp4")
+      )
+      .find((m: any) => m?.is_main)?.file ||
+      (variant?.variant_media || [])
+        .filter(
+          (m: any) =>
+            String(m?.type || "").toLowerCase() !== "video" &&
+            !String(m?.file || "").toLowerCase().endsWith(".mp4")
+        )?.[0]?.file ||
       product.main_image
   );
 
@@ -372,7 +384,12 @@ export function Product() {
     if (!product) return undefined;
     const variantMedia = selectedVariant?.variant_media || [];
     if (variantMedia.length > 0) {
-      const mainMedia = variantMedia.find((m: any) => m.is_main) || variantMedia[0];
+      const imageMedia = variantMedia.filter(
+        (m: any) =>
+          String(m?.type || "").toLowerCase() !== "video" &&
+          !String(m?.file || "").toLowerCase().endsWith(".mp4")
+      );
+      const mainMedia = imageMedia.find((m: any) => m.is_main) || imageMedia[0] || variantMedia[0];
       return mainMedia?.file ? getProductImageUrl(mainMedia.file) : undefined;
     }
     return product.main_image ? getProductImageUrl(product.main_image) : undefined;
@@ -574,19 +591,39 @@ export function Product() {
     };
   }, [categoryId, product?.product_id]);
 
-  // Галерея
-  const galleryImages: string[] = useMemo(() => {
-    if (!product) return [];
+  // Галерея: поддержка изображений + видео (mp4) из variant_media
+  const galleryMedia = useMemo(() => {
+    if (!product) return [] as Array<{ url: string; kind: "image" | "video" }>;
+
+    const isVideo = (m: any) => {
+      const t = String(m?.type || "").toLowerCase();
+      const f = String(m?.file || "").toLowerCase();
+      return t === "video" || f.endsWith(".mp4") || f.endsWith(".webm") || f.endsWith(".mov");
+    };
 
     const variantMedia = selectedVariant?.variant_media || [];
     if (variantMedia.length > 0) {
-      const mediaImages = variantMedia.map((m: any) => m?.file).filter(Boolean).map((f: string) => getProductImageUrl(f));
-      return Array.from(new Set(mediaImages.filter(Boolean))) as string[];
+      const mapped = (variantMedia || [])
+        .map((m: any) => {
+          const file = m?.file;
+          if (!file) return null;
+          const kind: "image" | "video" = isVideo(m) ? "video" : "image";
+          return { url: getProductImageUrl(String(file)), kind };
+        })
+        .filter(Boolean) as Array<{ url: string; kind: "image" | "video" }>;
+
+      const seen = new Set<string>();
+      return mapped.filter((it) => {
+        const key = `${it.kind}:${it.url}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     }
 
     const main = product.main_image ? getProductImageUrl(product.main_image) : null;
-    return main ? [main] : [];
-  }, [selectedVariant, product]);
+    return main ? [{ url: main, kind: "image" as const }] : [];
+  }, [product, selectedVariant?.variant_media]);
 
   const updateThumbScrollState = useCallback(() => {
     const el = thumbsScrollRef.current;
@@ -613,20 +650,20 @@ export function Product() {
     const onScroll = () => updateThumbScrollState();
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
-  }, [galleryImages.length, updateThumbScrollState]);
+  }, [galleryMedia.length, updateThumbScrollState]);
 
   useEffect(() => {
     const target = document.getElementById(`thumb-${lightboxIndex}`);
     if (target && thumbsScrollRef.current) {
       target.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
-  }, [lightboxIndex, galleryImages.length]);
+  }, [lightboxIndex, galleryMedia.length]);
 
   useEffect(() => {
-    if (selectedVariant && galleryImages.length > 0) {
-      if (lightboxIndex >= galleryImages.length) setLightboxIndex(0);
+    if (selectedVariant && galleryMedia.length > 0) {
+      if (lightboxIndex >= galleryMedia.length) setLightboxIndex(0);
     }
-  }, [galleryImages.length, selectedVariant?.id, lightboxIndex]);
+  }, [galleryMedia.length, selectedVariant?.id, lightboxIndex]);
 
   const selectedAttributesList = useMemo(() => {
     if (!product || !selectedVariant) return [];
@@ -719,8 +756,8 @@ export function Product() {
     setLightboxPan({ x: 0, y: 0 });
     document.body.style.overflow = "";
   };
-  const nextImage = () => setLightboxIndex((prev) => (prev + 1) % Math.max(galleryImages.length, 1));
-  const prevImage = () => setLightboxIndex((prev) => (prev - 1 + Math.max(galleryImages.length, 1)) % Math.max(galleryImages.length, 1));
+  const nextImage = () => setLightboxIndex((prev) => (prev + 1) % Math.max(galleryMedia.length, 1));
+  const prevImage = () => setLightboxIndex((prev) => (prev - 1 + Math.max(galleryMedia.length, 1)) % Math.max(galleryMedia.length, 1));
   const zoomIn = () => setLightboxZoom((z) => Math.min(z + 0.25, 3));
   const zoomOut = () => setLightboxZoom((z) => Math.max(z - 0.25, 0.5));
   const onLightboxWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
@@ -847,7 +884,7 @@ export function Product() {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [lightboxOpen, galleryImages.length]);
+  }, [lightboxOpen, galleryMedia.length]);
 
   const canBuy =
     selectedVariant ? selectedVariant.stock > 0 && selectedVariant.price !== null : product?.price !== null && (product?.stock ?? 0) > 0;
@@ -874,7 +911,10 @@ export function Product() {
   // Добавление в корзину
   const handleAddToCart = () => {
     if (!product || !canBuy) return;
-    const cartImage = primaryImage || galleryImages[0] || (product.main_image ? getProductImageUrl(product.main_image) : undefined);
+    const cartImage =
+      primaryImage ||
+      galleryMedia.find((m) => m.kind === "image")?.url ||
+      (product.main_image ? getProductImageUrl(product.main_image) : undefined);
     const cartPrice = currentPrice ?? product.price ?? 0;
     const stockAmount = selectedVariant?.stock ?? product.stock ?? 0;
 
@@ -1080,21 +1120,44 @@ export function Product() {
           {/* Gallery */}
           <div className="flex flex-col gap-3 md:gap-4 md:p-4">
             <div className="w-full">
-              <img
-                src={galleryImages[Math.min(lightboxIndex, galleryImages.length - 1)] || getProductImageUrl(product.main_image)}
-                alt={product.product_name}
-                className="w-full max-h-[520px] sm:max-h-[560px] md:max-h-[620px] lg:max-h-[720px] xl:max-h-[820px] rounded-3xl object-contain cursor-zoom-in"
-                onClick={() => openLightbox(Math.min(lightboxIndex, galleryImages.length - 1))}
-              />
+              {(() => {
+                const idx = Math.min(lightboxIndex, Math.max(galleryMedia.length - 1, 0));
+                const current = galleryMedia[idx];
+                const fallback = getProductImageUrl(product.main_image);
+                if (current?.kind === "video") {
+                  return (
+                    <video
+                      key={current.url}
+                      src={current.url}
+                      controls
+                      muted
+                      autoPlay
+                      loop
+                      playsInline
+                      preload="metadata"
+                      className="w-full max-h-[520px] sm:max-h-[560px] md:max-h-[620px] lg:max-h-[720px] xl:max-h-[820px] rounded-3xl object-contain bg-black"
+                      onClick={() => openLightbox(idx)}
+                    />
+                  );
+                }
+                return (
+                  <img
+                    src={current?.url || fallback}
+                    alt={product.product_name}
+                    className="w-full max-h-[520px] sm:max-h-[560px] md:max-h-[620px] lg:max-h-[720px] xl:max-h-[820px] rounded-3xl object-contain cursor-zoom-in"
+                    onClick={() => openLightbox(idx)}
+                  />
+                );
+              })()}
             </div>
 
-            {galleryImages.length > 1 && (
+            {galleryMedia.length > 1 && (
               <div className="w-full">
                 <div
                   className="flex w-full overflow-x-auto overflow-y-hidden scroll-smooth pb-1 pr-1 touch-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                   ref={thumbsScrollRef}
                 >
-                  {galleryImages.map((img, i) => (
+                  {galleryMedia.map((m, i) => (
                     <button
                       id={`thumb-${i}`}
                       key={i}
@@ -1105,11 +1168,28 @@ export function Product() {
                       aria-label={t("product.lightbox.preview", { index: i + 1 })}
                       onClick={() => setLightboxIndex(i)}
                     >
-                      <img
-                        src={img}
-                        alt={`${product.product_name} - ${t("product.lightbox.preview", { index: i + 1 })}`}
-                        className="w-full h-full object-cover rounded-[12px]"
-                      />
+                      {m.kind === "video" ? (
+                        <div className="relative w-full h-full">
+                          <video
+                            src={m.url}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            className="w-full h-full object-cover rounded-[12px] bg-black"
+                          />
+                          <div className="absolute inset-0 grid place-items-center">
+                            <div className="h-7 w-7 rounded-full bg-black/55 text-white grid place-items-center text-sm">
+                              ▶
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <img
+                          src={m.url}
+                          alt={`${product.product_name} - ${t("product.lightbox.preview", { index: i + 1 })}`}
+                          className="w-full h-full object-cover rounded-[12px]"
+                        />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -1826,48 +1906,71 @@ export function Product() {
             </button>
 
             <div className="rounded-3xl overflow-hidden bg-black">
-              <img
-                src={galleryImages[lightboxIndex] || getProductImageUrl(product?.main_image || "")}
-                alt={t("product.lightbox.view")}
-                className="w-full max-h-[80vh] object-contain"
-                style={{ transform: `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxZoom})` }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const now = Date.now();
-                  if (now - lastTapRef.current < 300) {
-                    setLightboxZoom(1);
-                    setLightboxPan({ x: 0, y: 0 });
-                  } else {
-                    setLightboxZoom((z) => (z >= 2 ? 1 : 2));
-                    if (lightboxZoom <= 1) setLightboxPan({ x: 0, y: 0 });
-                  }
-                  lastTapRef.current = now;
-                }}
-              />
+              {(() => {
+                const item = galleryMedia[lightboxIndex];
+                const fallback = getProductImageUrl(product?.main_image || "");
+                if (item?.kind === "video") {
+                  return (
+                    <video
+                      key={item.url}
+                      src={item.url}
+                      controls
+                      playsInline
+                      autoPlay
+                      muted
+                      loop
+                      className="w-full max-h-[80vh] object-contain bg-black"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  );
+                }
+                return (
+                  <img
+                    src={item?.url || fallback}
+                    alt={t("product.lightbox.view")}
+                    className="w-full max-h-[80vh] object-contain"
+                    style={{ transform: `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxZoom})` }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const now = Date.now();
+                      if (now - lastTapRef.current < 300) {
+                        setLightboxZoom(1);
+                        setLightboxPan({ x: 0, y: 0 });
+                      } else {
+                        setLightboxZoom((z) => (z >= 2 ? 1 : 2));
+                        if (lightboxZoom <= 1) setLightboxPan({ x: 0, y: 0 });
+                      }
+                      lastTapRef.current = now;
+                    }}
+                  />
+                );
+              })()}
             </div>
 
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 hidden md:flex gap-2">
-              <button
-                className="h-11 w-11 rounded-2xl bg-white/90 text-slate-900 shadow-md text-xl font-bold"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  zoomOut();
-                }}
-                aria-label={t("product.lightbox.zoomOut")}
-              >
-                −
-              </button>
-              <button
-                className="h-11 w-11 rounded-2xl bg-white/90 text-slate-900 shadow-md text-xl font-bold"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  zoomIn();
-                }}
-                aria-label={t("product.lightbox.zoomIn")}
-              >
-                +
-              </button>
-            </div>
+            {galleryMedia[lightboxIndex]?.kind !== "video" && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 hidden md:flex gap-2">
+                <button
+                  className="h-11 w-11 rounded-2xl bg-white/90 text-slate-900 shadow-md text-xl font-bold"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    zoomOut();
+                  }}
+                  aria-label={t("product.lightbox.zoomOut")}
+                >
+                  −
+                </button>
+                <button
+                  className="h-11 w-11 rounded-2xl bg-white/90 text-slate-900 shadow-md text-xl font-bold"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    zoomIn();
+                  }}
+                  aria-label={t("product.lightbox.zoomIn")}
+                >
+                  +
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

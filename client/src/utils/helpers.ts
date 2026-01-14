@@ -111,11 +111,25 @@ export const getProductImageUrl = (imagePath: string): string => {
   return `${baseUrl.replace(/\/+$/, "")}/${imagePath}`;
 };
 
-// Безопасное извлечение изображения варианта (если приходит variant_media)
-export const getVariantMainImage = (variant_media?: { file: string; is_main?: boolean }[]): string | null => {
+// Безопасное извлечение изображения варианта (если приходит variant_media).
+// Важно: media может содержать видео (mp4) — его нельзя подставлять в <img>.
+export const getVariantMainImage = (
+  variant_media?: { file: string; is_main?: boolean; type?: string }[]
+): string | null => {
   if (!variant_media || variant_media.length === 0) return null;
-  const main = variant_media.find((m) => m.is_main) || variant_media[0];
-  return main?.file ? getProductImageUrl(main.file) : null;
+
+  const isVideo = (m?: { file?: string; type?: string }) => {
+    const t = String(m?.type || "").toLowerCase();
+    const f = String(m?.file || "").toLowerCase();
+    return t === "video" || f.endsWith(".mp4") || f.endsWith(".webm") || f.endsWith(".mov");
+  };
+
+  const images = variant_media.filter((m) => m?.file && !isVideo(m));
+  const preferred = images.length
+    ? (images.find((m) => m.is_main) || images[0])
+    : (variant_media.find((m) => m?.file) || null);
+
+  return preferred?.file ? getProductImageUrl(preferred.file) : null;
 };
 
 // Сокращение URL для отображения

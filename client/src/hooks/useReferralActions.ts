@@ -83,7 +83,8 @@ export function useReferralActions(
       setCreateModal({
         open: true,
         product,
-        title: product?.product_name || '',
+        // input должен быть пустым при открытии модалки
+        title: '',
         agree: false,
         createdLink: null,
       });
@@ -110,11 +111,6 @@ export function useReferralActions(
         createdLink: link,
         agree: true,
       }));
-
-      setReferralNotice({
-        type: 'success',
-        message: SUCCESS_MESSAGES.LINK_COPIED,
-      });
 
       onSuccess?.();
     } catch (error) {

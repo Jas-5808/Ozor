@@ -990,7 +990,7 @@ export function Profile() {
                 {apiFlowsError}
               </div>
             )}
-            {referralNotice && (
+            {referralNotice && String(referralNotice.message || "").trim() && (
               <div
                 className={`mb-3 rounded-2xl border px-4 py-3 text-sm font-semibold ${
                   referralNotice.type === "success"
