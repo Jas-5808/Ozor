@@ -248,7 +248,8 @@ export const SimpleSliderHeavy: React.FC<Props> = ({ initialSlides }) => {
 
   return (
     <div
-      className="relative w-full rounded-2xl shadow-2xl overflow-hidden h-[220px] sm:h-[260px] md:h-[320px] lg:h-[380px] xl:h-[420px]"
+      className="relative w-full aspect-[16/9] rounded-2xl shadow-2xl overflow-hidden"
+      style={{ minHeight: "192px", maxHeight: "500px" }}
     >
       {!allImagesLoaded && (
         <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10">
@@ -297,7 +298,7 @@ export const SimpleSliderHeavy: React.FC<Props> = ({ initialSlides }) => {
                     <img
                       src={slide.image}
                       alt={t("slider.bannerAlt")}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain bg-white"
                       loading={index === 0 ? "eager" : "lazy"}
                       fetchPriority={index === 0 ? "high" : "low"}
                       decoding="async"
@@ -334,7 +335,7 @@ export const SimpleSliderHeavy: React.FC<Props> = ({ initialSlides }) => {
                 <img
                   src={slide.image}
                   alt={t("slider.bannerAlt")}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain bg-white"
                   loading={index === 0 ? "eager" : "lazy"}
                   fetchPriority={index === 0 ? "high" : "low"}
                   decoding="async"

@@ -135,13 +135,14 @@ export const SimpleSlider: React.FC = () => {
 
   return (
     <div
-      className="relative w-full rounded-2xl shadow-2xl overflow-hidden h-[220px] sm:h-[260px] md:h-[320px] lg:h-[380px] xl:h-[420px]"
+      className="relative w-full aspect-[16/9] rounded-2xl shadow-2xl overflow-hidden"
+      style={{ minHeight: "192px", maxHeight: "500px" }}
     >
       <a href={first.link} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
         <img
           src={first.image}
           alt={t("slider.bannerAlt")}
-          className="w-full h-full object-cover rounded-2xl"
+          className="w-full h-full object-contain bg-white rounded-2xl"
           loading="eager"
           fetchPriority="high"
           decoding="async"
