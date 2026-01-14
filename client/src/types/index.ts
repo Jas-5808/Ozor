@@ -11,6 +11,10 @@ export interface Product {
     name: string;
   };
   refferal_price: number;
+  /**
+   * Цена без скидки (если есть). Если больше чем `price` — товар в акции.
+   */
+  base_price?: number | null;
   main_image: string;
   variant_id: string;
   variant_sku: string;

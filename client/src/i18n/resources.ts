@@ -150,6 +150,9 @@ export const resources = {
         help: 'Помощь',
       },
       product: {
+        badges: {
+          sale: 'АКЦИЯ',
+        },
         buttons: {
           buyOneClick: 'Купить в 1 клик',
           addToCart: 'В корзину',
@@ -1154,6 +1157,9 @@ export const resources = {
         help: 'Yordam',
       },
       product: {
+        badges: {
+          sale: 'AKSIYA',
+        },
         buttons: {
           buyOneClick: "1 bosishda xarid qilish",
           addToCart: 'Savatchaga qo‘shish',

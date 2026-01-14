@@ -439,6 +439,7 @@ export const useProductById = (productId: string | undefined) => {
         description_ru: data?.description_ru || data?.product_description_ru || data?.description || data?.product_description,
         category: data?.category || { id: String(data?.category_id || ""), name: String(data?.category_name || "") },
         refferal_price: Number(data?.refferal_price || 0),
+        base_price: Number(firstVariant?.base_price ?? data?.base_price ?? null),
         main_image: data?.main_image || "",
         variant_id: String(firstVariant?.id || data?.variant_id || ""),
         variant_sku: String(firstVariant?.sku || data?.variant_sku || ""),

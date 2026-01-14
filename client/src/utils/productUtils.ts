@@ -49,10 +49,11 @@ export const transformProductFromApi = (item: any): Product => ({
   description_ru: item?.description_ru || item?.product_description_ru || item?.description || item?.product_description,
   category: item.category,
   refferal_price: item.refferal_price || 0,
+  base_price: typeof item?.base_price === "number" ? item.base_price : null,
   main_image: item.main_image || "",
   variant_id: item.variant_id || "",
   variant_sku: item.variant_sku || item.sku || "",
-  price: item.price || item.base_price || 0,
+  price: typeof item?.price === "number" ? item.price : (typeof item?.base_price === "number" ? item.base_price : 0),
   stock: item.stock || 0,
   variant_attributes: item.variant_attributes || [],
   variant_media: item.variant_media || [],
@@ -67,7 +68,8 @@ export const splitProductsIntoPrimaryAndVariants = (rawProducts: any[]) => {
 
   for (let i = 0; i < rawProducts.length; i++) {
     const item = rawProducts[i];
-    if (!item || !item.price || item.price <= 0) continue;
+    const effectivePrice = item?.price ?? item?.base_price;
+    if (!item || !effectivePrice || Number(effectivePrice) <= 0) continue;
 
     const product = transformProductFromApi(item);
     const key = product.product_id;

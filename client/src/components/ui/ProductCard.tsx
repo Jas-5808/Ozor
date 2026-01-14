@@ -62,6 +62,21 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
     return getProductImageUrl(product.main_image);
   }, [product.variant_media, product.variant_attributes, product.main_image]);
 
+  const hasDiscount = useMemo(() => {
+    const base = typeof product.base_price === "number" ? product.base_price : null;
+    const current = typeof product.price === "number" ? product.price : null;
+    if (!base || !current) return false;
+    return base > 0 && current > 0 && base > current;
+  }, [product.base_price, product.price]);
+
+  const discountPercent = useMemo(() => {
+    if (!hasDiscount) return null;
+    const base = Number(product.base_price || 0);
+    const current = Number(product.price || 0);
+    if (!base || base <= 0) return null;
+    return Math.max(1, Math.round(((base - current) / base) * 100));
+  }, [hasDiscount, product.base_price, product.price]);
+
   const handleToggleLikeMemo = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
@@ -103,6 +118,19 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
             }}
           />
 
+          {hasDiscount && (
+            <div
+              className={[
+                "absolute left-2 top-2 rounded-full px-2 py-1 font-bold text-white shadow-md",
+                "bg-linear-to-r from-rose-600 to-orange-500",
+                isCompact ? "text-[10px]" : "text-xs",
+              ].join(" ")}
+            >
+              {t("product.badges.sale", "Акция")}
+              {discountPercent ? ` -${discountPercent}%` : ""}
+            </div>
+          )}
+
           <button
             type="button"
             className={[
@@ -127,10 +155,15 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
         </div>
 
         <div className={["flex flex-col min-w-0", isCompact ? "gap-1" : "gap-1.5"].join(" ")}>
-          <div className="flex justify-between items-center min-w-0">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 min-w-0">
             <h3 className={["font-semibold text-emerald-600", isCompact ? "text-xs" : "text-sm"].join(" ")}>
               {product.price && product.price > 0 ? formatPrice(product.price) : t("product.priceMissing")}
             </h3>
+            {hasDiscount && typeof product.base_price === "number" && product.base_price > 0 && (
+              <span className={["text-slate-400 line-through", isCompact ? "text-[10px]" : "text-xs"].join(" ")}>
+                {formatPrice(product.base_price)}
+              </span>
+            )}
           </div>
 
           <div

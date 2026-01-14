@@ -34,6 +34,7 @@ function mapProductDetailToProduct(data: any): Product {
     description_ru: payload?.description_ru || payload?.product_description_ru || payload?.description || payload?.product_description,
     category: payload?.category || { id: String(payload?.category_id || ""), name: String(payload?.category_name || "") },
     refferal_price: Number(payload?.refferal_price || 0),
+    base_price: Number(firstVariant?.base_price ?? payload?.base_price ?? null),
     main_image: payload?.main_image || "",
     variant_id: String(firstVariant?.id || payload?.variant_id || ""),
     variant_sku: String(firstVariant?.sku || payload?.variant_sku || ""),
