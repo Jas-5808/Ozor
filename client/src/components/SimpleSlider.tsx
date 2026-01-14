@@ -135,8 +135,7 @@ export const SimpleSlider: React.FC = () => {
 
   return (
     <div
-      className="relative w-full aspect-[16/9] rounded-2xl shadow-2xl md:overflow-hidden"
-      style={{ minHeight: "192px", maxHeight: "500px" }}
+      className="relative w-full rounded-2xl shadow-2xl overflow-hidden h-[220px] sm:h-[260px] md:h-[320px] lg:h-[380px] xl:h-[420px]"
     >
       <a href={first.link} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
         <img

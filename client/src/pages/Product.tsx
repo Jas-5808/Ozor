@@ -1126,27 +1126,31 @@ export function Product() {
                 const fallback = getProductImageUrl(product.main_image);
                 if (current?.kind === "video") {
                   return (
-                    <video
-                      key={current.url}
-                      src={current.url}
-                      controls
-                      muted
-                      autoPlay
-                      loop
-                      playsInline
-                      preload="metadata"
-                      className="w-full max-h-[520px] sm:max-h-[560px] md:max-h-[620px] lg:max-h-[720px] xl:max-h-[820px] rounded-3xl object-contain bg-black"
-                      onClick={() => openLightbox(idx)}
-                    />
+                    <div className="w-full h-[490px] sm:h-[530px] md:h-[590px] lg:h-[690px] xl:h-[790px] rounded-3xl overflow-hidden bg-black flex items-center justify-center">
+                      <video
+                        key={current.url}
+                        src={current.url}
+                        controls
+                        muted
+                        autoPlay
+                        loop
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full object-contain bg-black"
+                        onClick={() => openLightbox(idx)}
+                      />
+                    </div>
                   );
                 }
                 return (
-                  <img
-                    src={current?.url || fallback}
-                    alt={product.product_name}
-                    className="w-full max-h-[520px] sm:max-h-[560px] md:max-h-[620px] lg:max-h-[720px] xl:max-h-[820px] rounded-3xl object-contain cursor-zoom-in"
-                    onClick={() => openLightbox(idx)}
-                  />
+                  <div className="w-full h-[490px] sm:h-[530px] md:h-[590px] lg:h-[690px] xl:h-[790px] rounded-3xl overflow-hidden bg-white flex items-center justify-center">
+                    <img
+                      src={current?.url || fallback}
+                      alt={product.product_name}
+                      className="w-full h-full object-contain cursor-zoom-in"
+                      onClick={() => openLightbox(idx)}
+                    />
+                  </div>
                 );
               })()}
             </div>
