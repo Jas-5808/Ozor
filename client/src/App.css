@@ -161,3 +161,26 @@ input[type="search"][data-header-mobile="true"]:focus {
   background-color: transparent !important;
   background: transparent !important;
 }
+
+/* Product description rich text (API HTML) */
+.product-richtext p {
+  margin: 0.5rem 0;
+}
+.product-richtext strong,
+.product-richtext b {
+  font-weight: 700;
+}
+.product-richtext ul,
+.product-richtext ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+.product-richtext ul {
+  list-style: disc;
+}
+.product-richtext ol {
+  list-style: decimal;
+}
+.product-richtext li {
+  margin: 0.25rem 0;
+}

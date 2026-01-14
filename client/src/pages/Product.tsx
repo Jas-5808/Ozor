@@ -335,8 +335,6 @@ export function Product() {
   const productRef = useRef<HTMLDivElement>(null);
 
   const thumbsScrollRef = useRef<HTMLDivElement | null>(null);
-  const [thumbCanScrollUp, setThumbCanScrollUp] = useState(false);
-  const [thumbCanScrollDown, setThumbCanScrollDown] = useState(false);
 
   const productFromState = routeState?.product;
 
@@ -625,32 +623,7 @@ export function Product() {
     return main ? [{ url: main, kind: "image" as const }] : [];
   }, [product, selectedVariant?.variant_media]);
 
-  const updateThumbScrollState = useCallback(() => {
-    const el = thumbsScrollRef.current;
-    if (!el) return;
-    const { scrollTop, scrollHeight, clientHeight } = el;
-    setThumbCanScrollUp(scrollTop > 4);
-    setThumbCanScrollDown(scrollTop + clientHeight < scrollHeight - 4);
-  }, []);
-
-  const scrollThumbs = useCallback(
-    (delta: number) => {
-      const el = thumbsScrollRef.current;
-      if (!el) return;
-      el.scrollBy({ top: delta, behavior: "smooth" });
-      setTimeout(updateThumbScrollState, 200);
-    },
-    [updateThumbScrollState]
-  );
-
-  useEffect(() => {
-    const el = thumbsScrollRef.current;
-    if (!el) return;
-    updateThumbScrollState();
-    const onScroll = () => updateThumbScrollState();
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [galleryMedia.length, updateThumbScrollState]);
+  // thumb scroll helpers removed (no indicators/arrows)
 
   useEffect(() => {
     const target = document.getElementById(`thumb-${lightboxIndex}`);
@@ -1054,6 +1027,45 @@ export function Product() {
     }
   };
 
+  // IMPORTANT: hooks must be above early returns
+  const getVariantThumbUrl = useCallback((variant: ProductDetail["variants"][0] | undefined | null): string | null => {
+    if (!variant) return null;
+    const media = (variant as any)?.variant_media || [];
+    if (!Array.isArray(media) || media.length === 0) return null;
+    const images = media.filter(
+      (m: any) =>
+        String(m?.type || "").toLowerCase() !== "video" &&
+        !String(m?.file || "").toLowerCase().endsWith(".mp4")
+    );
+    const pick = images.find((m: any) => m?.is_main) || images[0];
+    return pick?.file ? getProductImageUrl(String(pick.file)) : null;
+  }, []);
+
+  const safeDescriptionHtml = useMemo(() => {
+    if (!product) return "";
+    const lang = String(i18n.language || "ru").split("-")[0].toLowerCase();
+    const rawCandidate =
+      (lang === "uz" ? (product as any)?.description_uz : (product as any)?.description_ru) ||
+      (product as any)?.description_ru ||
+      (product as any)?.description_uz ||
+      "";
+    const raw = String(rawCandidate || "");
+
+    const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(raw);
+    if (!looksLikeHtml) {
+      const escaped = raw.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return escaped.replace(/\r?\n/g, "<br/>");
+    }
+
+    return raw
+      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
+      .replace(/<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi, "")
+      .replace(/\son\w+="[^"]*"/gi, "")
+      .replace(/\son\w+='[^']*'/gi, "")
+      .replace(/(href|src)\s*=\s*(['"])\s*javascript:[\s\S]*?\2/gi, "$1=$2#$2");
+  }, [i18n.language, product]);
+
   // loading
   if (loading) return <ProductPageSkeleton />;
 
@@ -1281,26 +1293,46 @@ export function Product() {
 
                       return (
                         <div key={attribute.id} className="space-y-2">
-                          <h4 className="text-sm font-bold text-slate-900">
-                            {attribute.name} {attribute.unit && `(${attribute.unit})`}
-                          </h4>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <h4 className="text-sm font-bold text-slate-900">
+                              {attribute.name} {attribute.unit && `(${attribute.unit})`}
+                              {selectedVariant && getAttributeValue(selectedVariant, attribute.id) ? (
+                                <span className="ml-1 inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                                  {getAttributeValue(selectedVariant, attribute.id)}
+                                </span>
+                              ) : null}
+                            </h4>
+                          </div>
+                          <div className="flex flex-wrap gap-2 mb-5">
                             {Array.from(uniqueValues.entries()).map(([value, v]) => {
                               const isSelected = selectedVariant && getAttributeValue(selectedVariant, attribute.id) === value;
                               const isDisabled = !v || v.stock === 0 || v.price === null;
+                              const thumb = getVariantThumbUrl(v);
                               return (
                                 <button
                                   key={`${attribute.id}-${value}`}
                                   type="button"
                                   disabled={isDisabled}
                                   onClick={() => !isDisabled && handleAttributeSelect(attribute.id, value)}
+                                  title={value}
+                                  aria-label={value}
                                   className={[
-                                    attributeButtonBase,
+                                    thumb ? "h-20 w-20 p-1.5" : attributeButtonBase,
                                     isSelected ? attributeButtonSelected : attributeButtonDefault,
                                     isDisabled ? "opacity-50" : "",
+                                    thumb ? "grid place-items-center" : "flex items-center gap-2",
                                   ].join(" ")}
                                 >
-                                  {value}
+                                  {thumb ? (
+                                    <img
+                                      src={thumb}
+                                      alt=""
+                                      className="h-full w-full rounded-lg border border-slate-200 bg-white object-contain p-0.5"
+                                      loading="lazy"
+                                    />
+                                  ) : (
+                                    <span className="truncate max-w-[160px]">{value}</span>
+                                  )}
                                 </button>
                               );
                             })}
@@ -1646,17 +1678,12 @@ export function Product() {
 
             <div className="mt-4 text-sm sm:text-base leading-relaxed text-slate-700">
               {activeTab === "description" ? (
-                <div className="space-y-3">
-                  {product.product_description ? (
-                    product.product_description.split(/\r?\n\r?\n/).map((paragraph, index) => (
-                      <p key={index} className="text-slate-700">
-                        {paragraph}
-                      </p>
-                    ))
-                  ) : (
-                    <p>{t("product.empty.description")}</p>
-                  )}
-                </div>
+                <div
+                  className="product-richtext"
+                  dangerouslySetInnerHTML={{
+                    __html: safeDescriptionHtml || `<p>${t("product.empty.description")}</p>`,
+                  }}
+                />
               ) : activeTab === "characteristics" ? (
                 <div>
                   {(() => {
