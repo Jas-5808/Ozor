@@ -10,7 +10,7 @@ import { resolveProductDescription, resolveProductName } from "../utils/productU
 import { useFlows } from "../hooks/useFlows";
 import SkeletonGrid from "../components/SkeletonGrid";
 import useSEO from "../hooks/useSEO";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useProfileData } from "../hooks/useProfileData";
 import { useReferralActions } from "../hooks/useReferralActions";
 import { useDebounce } from "../hooks/useDebounce";
@@ -18,10 +18,23 @@ import { useDebounce } from "../hooks/useDebounce";
 export function Profile() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { profile, isAuthenticated, logout, fetchUserProfile } = useAuth();
-  const [activeTab, setActiveTab] = useState<
-    "market" | "oqim" | "stats" | "payments"
-  >("market");
+
+  type ProfileTab = "market" | "oqim" | "stats" | "payments";
+  const isProfileTab = (value: any): value is ProfileTab =>
+    value === "market" || value === "oqim" || value === "stats" || value === "payments";
+
+  // Важно: таб должен сохраняться при refresh.
+  // Поэтому используем query-параметр ?tab=stats и синхронизируем с состоянием.
+  const [activeTab, setActiveTab] = useState<ProfileTab>(() => {
+    try {
+      const raw = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null;
+      return isProfileTab(raw) ? raw : "market";
+    } catch {
+      return "market";
+    }
+  });
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
   
   // Состояния для поиска и сортировки в Market
@@ -41,7 +54,6 @@ export function Profile() {
     error: baseProductsError,
     hasMore: baseHasMore,
     loadMore: baseLoadMore,
-    refetch: baseRefetch,
   } = useProductsPaged();
   const { flows, removeFlow, clearFlows } = useFlows();
 
@@ -130,6 +142,25 @@ export function Profile() {
       loadStatements({ offset: 0, limit: statementsPagination.limit });
     }
   }, [activeTab, isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // URL -> state (back/forward, manual edits, refresh)
+  useEffect(() => {
+    const raw = searchParams.get("tab");
+    if (isProfileTab(raw) && raw !== activeTab) {
+      setActiveTab(raw);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // state -> URL (клики по табам/программные смены)
+  useEffect(() => {
+    const current = searchParams.get("tab");
+    if (current === activeTab) return;
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", activeTab);
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   // Создание вывода средств
   const handleWithdrawal = async (e: React.FormEvent) => {
@@ -306,7 +337,6 @@ export function Profile() {
 
   const primaryContact = profile?.email || profile?.phone || t("profile.hero.missingContact");
   const profileLocation = profile?.location || t("profile.hero.missingLocation");
-  const profileAvatar = (profile as any)?.avatar || "/img/NaturalTitanium.jpg";
 
   const heroHighlights = [
     {
@@ -646,7 +676,12 @@ export function Profile() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    const next = new URLSearchParams(searchParams);
+                    next.set("tab", tab.id);
+                    setSearchParams(next, { replace: true });
+                  }}
                   className={`flex flex-1 min-w-[130px] items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
                     isActive
                       ? "bg-white text-emerald-700 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ring-1 ring-emerald-200"

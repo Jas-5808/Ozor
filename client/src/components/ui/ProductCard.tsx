@@ -104,13 +104,20 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
         ].join(" ")}
       >
         <div
-          className={["relative w-full rounded-xl overflow-hidden", isCompact ? "mb-2" : "mb-3"].join(" ")}
+          className={[
+            "relative w-full rounded-xl overflow-hidden",
+            // В compact-режиме делаем "стандарт" как витрина: белый фон + contain, чтобы не обрезать фото
+            isCompact ? "mb-2 bg-white" : "mb-3",
+          ].join(" ")}
           style={{ aspectRatio: isCompact ? "1/1" : "220/285" }}
         >
           <img
             src={productImage}
             alt={product.product_name}
-            className="w-full h-full object-cover"
+            className={[
+              "w-full h-full",
+              isCompact ? "object-contain p-2" : "object-cover",
+            ].join(" ")}
             loading="lazy"
             decoding="async"
             onError={(e) => {
