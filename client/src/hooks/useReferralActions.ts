@@ -102,6 +102,8 @@ export function useReferralActions(
       const res = await shopAPI.createReferral({
         product_id: createModal.product.product_id,
         title: createModal.title || createModal.product.product_name || '',
+        // true/false идет через галочку "Operatorsiz qabul qilish"
+        without_operator: Boolean(createModal.agree),
       });
 
       const link = res.data?.link || makeReferralLink(createModal.product.product_id);
@@ -126,7 +128,7 @@ export function useReferralActions(
     } finally {
       setCreateLoading(false);
     }
-  }, [createModal.product, makeReferralLink, onSuccess]);
+  }, [createModal.product, createModal.title, createModal.agree, makeReferralLink, onSuccess]);
 
   const handleDeleteReferral = useCallback(async (referralId: string) => {
     setDeletingReferralId(referralId);

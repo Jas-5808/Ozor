@@ -1436,16 +1436,11 @@ export function Product() {
                     <option value="namangan">Namangan</option>
                     <option value="navoiy">Navoiy</option>
                     <option value="kashkadarya">Qashqadaryo</option>
-                    <option value="karshi">Qarshi</option>
                     <option value="surkhandarya">Surxondaryo</option>
-                    <option value="termez">Termiz</option>
                     <option value="sirdarya">Sirdaryo</option>
-                    <option value="gulistan">Guliston</option>
                     <option value="jizzakh">Jizzax</option>
                     <option value="khorezm">Xorazm</option>
-                    <option value="urgench">Urganch</option>
                     <option value="karakalpakstan">Qoraqalpog'iston Respublikasi</option>
-                    <option value="nukus">Nukus</option>
                   </select>
                 </div>
 
@@ -1456,7 +1451,8 @@ export function Product() {
                     const isCityWithoutRegion = selectedLocation?.type === "city" && !selectedLocation?.parentId;
                     if (!isRegion || isCityWithoutRegion) return null;
 
-                    const cities = getCitiesByRegion(quickOrderRegion);
+                    const bannedCityIds = new Set(["nukus", "urganch", "gulistan", "termez", "karshi"]);
+                    const cities = getCitiesByRegion(quickOrderRegion).filter((c) => !bannedCityIds.has(String(c.id || "")));
                     const cityNameMap: Record<string, string> = {
                       Андижан: "Andijon",
                       Бухара: "Buxoro",

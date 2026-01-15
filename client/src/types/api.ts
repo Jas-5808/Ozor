@@ -249,6 +249,7 @@ export interface ReferralResponse {
 export interface CreateReferralRequest {
   product_id: string;
   title: string;
+  without_operator?: boolean;
 }
 
 /**
