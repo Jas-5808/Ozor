@@ -115,6 +115,50 @@ export function Profile() {
       logger.errorWithContext(error, { context: 'handleCopyFlowLink' });
     }
   };
+
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    confirmLabel: string;
+    danger?: boolean;
+    onConfirm?: () => void | Promise<void>;
+  }>({
+    open: false,
+    title: "",
+    message: "",
+    confirmLabel: "",
+    danger: false,
+    onConfirm: undefined,
+  });
+  const [confirmLoading, setConfirmLoading] = useState(false);
+
+  const openConfirmModal = (opts: {
+    title: string;
+    message: string;
+    confirmLabel: string;
+    danger?: boolean;
+    onConfirm: () => void | Promise<void>;
+  }) => {
+    setConfirmLoading(false);
+    setConfirmModal({ open: true, ...opts });
+  };
+
+  const closeConfirmModal = () => {
+    if (confirmLoading) return;
+    setConfirmModal((prev) => ({ ...prev, open: false }));
+  };
+
+  const runConfirm = async () => {
+    if (!confirmModal.onConfirm) return;
+    try {
+      setConfirmLoading(true);
+      await confirmModal.onConfirm();
+      setConfirmModal((prev) => ({ ...prev, open: false }));
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
   
   // Используем кастомные хуки для управления данными
   const profileData = useProfileData();
@@ -646,7 +690,18 @@ export function Profile() {
                     {t("profile.hero.edit")}
                   </Link>
                   <button
-                    onClick={logout}
+                    onClick={() =>
+                      openConfirmModal({
+                        title: t("profile.hero.logout"),
+                        message: t("profile.confirm.logout"),
+                        confirmLabel: t("profile.hero.logout"),
+                        danger: true,
+                        onConfirm: async () => {
+                          await logout();
+                          navigate("/", { replace: true });
+                        },
+                      })
+                    }
                     className="inline-flex items-center justify-center rounded-2xl border border-white/40 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
                   >
                     {t("profile.hero.logout")}
@@ -1153,7 +1208,17 @@ export function Profile() {
                               } border-red-200 hover:bg-red-50 transition-colors`}
                               title={t("profile.flows.delete")}
                               aria-label={t("profile.flows.delete")}
-                              onClick={() => handleDeleteReferral(r.id)}
+                              onClick={() => {
+                                openConfirmModal({
+                                  title: t("profile.flows.delete"),
+                                  message: t("profile.confirm.deleteLink"),
+                                  confirmLabel: t("common.actions.delete"),
+                                  danger: true,
+                                  onConfirm: async () => {
+                                    await handleDeleteReferral(r.id);
+                                  },
+                                });
+                              }}
                               disabled={deletingReferralId === r.id}
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1250,7 +1315,15 @@ export function Profile() {
                               className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
                               title={t("profile.flows.delete")}
                               aria-label={t("profile.flows.delete")}
-                              onClick={() => removeFlow(f.id)}
+                              onClick={() => {
+                                openConfirmModal({
+                                  title: t("profile.flows.delete"),
+                                  message: t("profile.confirm.deleteLink"),
+                                  confirmLabel: t("common.actions.delete"),
+                                  danger: true,
+                                  onConfirm: () => removeFlow(f.id),
+                                });
+                              }}
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M3 6h18" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"/>
@@ -1279,7 +1352,15 @@ export function Profile() {
                   <div className="sm:col-span-2 lg:col-span-3">
                     <button
                       className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                      onClick={clearFlows}
+                      onClick={() => {
+                        openConfirmModal({
+                          title: t("profile.flows.clear"),
+                          message: t("profile.confirm.clearLinks"),
+                          confirmLabel: t("common.actions.clearAll"),
+                          danger: true,
+                          onConfirm: () => clearFlows(),
+                        });
+                      }}
                     >
                       {t("profile.flows.clear")}
                     </button>
@@ -1288,6 +1369,54 @@ export function Profile() {
               </div>
             )}
           </section>
+        )}
+
+        {confirmModal.open && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm"
+            onClick={closeConfirmModal}
+            role="dialog"
+            aria-modal="true"
+            aria-label={confirmModal.title}
+          >
+            <div
+              className="relative w-full max-w-md rounded-[32px] bg-white p-6 shadow-[0_35px_80px_rgba(15,23,42,0.25)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 disabled:opacity-60"
+                onClick={closeConfirmModal}
+                disabled={confirmLoading}
+                aria-label={t("common.actions.close")}
+              >
+                ×
+              </button>
+              <div className="mb-2 text-lg font-black text-slate-900">{confirmModal.title}</div>
+              <div className="text-sm text-slate-500">{confirmModal.message}</div>
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  className="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={closeConfirmModal}
+                  disabled={confirmLoading}
+                >
+                  {t("common.actions.cancel")}
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 rounded-2xl py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(15,23,42,0.16)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    confirmModal.danger ? "bg-rose-600" : ""
+                  }`}
+                  style={!confirmModal.danger ? { background: "linear-gradient(92.41deg, #003d32, #04734b)" } : undefined}
+                  onClick={() => void runConfirm()}
+                  disabled={confirmLoading}
+                >
+                  {confirmLoading ? (t("common.loading") || "Загрузка...") : confirmModal.confirmLabel}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {activeTab === "stats" && (

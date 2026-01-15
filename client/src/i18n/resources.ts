@@ -333,6 +333,11 @@ export const resources = {
       profile: {
         seoTitle: 'Профиль — OZAR',
         guestPrompt: 'Чтобы просматривать профиль, войдите в систему.',
+        confirm: {
+          logout: 'Вы точно хотите выйти из профиля?',
+          deleteLink: 'Удалить ссылку? Это действие нельзя отменить.',
+          clearLinks: 'Удалить все ссылки? Это действие нельзя отменить.',
+        },
         hero: {
           badge: 'Профиль',
           missingName: 'Пользователь',
@@ -1340,6 +1345,11 @@ export const resources = {
       profile: {
         seoTitle: 'Profil — OZAR',
         guestPrompt: 'Profilni ko‘rish uchun tizimga kiring.',
+        confirm: {
+          logout: 'Profildan chiqishni xohlaysizmi?',
+          deleteLink: "Havolani o‘chirasizmi? Bu amalni bekor qilib bo‘lmaydi.",
+          clearLinks: "Barcha havolalarni o‘chirasizmi? Bu amalni bekor qilib bo‘lmaydi.",
+        },
         hero: {
           badge: 'Profil',
           missingName: 'Foydalanuvchi',
