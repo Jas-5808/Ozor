@@ -404,6 +404,10 @@ export const resources = {
           delete: 'Удалить',
           income: 'Заработано',
           clear: 'Очистить все',
+          search: {
+            placeholder: 'Поиск по ссылкам...',
+            empty: 'Ничего не найдено',
+          },
         },
         stats: {
           cards: {
@@ -1416,6 +1420,10 @@ export const resources = {
           delete: "O'chirish",
           income: 'Daromad',
           clear: 'Barchasini tozalash',
+          search: {
+            placeholder: "Havolalar bo‘yicha qidirish...",
+            empty: "Hech narsa topilmadi",
+          },
         },
         stats: {
           cards: {

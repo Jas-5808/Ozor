@@ -102,6 +102,10 @@ export function Profile() {
   
   // Состояние для отслеживания скопированных ссылок (для показа галочки)
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+
+  // Поиск по ссылкам (Oqim)
+  const [oqimSearchQuery, setOqimSearchQuery] = useState<string>("");
+  const debouncedOqimSearchQuery = useDebounce(oqimSearchQuery, 250);
   
   // Функция копирования для раздела "Потоки" (без сообщения, с галочкой)
   const handleCopyFlowLink = async (link: string, linkId: string) => {
@@ -358,6 +362,41 @@ export function Profile() {
     totals,
     userBalance,
   } = profileData;
+
+  const oqimQuery = useMemo(() => debouncedOqimSearchQuery.trim().toLowerCase(), [debouncedOqimSearchQuery]);
+  const apiFlowById = useMemo(() => {
+    const m = new Map<string, any>();
+    for (const f of Array.isArray(apiFlows) ? apiFlows : []) {
+      if (f?.id) m.set(String(f.id), f);
+    }
+    return m;
+  }, [apiFlows]);
+
+  const filteredReferralStats = useMemo(() => {
+    if (!oqimQuery) return Array.isArray(referralStats) ? referralStats : [];
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    return (Array.isArray(referralStats) ? referralStats : []).filter((r: any) => {
+      const linkedFlow = apiFlowById.get(String(r?.id || ""));
+      const referralCode = String(linkedFlow?.code || "").trim();
+      const shareLink = linkedFlow?.link
+        ? String(linkedFlow.link)
+        : (linkedFlow && linkedFlow.product_id && referralCode)
+        ? `${origin}/r/${encodeURIComponent(String(linkedFlow.product_id))}/${encodeURIComponent(referralCode)}`
+        : "";
+      const productName = linkedFlow?.orders?.[0]?.items?.[0]?.product_name || linkedFlow?.product_name || "";
+      const linkTitle = r?.title || r?.code || "";
+      const hay = [linkTitle, r?.code, productName, referralCode, shareLink].join(" ").toLowerCase();
+      return hay.includes(oqimQuery);
+    });
+  }, [oqimQuery, referralStats, apiFlowById]);
+
+  const filteredLocalFlows = useMemo(() => {
+    if (!oqimQuery) return Array.isArray(flows) ? flows : [];
+    return (Array.isArray(flows) ? flows : []).filter((f: any) => {
+      const hay = [f?.productName, f?.link, f?.id].join(" ").toLowerCase();
+      return hay.includes(oqimQuery);
+    });
+  }, [oqimQuery, flows]);
 
   const {
     dialog,
@@ -1060,6 +1099,48 @@ export function Profile() {
 
         {activeTab === "oqim" && (
           <section className="mt-6 rounded-[30px] border border-slate-100 bg-white p-4 sm:p-6 shadow-[0_25px_80px_rgba(15,23,42,0.06)]">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-[0.35em] text-[#015338]">{t("profile.tabs.flows")}</p>
+                <h3 className="text-2xl font-black text-slate-900">{t("profile.flows.income")}</h3>
+              </div>
+              <div className="w-full sm:max-w-md">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={oqimSearchQuery}
+                    onChange={(e) => setOqimSearchQuery(e.target.value)}
+                    placeholder={t("profile.flows.search.placeholder")}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-10 py-3 pl-11 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                    autoComplete="off"
+                  />
+                  <svg
+                    className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                  {oqimSearchQuery.trim().length > 0 && (
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+                      onClick={() => setOqimSearchQuery("")}
+                      aria-label={t("common.actions.clearAll") || "Очистить"}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
             {apiFlowsLoading && (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -1095,13 +1176,13 @@ export function Profile() {
             )}
             {!apiFlowsLoading && !apiFlowsError && (
               <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {referralStats.length === 0 && flows.length === 0 && (
+                {filteredReferralStats.length === 0 && filteredLocalFlows.length === 0 && (
                   <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm font-semibold text-slate-500">
-                    {t("profile.flows.empty")}
+                    {oqimSearchQuery.trim().length > 0 ? t("profile.flows.search.empty") : t("profile.flows.empty")}
                   </div>
                 )}
-                {referralStats.map((r) => {
-                  const linkedFlow = apiFlows.find((flow) => flow.id === r.id);
+                {filteredReferralStats.map((r) => {
+                  const linkedFlow = apiFlowById.get(String(r?.id || ""));
                   const origin = typeof window !== "undefined" ? window.location.origin : "";
                   const referralCode = String(linkedFlow?.code || "").trim();
                   const shareLink = linkedFlow?.link
@@ -1244,7 +1325,7 @@ export function Profile() {
                     </div>
                   );
                 })}
-                {flows.map((f) => {
+                {filteredLocalFlows.map((f) => {
                   const isCopied = copiedLinkId === f.id;
                   
                   return (
