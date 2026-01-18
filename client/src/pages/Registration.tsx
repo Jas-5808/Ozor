@@ -334,7 +334,7 @@ export function Registration() {
                     {t("auth.telegramModal.resendButton")}
                   </button>
                 </div>
-                <div className={cn.button_row}>
+                <div className={`${cn.button_row} flex justify-end`}>
                   <button
                     type="submit"
                     className={cn.btn_primary}
