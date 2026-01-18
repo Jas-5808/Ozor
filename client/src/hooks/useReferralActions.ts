@@ -106,7 +106,7 @@ export function useReferralActions(
         without_operator: Boolean(createModal.agree),
       });
 
-      const link = res.data?.link || makeReferralLink(createModal.product.product_id);
+      const link = res.data?.data?.link || makeReferralLink(createModal.product.product_id);
       
       setCreateModal((prev) => ({
         ...prev,

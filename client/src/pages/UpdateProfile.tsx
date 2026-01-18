@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import cn from "./style.module.scss";
 import { userAPI } from "../services/api";
 import useSEO from "../hooks/useSEO";
 
@@ -117,97 +116,155 @@ export function UpdateProfile() {
 
   if (success) {
     return (
-      <div className="container">
-        <div className={cn.regist_content}>
-          <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <h2 style={{ color: "green", marginBottom: "20px" }}>
-              {t("profileUpdate.success.title")}
-            </h2>
-            <p>{t("profileUpdate.success.redirect")}</p>
+      <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-emerald-50 px-4 py-12">
+        <div className="mx-auto max-w-lg rounded-[32px] border border-emerald-200 bg-white p-8 text-center shadow-[0_25px_60px_rgba(15,23,42,0.12)]">
+          <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
+            ✓
           </div>
+          <h2 className="text-2xl font-black text-emerald-800">{t("profileUpdate.success.title")}</h2>
+          <p className="mt-2 text-sm text-slate-600">{t("profileUpdate.success.redirect")}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container">
-      <div className={cn.regist_content}>
-        <div
-          style={{
-            background: "linear-gradient(135deg, #eef2ff, #faf5ff)",
-            border: "1px solid #e9d5ff",
-            borderRadius: 16,
-            padding: 20,
-            width: "100%",
-          }}
-        >
-          <h2 className={cn.title}>{t("profileUpdate.title")}</h2>
-          <p className={cn.subtitle}>{t("profileUpdate.subtitle")}</p>
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-emerald-50 py-10">
+      <div className="container mx-auto px-4">
+        <div className="mx-auto max-w-5xl">
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_1.4fr]">
+            <aside className="rounded-[32px] bg-linear-to-br from-[#003d32] via-[#015a41] to-[#04734b] p-6 text-white shadow-[0_30px_70px_rgba(0,61,50,0.35)]">
+              <p className="text-xs uppercase tracking-[0.4em] text-white/70">{t("profileUpdate.title")}</p>
+              <h1 className="mt-3 text-3xl font-black">{t("profileUpdate.title")}</h1>
+              <p className="mt-3 text-sm text-white/80">{t("profileUpdate.subtitle")}</p>
+              <div className="mt-6 grid gap-2 text-sm text-white/80">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15">•</span>
+                  <span>{t("profileUpdate.placeholders.firstName")}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15">•</span>
+                  <span>{t("profileUpdate.placeholders.lastName")}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15">•</span>
+                  <span>{t("profileUpdate.placeholders.email")}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15">•</span>
+                  <span>{t("profileUpdate.placeholders.regionPlaceholder")}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15">•</span>
+                  <span>{t("profileUpdate.placeholders.bio")}</span>
+                </div>
+              </div>
+            </aside>
 
-          {error && <div className={cn.error_message}>{error}</div>}
+            <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_25px_70px_rgba(15,23,42,0.08)]">
+              {error && (
+                <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                  {error}
+                </div>
+              )}
 
-          <form onSubmit={handleSubmit} className={cn.form}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input
-                type="text"
-                name="first_name"
-                placeholder={t("profileUpdate.placeholders.firstName")}
-                value={formData.first_name}
-                onChange={handleInputChange}
-                className={cn.input}
-              />
-              <input
-                type="text"
-                name="last_name"
-                placeholder={t("profileUpdate.placeholders.lastName")}
-                value={formData.last_name}
-                onChange={handleInputChange}
-                className={cn.input}
-              />
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {t("profileUpdate.placeholders.firstName")}
+                    </label>
+                    <input
+                      type="text"
+                      name="first_name"
+                      placeholder={t("profileUpdate.placeholders.firstName")}
+                      value={formData.first_name}
+                      onChange={handleInputChange}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {t("profileUpdate.placeholders.lastName")}
+                    </label>
+                    <input
+                      type="text"
+                      name="last_name"
+                      placeholder={t("profileUpdate.placeholders.lastName")}
+                      value={formData.last_name}
+                      onChange={handleInputChange}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t("profileUpdate.placeholders.email")}
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder={t("profileUpdate.placeholders.email")}
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t("profileUpdate.placeholders.regionPlaceholder")}
+                  </label>
+                  <select
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value)}
+                  >
+                    <option value="">{t("profileUpdate.placeholders.regionPlaceholder")}</option>
+                    {regionOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t("profileUpdate.placeholders.bio")}
+                  </label>
+                  <textarea
+                    name="bio"
+                    placeholder={t("profileUpdate.placeholders.bio")}
+                    value={formData.bio}
+                    onChange={handleInputChange}
+                    className="min-h-[110px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <button
+                    type="submit"
+                    className="flex-1 rounded-2xl py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_18px_38px_rgba(6,78,59,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                    style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+                    disabled={loading}
+                  >
+                    {loading ? t("profileUpdate.buttons.saving") : t("profileUpdate.buttons.save")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSkip}
+                    className="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={loading}
+                  >
+                    {t("profileUpdate.buttons.skip")}
+                  </button>
+                </div>
+              </form>
             </div>
-
-            <input
-              type="email"
-              name="email"
-              placeholder={t("profileUpdate.placeholders.email")}
-              value={formData.email}
-              onChange={handleInputChange}
-              className={cn.input}
-            />
-
-            <select className={cn.input} value={region} onChange={(e) => setRegion(e.target.value)}>
-              <option value="">{t("profileUpdate.placeholders.regionPlaceholder")}</option>
-              {regionOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-
-            <textarea
-              name="bio"
-              placeholder={t("profileUpdate.placeholders.bio")}
-              value={formData.bio}
-              onChange={handleInputChange}
-              className={cn.textarea}
-              rows={3}
-            />
-
-            <div className={cn.button_row}>
-              <button type="submit" className={cn.btn_primary} disabled={loading}>
-                {loading ? t("profileUpdate.buttons.saving") : t("profileUpdate.buttons.save")}
-              </button>
-              <button
-                type="button"
-                onClick={handleSkip}
-                className={cn.btn_secondary}
-                disabled={loading}
-              >
-                {t("profileUpdate.buttons.skip")}
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>
