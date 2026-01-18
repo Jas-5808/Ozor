@@ -668,6 +668,7 @@ export const resources = {
             codeInvalid: 'Неверный код. Попробуйте еще раз.',
             signin: 'Ошибка при входе в аккаунт. Попробуйте еще раз.',
             signup: 'Ошибка при создании аккаунта. Попробуйте еще раз.',
+            userExists: 'Пользователь уже существует.',
           },
         },
         telegramModal: {
@@ -676,6 +677,9 @@ export const resources = {
           codePlaceholder: 'Введите код',
           submit: 'Подтвердить',
           submitting: 'Проверка...',
+          resend: 'Код можно отправить повторно',
+          resendIn: 'Повторная отправка через {{seconds}} сек.',
+          resendButton: 'Отправить код',
         },
         passwordModal: {
           title: 'Создайте пароль',
@@ -1684,6 +1688,7 @@ export const resources = {
             codeInvalid: 'Kod noto‘g‘ri. Qayta urinib ko‘ring.',
             signin: 'Hisobga kirishda xatolik. Qayta urinib ko‘ring.',
             signup: 'Hisob yaratishda xatolik. Qayta urinib ko‘ring.',
+            userExists: 'Foydalanuvchi allaqachon mavjud.',
           },
         },
         telegramModal: {
@@ -1692,6 +1697,9 @@ export const resources = {
           codePlaceholder: 'Kod kiriting',
           submit: 'Tasdiqlash',
           submitting: 'Tekshirilmoqda...',
+          resend: 'Kodni qayta yuborish mumkin',
+          resendIn: 'Qayta yuborish: {{seconds}} soniya',
+          resendButton: 'Kodni qayta yuborish',
         },
         passwordModal: {
           title: 'Parol yarating',
