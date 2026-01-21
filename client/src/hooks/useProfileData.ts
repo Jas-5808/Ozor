@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from './useAuth';
-import { shopAPI } from '../services/api';
+import { paymentAPI, shopAPI } from '../services/api';
 import type { ReferralResponse } from '../types/api';
 import { logger } from '../utils/logger';
 
@@ -13,6 +13,20 @@ interface ReferralStats {
   paid: number;
   earned: number;
   product_referal_price: number;
+}
+
+interface BalanceSummary {
+  total_balance: number;
+  available_balance: number;
+  total_credits: number;
+  total_debits: number;
+  active_holds: number;
+  referral_pending: number;
+  referral_active: number;
+  referral_cancelled: number;
+  referral_paid: number;
+  total_transactions: number;
+  total_referral_transactions: number;
 }
 
 interface ProfileDataReturn {
@@ -30,7 +44,9 @@ interface ProfileDataReturn {
   
   // Balance
   userBalance: number | null;
+  balanceSummary: BalanceSummary | null;
   balanceLoading: boolean;
+  balanceError: string | null;
   
   // Actions
   loadReferrals: () => Promise<void>;
@@ -50,6 +66,8 @@ export function useProfileData(): ProfileDataReturn {
   const [apiFlowsError, setApiFlowsError] = useState<string | null>(null);
   
   const [balanceLoading, setBalanceLoading] = useState<boolean>(false);
+  const [balanceSummary, setBalanceSummary] = useState<BalanceSummary | null>(null);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
 
   // Load referrals
   const loadReferrals = async (): Promise<void> => {
@@ -72,11 +90,28 @@ export function useProfileData(): ProfileDataReturn {
     }
   };
 
+  const loadBalance = async (): Promise<void> => {
+    if (!isAuthenticated) return;
+    try {
+      setBalanceLoading(true);
+      setBalanceError(null);
+      const res = await paymentAPI.getBalanceSummary();
+      setBalanceSummary((res as any)?.data || null);
+    } catch (error) {
+      setBalanceError(error instanceof Error ? error.message : 'Balance load error');
+      logger.errorWithContext(error, { context: 'loadBalance' });
+    } finally {
+      setBalanceLoading(false);
+    }
+  };
+
   const refreshBalance = async (): Promise<void> => {
     if (!isAuthenticated) return;
     try {
       setBalanceLoading(true);
+      setBalanceError(null);
       await fetchUserProfile();
+      await loadBalance();
     } catch (error) {
       logger.errorWithContext(error, { context: 'refreshBalance' });
     } finally {
@@ -92,9 +127,17 @@ export function useProfileData(): ProfileDataReturn {
     }
   }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    loadBalance();
+  }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const userBalance = useMemo(() => {
+    if (typeof balanceSummary?.available_balance === 'number') {
+      return balanceSummary.available_balance;
+    }
     return typeof profile?.balance === 'number' ? profile.balance : null;
-  }, [profile?.balance]);
+  }, [balanceSummary?.available_balance, profile?.balance]);
 
   // Compute referral stats
   const referralStats = useMemo(() => {
@@ -155,6 +198,8 @@ export function useProfileData(): ProfileDataReturn {
     totals,
     userBalance,
     balanceLoading,
+    balanceSummary,
+    balanceError,
     loadReferrals,
     refreshBalance,
   };

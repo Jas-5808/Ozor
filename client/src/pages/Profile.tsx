@@ -36,6 +36,7 @@ export function Profile() {
     }
   });
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
+  const [showBalanceDetails, setShowBalanceDetails] = useState(false);
   
   // Состояния для поиска и сортировки в Market
   const [marketSearchQuery, setMarketSearchQuery] = useState<string>("");
@@ -222,7 +223,7 @@ export function Profile() {
       return;
     }
 
-    if (userBalance !== null && amount > userBalance) {
+    if (availableBalance !== null && amount > availableBalance) {
       setWithdrawalError(t("profile.payments.form.errors.insufficientBalance"));
       return;
     }
@@ -361,7 +362,24 @@ export function Profile() {
     referralStats,
     totals,
     userBalance,
+    balanceSummary,
+    balanceLoading,
+    balanceError,
   } = profileData;
+
+  const availableBalance = useMemo(() => {
+    if (typeof balanceSummary?.available_balance === "number") {
+      return balanceSummary.available_balance;
+    }
+    return userBalance ?? profile?.balance ?? 0;
+  }, [balanceSummary?.available_balance, userBalance, profile?.balance]);
+
+  const totalBalance = useMemo(() => {
+    if (typeof balanceSummary?.total_balance === "number") {
+      return balanceSummary.total_balance;
+    }
+    return userBalance ?? profile?.balance ?? 0;
+  }, [balanceSummary?.total_balance, userBalance, profile?.balance]);
 
   const oqimQuery = useMemo(() => debouncedOqimSearchQuery.trim().toLowerCase(), [debouncedOqimSearchQuery]);
   const apiFlowById = useMemo(() => {
@@ -423,16 +441,23 @@ export function Profile() {
 
   const heroHighlights = [
     {
+      id: "balance",
       label: t("profile.hero.highlights.balance.label"),
-      value: formatPrice(userBalance ?? profile?.balance ?? 0, "UZS"),
+      value: formatPrice(availableBalance, "UZS"),
       helper: t("profile.hero.highlights.balance.helper"),
+      onClick: () => {
+        setActiveTab("stats");
+        setShowBalanceDetails(true);
+      },
     },
     {
+      id: "flows",
       label: t("profile.hero.highlights.flows.label"),
       value: ((apiFlows?.length || 0) + (flows?.length || 0)).toLocaleString("ru-RU"),
       helper: t("profile.hero.highlights.flows.helper"),
     },
     {
+      id: "earnings",
       label: t("profile.hero.highlights.earnings.label"),
       value: "—", // TODO: Подключить к API
       helper: t("profile.hero.highlights.earnings.helper"),
@@ -749,16 +774,29 @@ export function Profile() {
               </div>
             </div>
             <div className="grid w-full max-w-xl gap-3 sm:grid-cols-3">
-              {heroHighlights.map((card) => (
-                <div
-                  key={card.label}
-                  className="rounded-2xl border border-white/25 bg-white/10 p-4 backdrop-blur-md shadow-[0_15px_40px_rgba(0,0,0,0.12)]"
-                >
-                  <p className="text-xs uppercase tracking-wide text-white/70">{card.label}</p>
-                  <p className="mt-1 text-2xl font-black">{card.value}</p>
-                  <p className="text-xs text-white/75">{card.helper}</p>
-                </div>
-              ))}
+              {heroHighlights.map((card) =>
+                card.onClick ? (
+                  <button
+                    key={card.id}
+                    type="button"
+                    onClick={card.onClick}
+                    className="rounded-2xl border border-white/25 bg-white/10 p-4 text-left backdrop-blur-md shadow-[0_15px_40px_rgba(0,0,0,0.12)] transition hover:bg-white/15"
+                  >
+                    <p className="text-xs uppercase tracking-wide text-white/70">{card.label}</p>
+                    <p className="mt-1 text-2xl font-black">{card.value}</p>
+                    <p className="text-xs text-white/75">{card.helper}</p>
+                  </button>
+                ) : (
+                  <div
+                    key={card.id}
+                    className="rounded-2xl border border-white/25 bg-white/10 p-4 backdrop-blur-md shadow-[0_15px_40px_rgba(0,0,0,0.12)]"
+                  >
+                    <p className="text-xs uppercase tracking-wide text-white/70">{card.label}</p>
+                    <p className="mt-1 text-2xl font-black">{card.value}</p>
+                    <p className="text-xs text-white/75">{card.helper}</p>
+                  </div>
+                )
+              )}
             </div>
           </div>
         </section>
@@ -1518,14 +1556,84 @@ export function Profile() {
                 <div className="text-3xl font-black text-sky-900 mt-1">{totals.paid}</div>
                 <div className="text-xs text-sky-800/80">{t("profile.stats.cards.paid.helper")}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <button
+                type="button"
+                className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-emerald-200 hover:shadow-sm"
+                onClick={() => setShowBalanceDetails((prev) => !prev)}
+              >
                 <div className="text-xs tracking-wide uppercase text-slate-600 font-bold">{t("profile.stats.cards.balance.label")}</div>
                 <div className="text-3xl font-black text-slate-900 mt-1">
-                  {formatPrice(userBalance ?? profile?.balance ?? 0, "UZS")}
+                  {formatPrice(availableBalance, "UZS")}
                 </div>
                 <div className="text-xs text-slate-500">{t("profile.stats.cards.balance.helper")}</div>
-              </div>
+                {balanceLoading && (
+                  <div className="mt-2 text-xs text-slate-400">{t("common.loading") || "Загрузка..."}</div>
+                )}
+                {balanceError && (
+                  <div className="mt-2 text-xs text-rose-500">{balanceError}</div>
+                )}
+              </button>
             </div>
+
+            {showBalanceDetails && balanceSummary && (
+              <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-xs tracking-wide uppercase text-slate-500">{t("profile.balance.total", "Umumiy doromad")}</div>
+                  <div className="mt-1 text-lg font-bold text-slate-900">{formatPrice(totalBalance, "UZS")}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-xs tracking-wide uppercase text-slate-500">{t("profile.balance.available", "Доступно")}</div>
+                  <div className="mt-1 text-lg font-bold text-emerald-700">{formatPrice(availableBalance, "UZS")}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-xs tracking-wide uppercase text-slate-500">{t("profile.balance.holds", "На удержании")}</div>
+                  <div className="mt-1 text-lg font-bold text-amber-700">
+                    {formatPrice(balanceSummary.active_holds ?? 0, "UZS")}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-xs tracking-wide uppercase text-slate-500">{t("profile.balance.credits", "Начисления")}</div>
+                  <div className="mt-1 text-lg font-bold text-slate-900">
+                    {formatPrice(balanceSummary.total_credits ?? 0, "UZS")}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-xs tracking-wide uppercase text-slate-500">{t("profile.balance.debits", "Списания")}</div>
+                  <div className="mt-1 text-lg font-bold text-slate-900">
+                    {formatPrice(balanceSummary.total_debits ?? 0, "UZS")}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {balanceSummary && (
+              <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-xs tracking-wide uppercase text-slate-500">{t("profile.balance.referralPending", "Рефералка в ожидании")}</div>
+                  <div className="mt-1 text-lg font-bold text-slate-900">
+                    {formatPrice(balanceSummary.referral_pending ?? 0, "UZS")}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-xs tracking-wide uppercase text-slate-500">{t("profile.balance.referralActive", "Рефералка активна")}</div>
+                  <div className="mt-1 text-lg font-bold text-slate-900">
+                    {formatPrice(balanceSummary.referral_active ?? 0, "UZS")}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-xs tracking-wide uppercase text-slate-500">{t("profile.balance.referralCancelled", "Рефералка отменена")}</div>
+                  <div className="mt-1 text-lg font-bold text-slate-900">
+                    {formatPrice(balanceSummary.referral_cancelled ?? 0, "UZS")}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-xs tracking-wide uppercase text-slate-500">{t("profile.balance.referralPaid", "Рефералка оплачена")}</div>
+                  <div className="mt-1 text-lg font-bold text-slate-900">
+                    {formatPrice(balanceSummary.referral_paid ?? 0, "UZS")}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="rounded-2xl border border-gray-200 bg-white p-4">
               <div className="flex items-center justify-between mb-3">
@@ -1606,14 +1714,14 @@ export function Profile() {
                         onChange={(e) => setWithdrawalAmount(e.target.value)}
                         placeholder={t("profile.payments.form.amountPlaceholder")}
                         min="1"
-                        max={userBalance ?? undefined}
+                        max={availableBalance ?? undefined}
                         step="0.01"
                         className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:border-[#04734b] focus:outline-none focus:ring-2 focus:ring-[#04734b]/20"
                         required
                       />
-                      {userBalance !== null && (
+                      {availableBalance !== null && (
                         <div className="mt-2 text-xs text-slate-500">
-                          {t("profile.payments.form.availableBalance")}: {formatPrice(userBalance, "UZS")}
+                          {t("profile.payments.form.availableBalance")}: {formatPrice(availableBalance, "UZS")}
                         </div>
                       )}
                     </div>
@@ -1651,7 +1759,7 @@ export function Profile() {
 
                 <button
                   type="submit"
-                  disabled={withdrawalLoading || userBalance === null || userBalance === 0}
+                  disabled={withdrawalLoading || availableBalance === null || availableBalance === 0}
                   className="w-full rounded-2xl py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_22px_48px_rgba(6,78,59,0.45)] ring-1 ring-white/20 transition hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
                 >

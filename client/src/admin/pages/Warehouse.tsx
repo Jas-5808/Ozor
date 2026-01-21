@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { warehouseAPI, orderAPI } from '../../services/api';
+import apiClient, { warehouseAPI, orderAPI } from '../../services/api';
+import { getProductImageUrl } from '../../utils/helpers';
+import { resolveProductDescription, resolveProductName } from '../../utils/productUtils';
 
 type SectionKey = 'orders' | 'add' | 'warehouses';
 
@@ -26,6 +28,26 @@ export default function Warehouse() {
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [locationsError, setLocationsError] = useState<string | null>(null);
   const [locationFilter, setLocationFilter] = useState<'all' | 'free' | 'full'>('all');
+  const [productCache, setProductCache] = useState<
+    Record<
+      string,
+      {
+        name: string;
+        image: string;
+        description?: string;
+        price?: number;
+        base_price?: number;
+        stock?: number;
+        category?: { id: string; name: string };
+        variants?: any[];
+        loading?: boolean;
+      }
+    >
+  >({});
+  const [productModal, setProductModal] = useState<{ open: boolean; variantId: string | null }>({
+    open: false,
+    variantId: null,
+  });
   const statusLabels = useMemo(
     () => ({
       pending: t('admin.ordersPage.statuses.pending', { defaultValue: 'В ожидании' }),
@@ -142,6 +164,55 @@ export default function Warehouse() {
     };
   }, [activeKey, myOffset, myLimit]);
 
+  const loadProductByVariantId = useCallback(async (variantId: string) => {
+    if (!variantId) return;
+
+    setProductCache((prev) => {
+      if (prev[variantId]?.loading || (prev[variantId]?.image && prev[variantId]?.name)) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [variantId]: { name: "", image: "", loading: true },
+      };
+    });
+
+    try {
+      const res = await apiClient.get(`/shop/product/${variantId}`);
+      const productData = (res.data as any)?.data ?? res.data;
+      const variant = productData.variants?.find((v: any) => v.id === variantId) || productData.variants?.[0];
+
+      let imageUrl = "";
+      if (variant?.media && variant.media.length > 0) {
+        const mainMedia = variant.media.find((m: any) => m.is_main) || variant.media[0];
+        imageUrl = mainMedia?.file || "";
+      }
+      if (!imageUrl && productData.main_image) {
+        imageUrl = productData.main_image;
+      }
+
+      setProductCache((prev) => ({
+        ...prev,
+        [variantId]: {
+          name: resolveProductName(productData),
+          image: imageUrl ? getProductImageUrl(imageUrl) : "",
+          description: resolveProductDescription(productData),
+          price: variant?.price || 0,
+          base_price: variant?.base_price || 0,
+          stock: variant?.stock || 0,
+          category: productData.category || undefined,
+          variants: productData.variants || [],
+          loading: false,
+        },
+      }));
+    } catch {
+      setProductCache((prev) => ({
+        ...prev,
+        [variantId]: { name: "", image: "", loading: false },
+      }));
+    }
+  }, []);
+
   useEffect(() => {
     fetchWarehouseOrders();
   }, [fetchWarehouseOrders]);
@@ -149,6 +220,35 @@ export default function Warehouse() {
   useEffect(() => {
     fetchMyOrders();
   }, [fetchMyOrders]);
+
+  useEffect(() => {
+    (myOrders || []).forEach((o: any) => {
+      (o?.items || []).forEach((item: any) => {
+        if (item?.variant_id && !productCache[item.variant_id]) {
+          loadProductByVariantId(item.variant_id);
+        }
+      });
+    });
+  }, [myOrders, productCache, loadProductByVariantId]);
+
+  useEffect(() => {
+    if (productModal.open && productModal.variantId) {
+      const productInfo = productCache[productModal.variantId];
+      if (!productInfo || productInfo.loading) {
+        loadProductByVariantId(productModal.variantId);
+      }
+    }
+  }, [productModal.open, productModal.variantId, productCache, loadProductByVariantId]);
+
+  useEffect(() => {
+    if (productModal.open) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+    return undefined;
+  }, [productModal.open]);
 
   useEffect(() => {
     if (activeKey !== 'warehouses') return;
@@ -274,6 +374,7 @@ export default function Warehouse() {
                       <th className="px-3 py-2 text-left">#</th>
                       <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.order') || 'Заказ'}</th>
                       <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.status') || 'Статус'}</th>
+                      <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.product', { defaultValue: 'Товар' }) || 'Товар'}</th>
                       <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.location', { defaultValue: 'Локация склада' }) || 'Локация склада'}</th>
                       <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.comment', { defaultValue: 'Комментарий' }) || 'Комментарий'}</th>
                       <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.total', { defaultValue: 'Кол-во позиций' }) || 'Кол-во позиций'}</th>
@@ -284,7 +385,7 @@ export default function Warehouse() {
                   <tbody>
                     {myOrders.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-3 py-3 text-center text-slate-500">
+                        <td colSpan={9} className="px-3 py-3 text-center text-slate-500">
                           {t('common.empty') || 'Нет заказов'}
                         </td>
                       </tr>
@@ -294,6 +395,47 @@ export default function Warehouse() {
                         <td className="px-3 py-2 text-slate-700">{idx + 1 + myOffset}</td>
                         <td className="px-3 py-2 text-slate-900 font-semibold">{o.order_number || o.id}</td>
                         <td className="px-3 py-2">{renderStatus(o.status)}</td>
+                        <td className="px-3 py-2 text-slate-700">
+                          {Array.isArray(o.items) && o.items.length > 0 ? (
+                            <div className="flex flex-col gap-2">
+                              {o.items.map((item: any) => {
+                                const info = item?.variant_id ? productCache[item.variant_id] : null;
+                              const img = info?.image;
+                              const name = info?.name || item?.product_name || '—';
+                              const isLoading = info?.loading;
+                                return (
+                                <div
+                                  key={item.id || item.variant_id}
+                                  className="flex items-center gap-2 cursor-pointer hover:opacity-80"
+                                  onClick={() => {
+                                    if (item?.variant_id) {
+                                      setProductModal({ open: true, variantId: item.variant_id });
+                                    }
+                                  }}
+                                >
+                                  {isLoading ? (
+                                    <div className="h-10 w-10 animate-pulse rounded bg-slate-200" />
+                                  ) : img ? (
+                                    <img
+                                      src={img}
+                                      alt={name}
+                                      className="h-10 w-10 rounded-lg object-cover border border-slate-200"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="h-10 w-10 rounded-lg border border-dashed border-slate-200 bg-slate-50" />
+                                  )}
+                                  <div className="text-sm text-slate-700">{name}</div>
+                                </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-slate-700">
                           {[o.city, o.order_region].filter(Boolean).join(', ') || '—'}
                         </td>
@@ -366,6 +508,129 @@ export default function Warehouse() {
             </div>
           </div>
         </section>
+      )}
+
+      {productModal.open && productModal.variantId && (
+        <div
+          className="fixed inset-0 z-[1100] flex min-h-screen items-center justify-center bg-black/50"
+          onClick={() => setProductModal({ open: false, variantId: null })}
+        >
+          <div
+            className="relative w-full max-w-2xl rounded-2xl bg-white shadow-xl max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
+              onClick={() => setProductModal({ open: false, variantId: null })}
+              aria-label="Закрыть"
+            >
+              ×
+            </button>
+
+            {(() => {
+              const productInfo = productCache[productModal.variantId!];
+
+              if (!productInfo || productInfo.loading) {
+                return (
+                  <div className="flex items-center justify-center p-12">
+                    <div className="h-12 w-12 animate-pulse rounded bg-slate-200" />
+                  </div>
+                );
+              }
+
+              return (
+                <div className="p-6">
+                  <div className="mb-6 flex flex-col gap-4 md:flex-row">
+                    <div className="flex-shrink-0">
+                      <img
+                        src={productInfo.image || "/img/NaturalTitanium.jpg"}
+                        alt={productInfo.name || "Product"}
+                        className="h-64 w-64 rounded-xl object-cover border border-slate-200"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "/img/NaturalTitanium.jpg";
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <h2 className="mb-2 text-2xl font-bold text-slate-900">
+                        {productInfo.name || "—"}
+                      </h2>
+                      {productInfo.category && (
+                        <div className="mb-3">
+                          <span className="inline-block rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
+                            {productInfo.category.name}
+                          </span>
+                        </div>
+                      )}
+                      <div className="mb-4 flex items-center gap-3">
+                        {productInfo.price && (
+                          <span className="text-2xl font-bold text-slate-900">
+                            {productInfo.price.toLocaleString()} сум
+                          </span>
+                        )}
+                        {productInfo.base_price && productInfo.base_price > (productInfo.price || 0) && (
+                          <span className="text-lg text-slate-500 line-through">
+                            {productInfo.base_price.toLocaleString()} сум
+                          </span>
+                        )}
+                      </div>
+                      {productInfo.stock !== undefined && (
+                        <div className="mb-4">
+                          <span
+                            className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${
+                              productInfo.stock > 0
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-rose-100 text-rose-700"
+                            }`}
+                          >
+                            {productInfo.stock > 0 ? `В наличии: ${productInfo.stock} шт.` : "Нет в наличии"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {productInfo.description && (
+                    <div className="mb-6">
+                      <h3 className="mb-2 text-lg font-semibold text-slate-900">Описание</h3>
+                      <p className="whitespace-pre-line text-sm text-slate-600">
+                        {productInfo.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {productInfo.variants && productInfo.variants.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="mb-3 text-lg font-semibold text-slate-900">Варианты</h3>
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                        {productInfo.variants.map((variant: any) => (
+                          <div
+                            key={variant.id}
+                            className={`rounded-lg border p-3 ${
+                              variant.id === productModal.variantId
+                                ? "border-indigo-500 bg-indigo-50"
+                                : "border-slate-200 bg-slate-50"
+                            }`}
+                          >
+                            <div className="mb-2 text-sm font-semibold text-slate-900">
+                              {variant.attribute_values?.map((av: any) => av.value).join(", ") || "Вариант"}
+                            </div>
+                            <div className="text-xs text-slate-600">
+                              Цена: {variant.price?.toLocaleString() || 0} сум
+                            </div>
+                            <div className="text-xs text-slate-600">
+                              Остаток: {variant.stock || 0} шт.
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
       )}
 
       {activeKey === 'add' && (

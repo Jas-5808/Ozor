@@ -533,6 +533,35 @@ export const warehouseAPI = {
 export const paymentAPI = {
   getUserBalance: (): Promise<TypedAxiosResponse<{ balance: number }>> => 
     apiClient.get("/payment/get_user_balance"),
+  getBalanceSummary: (): Promise<TypedAxiosResponse<{
+    total_balance: number;
+    available_balance: number;
+    total_credits: number;
+    total_debits: number;
+    active_holds: number;
+    referral_pending: number;
+    referral_active: number;
+    referral_cancelled: number;
+    referral_paid: number;
+    recent_transactions: Array<{
+      id: string;
+      amount: number;
+      type: string;
+      status: string;
+      description?: string | null;
+      created_at: string;
+      referral_id?: string | null;
+      order_item_id?: string | null;
+      referral_status?: string | null;
+      activated_at?: string | null;
+      cancelled_at?: string | null;
+      referral_code?: string | null;
+      product_name?: string | null;
+      order_number?: string | null;
+    }>;
+    total_transactions: number;
+    total_referral_transactions: number;
+  }>> => apiClient.get("/payment/balance"),
   createWithdrawal: (payload: { amount: number; card_number: string; card_holder_name: string; description?: string }): Promise<TypedAxiosResponse<{ id: string; status: string; created_at: string }>> => {
     const description = (payload.description ?? "").trim() || "string";
     return apiClient.post("/payment/statements", { ...payload, description });
