@@ -1437,6 +1437,7 @@ export function Product() {
                     <option value="surkhandarya">Surxondaryo</option>
                     <option value="sirdarya">Sirdaryo</option>
                     <option value="jizzakh">Jizzax</option>
+                    <option value="kokand">Qo'qon</option>
                     <option value="khorezm">Xorazm</option>
                     <option value="karakalpakstan">Qoraqalpog'iston Respublikasi</option>
                   </select>

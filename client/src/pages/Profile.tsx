@@ -2045,7 +2045,7 @@ export function Profile() {
                     className="flex-1 rounded-2xl py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(6,78,59,0.35)] transition hover:brightness-110"
                     style={{ background: "linear-gradient(92.41deg, rgb(0, 61, 50), rgb(4, 115, 75))" }}
                     onClick={submitCreateReferral}
-                    disabled={createLoading || !createModal.agree}
+                    disabled={createLoading}
                   >
                     {createLoading ? t("profile.createModal.submitting") : t("profile.createModal.submit")}
                   </button>
