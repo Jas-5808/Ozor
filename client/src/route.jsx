@@ -48,6 +48,17 @@ function RequireAuth({ children }){
   return children;
 }
 
+function AccessDenied() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center px-4">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+        <div className="text-lg font-black text-slate-900">Access denied</div>
+        <div className="mt-2 text-sm text-slate-500">You do not have permission to view this page.</div>
+      </div>
+    </div>
+  );
+}
+
 function RequireRole({ children, roles, denyRoles }){
   const { isAuthenticated, loading, profile } = useAuth();
   const location = useLocation();
@@ -146,7 +157,8 @@ function RequireRole({ children, roles, denyRoles }){
   if (normalized === 'ceo' || roleLower === 'ceo') return children;
 
   const isDenied = denied.includes(normalized) || denied.includes(roleLower);
-  if (isDenied) return <Navigate to="/" replace />;
+  const isUser = normalized === 'user' || normalized === 'client' || roleLower === 'user' || roleLower === 'client';
+  if (isDenied) return isUser ? <Navigate to="/" replace /> : <AccessDenied />;
 
   // Если roles не заданы, но задан denyRoles — значит "разрешено всем, кроме запрещенных"
   if ((!allowed || allowed.length === 0) && denied.length > 0) {
@@ -155,7 +167,7 @@ function RequireRole({ children, roles, denyRoles }){
 
   const hasAccess = allowed.includes(normalized) || allowed.includes(roleLower);
 
-  if (!hasAccess) return <Navigate to="/" replace />;
+  if (!hasAccess) return isUser ? <Navigate to="/" replace /> : <AccessDenied />;
   return children;
 }
 

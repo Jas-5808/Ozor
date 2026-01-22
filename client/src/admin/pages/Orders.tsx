@@ -1,3 +1,20 @@
+const LOCATION_OPTIONS: Array<{ value: string; labelKey: string }> = [
+  { value: "tashkent", labelKey: "profileUpdate.regions.tashkent" },
+  { value: "tashkent_region", labelKey: "profileUpdate.regions.tashkentRegion" },
+  { value: "samarkand", labelKey: "profileUpdate.regions.samarkand" },
+  { value: "bukhara", labelKey: "profileUpdate.regions.bukhara" },
+  { value: "andijan", labelKey: "profileUpdate.regions.andijan" },
+  { value: "fergana", labelKey: "profileUpdate.regions.fergana" },
+  { value: "namangan", labelKey: "profileUpdate.regions.namangan" },
+  { value: "navoiy", labelKey: "profileUpdate.regions.navoiy" },
+  { value: "kashkadarya", labelKey: "profileUpdate.regions.kashkadarya" },
+  { value: "surkhandarya", labelKey: "profileUpdate.regions.surkhandarya" },
+  { value: "sirdarya", labelKey: "profileUpdate.regions.sirdarya" },
+  { value: "jizzakh", labelKey: "profileUpdate.regions.jizzakh" },
+  { value: "khorezm", labelKey: "profileUpdate.regions.khorezm" },
+  { value: "karakalpakstan", labelKey: "profileUpdate.regions.karakalpakstan" },
+];
+
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { adminStore } from "../storage";
@@ -28,23 +45,6 @@ type Order = {
   created_at?: string;
   location?: string;
 };
-
-const LOCATION_OPTIONS: Array<{ value: string; labelKey: string }> = [
-  { value: "tashkent", labelKey: "profileUpdate.regions.tashkent" },
-  { value: "tashkent_region", labelKey: "profileUpdate.regions.tashkentRegion" },
-  { value: "samarkand", labelKey: "profileUpdate.regions.samarkand" },
-  { value: "bukhara", labelKey: "profileUpdate.regions.bukhara" },
-  { value: "andijan", labelKey: "profileUpdate.regions.andijan" },
-  { value: "fergana", labelKey: "profileUpdate.regions.fergana" },
-  { value: "namangan", labelKey: "profileUpdate.regions.namangan" },
-  { value: "navoiy", labelKey: "profileUpdate.regions.navoiy" },
-  { value: "kashkadarya", labelKey: "profileUpdate.regions.kashkadarya" },
-  { value: "surkhandarya", labelKey: "profileUpdate.regions.surkhandarya" },
-  { value: "sirdarya", labelKey: "profileUpdate.regions.sirdarya" },
-  { value: "jizzakh", labelKey: "profileUpdate.regions.jizzakh" },
-  { value: "khorezm", labelKey: "profileUpdate.regions.khorezm" },
-  { value: "karakalpakstan", labelKey: "profileUpdate.regions.karakalpakstan" },
-];
 
 const inputBase =
   "h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100";

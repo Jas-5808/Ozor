@@ -330,7 +330,6 @@ export function Product() {
   const [quickOrderError, setQuickOrderError] = useState<string | null>(null);
 
   const [quickOrderRegion, setQuickOrderRegion] = useState<string>("");
-  const [quickOrderCity, setQuickOrderCity] = useState<string>("");
 
   const productRef = useRef<HTMLDivElement>(null);
 
@@ -1416,17 +1415,16 @@ export function Product() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Город / Область</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Область</label>
                   <select
                     value={quickOrderRegion}
                     onChange={(e) => {
                       const selectedValue = e.target.value;
                       setQuickOrderRegion(selectedValue);
-                      setQuickOrderCity("");
                     }}
                     className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
                   >
-                    <option value="">Выберите город или область</option>
+                    <option value="">Выберите область</option>
                     <option value="tashkent">Toshkent</option>
                     <option value="tashkent_region">Toshkent viloyati</option>
                     <option value="samarkand">Samarqand</option>
@@ -1443,75 +1441,6 @@ export function Product() {
                     <option value="karakalpakstan">Qoraqalpog'iston Respublikasi</option>
                   </select>
                 </div>
-
-                {quickOrderRegion &&
-                  (() => {
-                    const selectedLocation = uzbekistanLocations.find((loc) => loc.id === quickOrderRegion);
-                    const isRegion = selectedLocation?.type === "region";
-                    const isCityWithoutRegion = selectedLocation?.type === "city" && !selectedLocation?.parentId;
-                    if (!isRegion || isCityWithoutRegion) return null;
-
-                    const bannedCityIds = new Set(["nukus", "urganch", "gulistan", "termez", "karshi"]);
-                    const cities = getCitiesByRegion(quickOrderRegion).filter((c) => !bannedCityIds.has(String(c.id || "")));
-                    const cityNameMap: Record<string, string> = {
-                      Андижан: "Andijon",
-                      Бухара: "Buxoro",
-                      Джизак: "Jizzax",
-                      Фергана: "Farg'ona",
-                      Наманган: "Namangan",
-                      Навои: "Navoiy",
-                      Самарканд: "Samarqand",
-                      Ангрен: "Angren",
-                      Бекабад: "Bekobod",
-                      Чирчик: "Chirchiq",
-                      Газалкент: "Gazalkent",
-                      Паркент: "Parkent",
-                      Каттакурган: "Kattaqo'rg'on",
-                      Ургут: "Urgut",
-                      Каган: "Kagan",
-                      Гиждуван: "G'ijduvon",
-                      Асака: "Asaka",
-                      Ханабад: "Xonobod",
-                      Коканд: "Qo'qon",
-                      Маргилан: "Marg'ilon",
-                      Кува: "Quva",
-                      Риштан: "Rishton",
-                      Чуст: "Chust",
-                      Пап: "Pop",
-                      Зарафшан: "Zarafshon",
-                      Нурата: "Nurota",
-                      Шахрисабз: "Shahrisabz",
-                      Китаб: "Kitob",
-                      Денау: "Denov",
-                      Шурчи: "Shurchi",
-                      Янгиер: "Yangiyer",
-                      Ширин: "Shirin",
-                      Дустлик: "Do'stlik",
-                      Ургенч: "Urganch",
-                      Хива: "Xiva",
-                      Питнак: "Pitnak",
-                      Нукус: "Nukus",
-                      Муйнак: "Mo'ynoq",
-                    };
-
-                    return (
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1.5">Город</label>
-                        <select
-                          value={quickOrderCity}
-                          onChange={(e) => setQuickOrderCity(e.target.value)}
-                          className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
-                        >
-                          <option value="">Выберите город</option>
-                          {cities.map((city) => (
-                            <option key={city.id} value={city.id}>
-                              {cityNameMap[city.name] || city.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    );
-                  })()}
 
                 {/* FIX (п.7): agreeTerms тут тоже */}
                 <label className="flex items-start gap-3 text-sm text-slate-600">
@@ -1555,10 +1484,8 @@ export function Product() {
                       return;
                     }
 
-                    const selectedLocation = uzbekistanLocations.find((loc) => loc.id === quickOrderRegion);
-                    const isRegion = selectedLocation?.type === "region";
-                    if (isRegion && !quickOrderCity) {
-                      setQuickOrderError("Выберите город");
+                    if (!quickOrderRegion) {
+                      setQuickOrderError("Выберите область");
                       setTimeout(() => setQuickOrderError(null), 3000);
                       return;
                     }
@@ -1568,13 +1495,8 @@ export function Product() {
                       setQuickOrderError(null);
 
                       const variantId = selectedVariant?.id || fetchedProduct.variant_id;
-                      const finalCityId = isRegion ? quickOrderCity : quickOrderRegion;
-
-                      const cityLocation = uzbekistanLocations.find((loc) => loc.id === finalCityId);
-                      const cityCode = toCityCode(finalCityId) || finalCityId;
-
-                      // FIX (п.5): регион берём корректно
-                      const regionId = isRegion ? quickOrderRegion : (cityLocation?.parentId || getRegionForCityOrRegion(cityCode) || "");
+                      const cityCode = toCityCode(quickOrderRegion) || quickOrderRegion;
+                      const regionId = quickOrderRegion;
 
                       const payload = {
                         items: [{ variant_id: variantId, quantity: 1, referral_code: referralCode || undefined }],
@@ -1606,7 +1528,6 @@ export function Product() {
                       setName("");
                       setPhone("");
                       setQuickOrderRegion("");
-                      setQuickOrderCity("");
                     setIsQuickOrderOpen(false);
                     } catch (err: any) {
                       logger.errorWithContext(err, { context: "quickOrder" });
@@ -1619,9 +1540,7 @@ export function Product() {
                   }}
                   disabled={(() => {
                     if (!name || !phone || !quickOrderRegion) return true;
-                    const selectedLocation = uzbekistanLocations.find((loc) => loc.id === quickOrderRegion);
-                    const isRegion = selectedLocation?.type === "region";
-                    return isRegion ? !quickOrderCity : false;
+                    return false;
                   })() || quickOrderLoading}
                   className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
