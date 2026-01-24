@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import apiClient, { warehouseAPI, orderAPI } from '../../services/api';
-import { getProductImageUrl } from '../../utils/helpers';
+import { getProductImageUrl, truncateText } from '../../utils/helpers';
 import { resolveProductDescription, resolveProductName } from '../../utils/productUtils';
 
 type SectionKey = 'orders' | 'add' | 'warehouses';
@@ -32,6 +32,7 @@ export default function Warehouse() {
     Record<
       string,
       {
+        product_id?: string;
         name: string;
         image: string;
         description?: string;
@@ -48,6 +49,9 @@ export default function Warehouse() {
     open: false,
     variantId: null,
   });
+  const [productLocations, setProductLocations] = useState<
+    Record<string, { items: any[]; loading?: boolean; error?: string }>
+  >({});
   const statusLabels = useMemo(
     () => ({
       pending: t('admin.ordersPage.statuses.pending', { defaultValue: 'В ожидании' }),
@@ -60,7 +64,7 @@ export default function Warehouse() {
       cancelled: t('admin.ordersPage.statuses.cancelled', { defaultValue: 'Отменён' }),
       refunded: t('admin.ordersPage.statuses.refunded', { defaultValue: 'Возврат' }),
       paid: t('admin.ordersPage.statuses.paid', { defaultValue: 'Оплачен' }),
-    }),
+    }) as Record<string, string>,
     [t]
   );
   const statusTone: Record<string, string> = {
@@ -122,7 +126,8 @@ export default function Warehouse() {
       setOrdersError(null);
       const res = await warehouseAPI.getOrders({ offset: 0, limit: 20 });
       if (ignore) return;
-      const data = Array.isArray(res.data) ? res.data : res.data?.results || res.data?.items || res.data?.data || [];
+      const payload = res.data as any;
+      const data = Array.isArray(payload) ? payload : payload?.results || payload?.items || payload?.data || [];
       const sorted = [...data].sort((a: any, b: any) => {
         const ta = a?.created_at ? new Date(a.created_at).getTime() : 0;
         const tb = b?.created_at ? new Date(b.created_at).getTime() : 0;
@@ -147,7 +152,8 @@ export default function Warehouse() {
       setMyOrdersError(null);
       const res = await warehouseAPI.getMyOrders({ offset: myOffset, limit: myLimit });
       if (ignore) return;
-      const data = Array.isArray(res.data) ? res.data : res.data?.results || res.data?.items || res.data?.data || [];
+      const payload = res.data as any;
+      const data = Array.isArray(payload) ? payload : payload?.results || payload?.items || payload?.data || [];
       const sorted = [...data].sort((a: any, b: any) => {
         const ta = a?.created_at ? new Date(a.created_at).getTime() : 0;
         const tb = b?.created_at ? new Date(b.created_at).getTime() : 0;
@@ -194,6 +200,7 @@ export default function Warehouse() {
       setProductCache((prev) => ({
         ...prev,
         [variantId]: {
+          product_id: productData?.product_id || productData?.id || "",
           name: resolveProductName(productData),
           image: imageUrl ? getProductImageUrl(imageUrl) : "",
           description: resolveProductDescription(productData),
@@ -209,6 +216,34 @@ export default function Warehouse() {
       setProductCache((prev) => ({
         ...prev,
         [variantId]: { name: "", image: "", loading: false },
+      }));
+    }
+  }, []);
+
+  const loadProductLocations = useCallback(async (productId: string) => {
+    if (!productId) return;
+    setProductLocations((prev) => {
+      if (prev[productId]?.loading || prev[productId]?.items?.length) {
+        return prev;
+      }
+      return { ...prev, [productId]: { items: [], loading: true } };
+    });
+
+    try {
+      const res = await apiClient.get(`/warehouse/product/${productId}/locations`);
+      const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setProductLocations((prev) => ({
+        ...prev,
+        [productId]: { items: data, loading: false },
+      }));
+    } catch (error: any) {
+      setProductLocations((prev) => ({
+        ...prev,
+        [productId]: {
+          items: [],
+          loading: false,
+          error: error?.response?.data?.detail || error?.message || "Ошибка загрузки локаций",
+        },
       }));
     }
   }, []);
@@ -237,8 +272,12 @@ export default function Warehouse() {
       if (!productInfo || productInfo.loading) {
         loadProductByVariantId(productModal.variantId);
       }
+      const productId = productInfo?.product_id;
+      if (productId) {
+        loadProductLocations(productId);
+      }
     }
-  }, [productModal.open, productModal.variantId, productCache, loadProductByVariantId]);
+  }, [productModal.open, productModal.variantId, productCache, loadProductByVariantId, loadProductLocations]);
 
   useEffect(() => {
     if (productModal.open) {
@@ -259,7 +298,8 @@ export default function Warehouse() {
         setLocationsError(null);
         const res = await warehouseAPI.getLocations({ filter: locationFilter });
         if (ignore) return;
-        const data = Array.isArray(res.data) ? res.data : res.data?.results || res.data?.data || [];
+        const payload = res.data as any;
+        const data = Array.isArray(payload) ? payload : payload?.results || payload?.data || [];
         setLocations(data);
       } catch (e: any) {
         if (ignore) return;
@@ -402,6 +442,7 @@ export default function Warehouse() {
                                 const info = item?.variant_id ? productCache[item.variant_id] : null;
                               const img = info?.image;
                               const name = info?.name || item?.product_name || '—';
+                              const shortName = name ? truncateText(name, 28) : '—';
                               const isLoading = info?.loading;
                                 return (
                                 <div
@@ -427,7 +468,9 @@ export default function Warehouse() {
                                   ) : (
                                     <div className="h-10 w-10 rounded-lg border border-dashed border-slate-200 bg-slate-50" />
                                   )}
-                                  <div className="text-sm text-slate-700">{name}</div>
+                                  <div className="text-sm text-slate-700" title={name}>
+                                    {shortName}
+                                  </div>
                                 </div>
                                 );
                               })}
@@ -598,6 +641,45 @@ export default function Warehouse() {
                       </p>
                     </div>
                   )}
+
+                  {(() => {
+                    const productId = productInfo.product_id || "";
+                    if (!productId) return null;
+                    const loc = productLocations[productId];
+                    if (loc?.loading) {
+                      return (
+                        <div className="mb-6">
+                          <h3 className="mb-2 text-lg font-semibold text-slate-900">Расположение на складе</h3>
+                          <div className="text-sm text-slate-500">Загрузка...</div>
+                        </div>
+                      );
+                    }
+                    if (loc?.error) {
+                      return (
+                        <div className="mb-6">
+                          <h3 className="mb-2 text-lg font-semibold text-slate-900">Расположение на складе</h3>
+                          <div className="text-sm text-rose-600">{loc.error}</div>
+                        </div>
+                      );
+                    }
+                    if (!loc?.items || loc.items.length === 0) return null;
+                    return (
+                      <div className="mb-6">
+                        <h3 className="mb-2 text-lg font-semibold text-slate-900">Расположение на складе</h3>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {loc.items.map((item: any) => (
+                            <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                              <div className="text-sm font-semibold text-slate-900">{item.code || "—"}</div>
+                              <div className="text-xs text-slate-600">{item.description || "—"}</div>
+                              <div className="mt-1 text-xs text-slate-500">
+                                Остаток: {item.total_stock ?? 0}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {productInfo.variants && productInfo.variants.length > 0 && (
                     <div className="mb-6">
