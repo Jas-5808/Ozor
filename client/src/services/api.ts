@@ -195,6 +195,44 @@ apiClient.interceptors.response.use(
   }
 );
 
+const categoryByIdCache = new Map<
+  string,
+  {
+    time: number;
+    response: TypedAxiosResponse<any>;
+    promise: Promise<TypedAxiosResponse<any>> | null;
+  }
+>();
+const CATEGORY_BY_ID_TTL = 120_000; // 2 minutes
+
+const fetchCategoryById = (categoryId: string): Promise<TypedAxiosResponse<any>> => {
+  const key = String(categoryId || "");
+  if (!key) {
+    return Promise.resolve({ data: null } as unknown as TypedAxiosResponse<any>);
+  }
+  const now = Date.now();
+  const entry = categoryByIdCache.get(key);
+  if (entry && entry.response && now - entry.time < CATEGORY_BY_ID_TTL) {
+    return Promise.resolve(entry.response);
+  }
+  if (entry && entry.promise) {
+    return entry.promise;
+  }
+  const promise = apiClient
+    .get(`/shop/category/${key}`)
+    .then((res) => {
+      const typedRes = res as TypedAxiosResponse<any>;
+      categoryByIdCache.set(key, { time: Date.now(), response: typedRes, promise: null });
+      return typedRes;
+    })
+    .catch((e) => {
+      categoryByIdCache.delete(key);
+      throw e;
+    });
+  categoryByIdCache.set(key, { time: 0, response: null as unknown as TypedAxiosResponse<any>, promise });
+  return promise;
+};
+
 export const shopAPI = {
   getProducts: (params: Record<string, unknown> = {}): Promise<TypedAxiosResponse<ProductResponse[]>> => 
     apiClient.get("/shop/products", { params }),
@@ -228,10 +266,22 @@ export const shopAPI = {
       if (entry && entry.promise) {
         return entry.promise;
       }
-      const promise = apiClient
-        .get(`/shop/products`, { params: { category: categoryId, ...params } })
+      const hasParams = params && Object.keys(params).length > 0;
+      const request = hasParams
+        ? apiClient.get(`/shop/category/${categoryId}`, { params })
+        : fetchCategoryById(String(categoryId || ""));
+      const promise = request
         .then((res) => {
-          const typedRes = res as TypedAxiosResponse<ProductResponse[]>;
+          const payload = (res as any)?.data ?? res;
+          const data = payload?.data ?? payload;
+          const products = Array.isArray(data?.products)
+            ? data.products
+            : Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data)
+            ? data
+            : [];
+          const typedRes = { ...(res as any), data: products } as TypedAxiosResponse<ProductResponse[]>;
           cache.set(key, { time: Date.now(), response: typedRes, promise: null });
           return typedRes;
         })
@@ -275,7 +325,7 @@ export const shopAPI = {
   createCategory: (payload: { name: string; parent_id?: string | null }): Promise<TypedAxiosResponse<CategoryResponse>> => 
     apiClient.post("/shop/category", payload),
   getCategoryById: (categoryId: string): Promise<TypedAxiosResponse<CategoryResponse>> =>
-    apiClient.get(`/shop/category/${categoryId}`),
+    fetchCategoryById(categoryId) as Promise<TypedAxiosResponse<CategoryResponse>>,
   // Extended method for fetching product variants
   getAllProductVariants: (() => {
     const cache = new Map<string, { 

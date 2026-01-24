@@ -136,6 +136,9 @@ export const resources = {
             signup: 'Ошибка регистрации',
           },
         },
+        warnings: {
+          categoryLoadFailed: 'Не удалось загрузить информацию о категории, но товары отображаются',
+        },
       },
       header: {
         locationTooltip: 'Нажмите, чтобы изменить местоположение',
@@ -1155,6 +1158,9 @@ export const resources = {
             signin: 'Kirishda xatolik',
             signup: 'Ro‘yxatdan o‘tishda xatolik',
           },
+        },
+        warnings: {
+          categoryLoadFailed: 'Kategoriya ma’lumotlari yuklanmadi, ammo mahsulotlar ko‘rsatilmoqda',
         },
       },
       header: {

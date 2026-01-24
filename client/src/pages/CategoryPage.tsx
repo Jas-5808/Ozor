@@ -13,6 +13,8 @@ import { buildDisplayProducts, splitProductsIntoPrimaryAndVariants, transformPro
 const PAGE_SIZE = 20;
 const INITIAL_TARGET_ITEMS = 60; // сколько "сырых" items хотим быстро собрать до первого уверенного UX
 const MAX_CONCURRENT = 3; // чтобы не спамить API
+const CATEGORY_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CATEGORY_CACHE_MAX_ITEMS = 400;
 
 const adaptProductsFromCategory = (items: any[], categoryCtx?: { id?: string; name?: string }) => {
   return (items || []).map((item) => {
@@ -46,6 +48,10 @@ export function CategoryPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState(0); // индекс следующей подкатегории для подгрузки
+  const cacheKey = useMemo(
+    () => (id ? `category_products_cache:${id}` : ""),
+    [id]
+  );
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const categoryUrl = origin && id ? `${origin}/category/${id}` : undefined;
   const categoryTitle = category?.name ? `${category.name} — OZAR` : "Категория — OZAR";
@@ -183,6 +189,44 @@ export function CategoryPage() {
     loadingMoreRef.current = loadingMore;
   }, [loadingMore]);
 
+  useEffect(() => {
+    if (!rawItems.length) return;
+    persistCache(rawItems, cursor);
+  }, [rawItems, cursor, persistCache]);
+
+  const restoreFromCache = useCallback(() => {
+    if (!cacheKey || typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (!raw) return null;
+      const payload = JSON.parse(raw);
+      if (!payload || typeof payload !== "object") return null;
+      if (Date.now() - Number(payload.ts || 0) > CATEGORY_CACHE_TTL) return null;
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      const nextCursor = Number(payload.cursor || 0);
+      return { items, cursor: Number.isFinite(nextCursor) ? nextCursor : 0 };
+    } catch {
+      return null;
+    }
+  }, [cacheKey]);
+
+  const persistCache = useCallback(
+    (items: any[], nextCursor: number) => {
+      if (!cacheKey || typeof window === "undefined") return;
+      try {
+        const trimmed =
+          items.length > CATEGORY_CACHE_MAX_ITEMS ? items.slice(0, CATEGORY_CACHE_MAX_ITEMS) : items;
+        localStorage.setItem(
+          cacheKey,
+          JSON.stringify({ ts: Date.now(), items: trimmed, cursor: nextCursor })
+        );
+      } catch {
+        // ignore cache write errors
+      }
+    },
+    [cacheKey]
+  );
+
   const mergeRawItems = useCallback((prev: any[], next: any[]) => {
     const existing = new Set(
       prev.map((it: any) => `${it?.product_id || it?.id || ""}_${it?.variant_id || it?.variantId || ""}`)
@@ -281,22 +325,35 @@ export function CategoryPage() {
         return;
       }
 
-      // reset on id change
+      const restored = restoreFromCache();
+      // reset on id change (unless we have cache)
       setError(null);
       setLoading(true);
       setLoadingMore(false);
-      setCursor(0);
-      setRawItems([]);
-      setPrimaryProducts([]);
-      setVariantProducts([]);
-      setOtherPrimaryProducts([]);
-      setOtherVariantProducts([]);
-      setDisplayedCount(PAGE_SIZE);
-      setOtherDisplayedCount(PAGE_SIZE);
-      // sync refs too
-      rawItemsRef.current = [];
-      cursorRef.current = 0;
-      loadingMoreRef.current = false;
+      if (restored?.items?.length) {
+        setRawItems(restored.items);
+        rawItemsRef.current = restored.items;
+        syncDerivedProducts(restored.items);
+        setCursor(restored.cursor || 0);
+        cursorRef.current = restored.cursor || 0;
+        setDisplayedCount(Math.min(PAGE_SIZE, restored.items.length));
+        setOtherDisplayedCount(PAGE_SIZE);
+        loadingMoreRef.current = false;
+        setLoading(false);
+      } else {
+        setCursor(0);
+        setRawItems([]);
+        setPrimaryProducts([]);
+        setVariantProducts([]);
+        setOtherPrimaryProducts([]);
+        setOtherVariantProducts([]);
+        setDisplayedCount(PAGE_SIZE);
+        setOtherDisplayedCount(PAGE_SIZE);
+        // sync refs too
+        rawItemsRef.current = [];
+        cursorRef.current = 0;
+        loadingMoreRef.current = false;
+      }
       
       if (categoryLoading && !category) {
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -307,9 +364,13 @@ export function CategoryPage() {
       if (category?.products && Array.isArray(category.products)) {
         const mapped = adaptProductsFromCategory(category.products as any[], { id: category.id, name: category.name });
         if (!cancelled) {
-          setRawItems(mapped);
-          syncDerivedProducts(mapped);
-          setDisplayedCount(PAGE_SIZE);
+          const merged = mergeRawItems(rawItemsRef.current, mapped);
+          setRawItems(merged);
+          rawItemsRef.current = merged;
+          syncDerivedProducts(merged);
+          setDisplayedCount(Math.min(PAGE_SIZE, merged.length));
+          setCursor(Math.max(cursorRef.current || 0, 1));
+          cursorRef.current = Math.max(cursorRef.current || 0, 1);
           setLoading(false);
         }
         return;
@@ -319,7 +380,9 @@ export function CategoryPage() {
       try {
         setError(null);
         // быстро подгружаем первые категории до INITIAL_TARGET_ITEMS
-        await fetchNextCategories({ minTotalRaw: INITIAL_TARGET_ITEMS });
+        await fetchNextCategories({
+          minTotalRaw: restored?.items?.length ? Math.max(INITIAL_TARGET_ITEMS, restored.items.length + 1) : INITIAL_TARGET_ITEMS,
+        });
       } catch (err) {
         if (!cancelled) {
           console.error("Error fetching products:", err);
