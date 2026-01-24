@@ -1346,7 +1346,7 @@ export default function Orders() {
       {/* Модальное окно продукта */}
       {productModal.open && productModal.variantId && (
         <div 
-          className="fixed inset-0 z-[1100] flex min-h-screen items-center justify-center bg-black/50 mt-[300px]"
+          className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50"
           onClick={() => setProductModal({ open: false, variantId: null })}
         >
           <div 

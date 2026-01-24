@@ -371,15 +371,20 @@ export function Profile() {
     if (typeof balanceSummary?.available_balance === "number") {
       return balanceSummary.available_balance;
     }
-    return userBalance ?? profile?.balance ?? 0;
-  }, [balanceSummary?.available_balance, userBalance, profile?.balance]);
+    return null;
+  }, [balanceSummary?.available_balance]);
 
   const totalBalance = useMemo(() => {
     if (typeof balanceSummary?.total_balance === "number") {
       return balanceSummary.total_balance;
     }
-    return userBalance ?? profile?.balance ?? 0;
-  }, [balanceSummary?.total_balance, userBalance, profile?.balance]);
+    return 0;
+  }, [balanceSummary?.total_balance]);
+
+  const availableBalanceLabel =
+    availableBalance === null
+      ? "—"
+      : formatPrice(availableBalance, "UZS");
 
   const oqimQuery = useMemo(() => debouncedOqimSearchQuery.trim().toLowerCase(), [debouncedOqimSearchQuery]);
   const apiFlowById = useMemo(() => {
@@ -443,7 +448,7 @@ export function Profile() {
     {
       id: "balance",
       label: t("profile.hero.highlights.balance.label"),
-      value: formatPrice(availableBalance, "UZS"),
+      value: availableBalanceLabel,
       helper: t("profile.hero.highlights.balance.helper"),
       onClick: () => {
         setActiveTab("stats");
@@ -1563,7 +1568,7 @@ export function Profile() {
               >
                 <div className="text-xs tracking-wide uppercase text-slate-600 font-bold">{t("profile.stats.cards.balance.label")}</div>
                 <div className="text-3xl font-black text-slate-900 mt-1">
-                  {formatPrice(availableBalance, "UZS")}
+                  {availableBalanceLabel}
                 </div>
                 <div className="text-xs text-slate-500">{t("profile.stats.cards.balance.helper")}</div>
                 {balanceLoading && (
@@ -1583,7 +1588,9 @@ export function Profile() {
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs tracking-wide uppercase text-slate-500">{t("profile.balance.available", "Доступно")}</div>
-                  <div className="mt-1 text-lg font-bold text-emerald-700">{formatPrice(availableBalance, "UZS")}</div>
+                  <div className="mt-1 text-lg font-bold text-emerald-700">
+                    {availableBalance === null ? "—" : formatPrice(availableBalance, "UZS")}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="text-xs tracking-wide uppercase text-slate-500">{t("profile.balance.holds", "На удержании")}</div>

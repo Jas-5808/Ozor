@@ -136,8 +136,8 @@ export function useProfileData(): ProfileDataReturn {
     if (typeof balanceSummary?.available_balance === 'number') {
       return balanceSummary.available_balance;
     }
-    return typeof profile?.balance === 'number' ? profile.balance : null;
-  }, [balanceSummary?.available_balance, profile?.balance]);
+    return null;
+  }, [balanceSummary?.available_balance]);
 
   // Compute referral stats
   const referralStats = useMemo(() => {
