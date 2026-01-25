@@ -7,9 +7,9 @@ import ProductCard from "../components/ui/ProductCard";
 import useSEO from "../hooks/useSEO";
 import SkeletonGrid from "../components/SkeletonGrid";
 import { splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
-
-const LIMIT = 20;
+import { SEARCH_PAGE_LIMIT } from "../config/pagination";
 const SEARCH_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
+const NGRAM_SIZE = 3;
 
 type SearchCacheEntry = {
   time: number;
@@ -32,6 +32,7 @@ export function SearchPage() {
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [matchScores, setMatchScores] = useState<Record<string, number>>({});
 
   const normalizedQuery = useMemo(() => query.trim(), [query]);
   const queryLower = useMemo(() => normalizedQuery.toLowerCase(), [normalizedQuery]);
@@ -44,28 +45,74 @@ export function SearchPage() {
     canonical: origin ? `${origin}/search` : undefined,
   });
 
+  const normalizeText = useCallback((value: string) => {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9а-яё]+/gi, "")
+      .trim();
+  }, []);
+
+  const toNgrams = useCallback((value: string) => {
+    const normalized = normalizeText(value);
+    if (!normalized) return [];
+    if (normalized.length <= NGRAM_SIZE) return [normalized];
+    const grams: string[] = [];
+    for (let i = 0; i <= normalized.length - NGRAM_SIZE; i += 1) {
+      grams.push(normalized.slice(i, i + NGRAM_SIZE));
+    }
+    return grams;
+  }, [normalizeText]);
+
+  const calcMatchPercent = useCallback(
+    (queryValue: string, targetValue: string) => {
+      const q = normalizeText(queryValue);
+      const t = normalizeText(targetValue);
+      if (!q || !t) return 0;
+      if (q === t) return 100;
+      const qGrams = new Set(toNgrams(q));
+      const tGrams = new Set(toNgrams(t));
+      if (qGrams.size === 0 || tGrams.size === 0) return 0;
+      let inter = 0;
+      qGrams.forEach((g) => {
+        if (tGrams.has(g)) inter += 1;
+      });
+      const union = qGrams.size + tGrams.size - inter;
+      return union ? Math.round((inter / union) * 100) : 0;
+    },
+    [normalizeText, toNgrams]
+  );
+
   const computeProducts = useCallback(
     (items: any[]) => {
       const { primaryProducts } = splitProductsIntoPrimaryAndVariants(items);
+      const scores: Record<string, number> = {};
 
-      // Сортируем: сначала совпадения по названию, затем товары в наличии
-      const sorted = [...primaryProducts].sort((a, b) => {
-        const aNameMatch = a.product_name?.toLowerCase().includes(queryLower) || false;
-        const bNameMatch = b.product_name?.toLowerCase().includes(queryLower) || false;
-        if (aNameMatch && !bNameMatch) return -1;
-        if (!aNameMatch && bNameMatch) return 1;
-
-        const aInStock = (a.stock ?? 0) > 0;
-        const bInStock = (b.stock ?? 0) > 0;
-        if (aInStock && !bInStock) return -1;
-        if (!aInStock && bInStock) return 1;
-
-        return (a.price ?? 0) - (b.price ?? 0);
+      const scored = primaryProducts.map((product) => {
+        const nameUz = product.product_name || "";
+        const nameRu = product.name_ru || "";
+        const score = Math.max(
+          calcMatchPercent(queryLower, nameUz),
+          calcMatchPercent(queryLower, nameRu)
+        );
+        const key = product.variant_id
+          ? `${product.product_id}-${product.variant_id}`
+          : `${product.product_id}`;
+        scores[key] = score;
+        return { product, score };
       });
 
-      return sorted;
+      scored.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const aInStock = (a.product.stock ?? 0) > 0;
+        const bInStock = (b.product.stock ?? 0) > 0;
+        if (aInStock && !bInStock) return -1;
+        if (!aInStock && bInStock) return 1;
+        return (a.product.price ?? 0) - (b.product.price ?? 0);
+      });
+
+      return { products: scored.map((s) => s.product), scores };
     },
-    [queryLower]
+    [calcMatchPercent, queryLower]
   );
 
   useEffect(() => {
@@ -91,7 +138,9 @@ export function SearchPage() {
         if (cached && (now - cached.time) < SEARCH_CACHE_TTL) {
           if (cancelled) return;
           setRawItems(cached.raw);
-          setProducts(computeProducts(cached.raw));
+          const computed = computeProducts(cached.raw);
+          setProducts(computed.products);
+          setMatchScores(computed.scores);
           setOffset(cached.offset);
           setHasMore(cached.hasMore);
           return;
@@ -103,7 +152,7 @@ export function SearchPage() {
           (async () => {
             const response = await shopAPI.searchProducts(normalizedQuery, {
               offset: 0,
-              limit: LIMIT,
+              limit: SEARCH_PAGE_LIMIT,
             });
             return response.data || [];
           })();
@@ -117,7 +166,7 @@ export function SearchPage() {
         if (cancelled) return;
 
         const nextOffset = data.length;
-        const nextHasMore = data.length === LIMIT;
+        const nextHasMore = data.length > 0;
 
         searchCache.set(normalizedQuery, {
           time: Date.now(),
@@ -127,13 +176,16 @@ export function SearchPage() {
         });
 
         setRawItems(data);
-        setProducts(computeProducts(data));
+        const computed = computeProducts(data);
+        setProducts(computed.products);
+        setMatchScores(computed.scores);
         setOffset(nextOffset);
         setHasMore(nextHasMore);
       } catch (err: any) {
         if (cancelled) return;
         setError(err?.response?.data?.message || err?.message || t("search.error"));
         setProducts([]);
+        setMatchScores({});
         setRawItems([]);
       } finally {
         if (!cancelled) setLoading(false);
@@ -158,7 +210,7 @@ export function SearchPage() {
         (async () => {
           const response = await shopAPI.searchProducts(normalizedQuery, {
             offset,
-            limit: LIMIT,
+            limit: SEARCH_PAGE_LIMIT,
           });
           return response.data || [];
         })();
@@ -183,7 +235,8 @@ export function SearchPage() {
       }
 
       const nextOffset = offset + data.length;
-      const nextHasMore = data.length === LIMIT;
+      const grew = merged.length > rawItems.length;
+      const nextHasMore = data.length > 0 && grew;
 
       searchCache.set(normalizedQuery, {
         time: Date.now(),
@@ -193,7 +246,9 @@ export function SearchPage() {
       });
 
       setRawItems(merged);
-      setProducts(computeProducts(merged));
+      const computed = computeProducts(merged);
+      setProducts(computed.products);
+      setMatchScores(computed.scores);
       setOffset(nextOffset);
       setHasMore(nextHasMore);
     } catch (err: any) {
@@ -261,9 +316,18 @@ export function SearchPage() {
         {products.length > 0 && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-              {products.map((product) => (
-                <ProductCard key={`${product.product_id}-${product.variant_id}`} product={product} />
-              ))}
+              {products.map((product) => {
+                const key = product.variant_id
+                  ? `${product.product_id}-${product.variant_id}`
+                  : `${product.product_id}`;
+                return (
+                  <ProductCard
+                    key={key}
+                    product={product}
+                    matchPercent={matchScores[key]}
+                  />
+                );
+              })}
             </div>
 
             {hasMore && (

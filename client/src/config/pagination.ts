@@ -1,0 +1,9 @@
+export const SEARCH_PAGE_LIMIT = 20;
+export const SEARCH_SUGGESTIONS_LIMIT = 5;
+export const CATEGORY_PAGE_LIMIT = 80;
+export const PRODUCT_RELATED_LIMIT = 30;
+export const PROFILE_MARKET_SEARCH_LIMIT = 40;
+
+export const MAIN_PRODUCTS_FIRST_PAGE_LIMIT = 40;
+export const MAIN_PRODUCTS_PAGED_LIMIT = 40;
+export const MAIN_PRODUCTS_API_LIMIT = 100;

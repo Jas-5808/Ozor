@@ -11,6 +11,7 @@ interface ProductCardProps {
   onToggleLike?: (productId: string) => void;
   isLiked?: boolean;
   size?: "default" | "compact";
+  matchPercent?: number;
 }
 
 const ProductCardComponent: React.FC<ProductCardProps> = ({
@@ -18,6 +19,7 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
   onToggleLike,
   isLiked = false,
   size = "default",
+  matchPercent,
 }) => {
   const { toggleLike, isLiked: isProductLiked } = useApp();
   const { t } = useTranslation();
@@ -138,6 +140,18 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
             </div>
           )}
 
+          {typeof matchPercent === "number" && (
+            <div
+              className={[
+                "absolute left-2 bottom-2 rounded-full px-2 py-1 font-semibold text-white shadow-md",
+                "bg-emerald-600/90",
+                isCompact ? "text-[10px]" : "text-xs",
+              ].join(" ")}
+            >
+              {matchPercent}%
+            </div>
+          )}
+
           <button
             type="button"
             className={[
@@ -199,7 +213,8 @@ export const ProductCard = memo(ProductCardComponent, (prevProps, nextProps) => 
     prevProps.product.product_id === nextProps.product.product_id &&
     prevProps.product.variant_id === nextProps.product.variant_id &&
     prevProps.isLiked === nextProps.isLiked &&
-    prevProps.size === nextProps.size
+    prevProps.size === nextProps.size &&
+    prevProps.matchPercent === nextProps.matchPercent
   );
 });
 

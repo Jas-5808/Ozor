@@ -243,6 +243,8 @@ export const shopAPI = {
     apiClient.get("/shop/products/search", { params: { q: query, ...params } }),
   getProductById: (id: string): Promise<TypedAxiosResponse<ProductDetailResponse>> => 
     apiClient.get(`/shop/product/${id}`),
+  getProductsByIds: (ids: string[]): Promise<TypedAxiosResponse<ProductDetailResponse[]>> =>
+    apiClient.post("/shop/products/batch", { ids }),
   getProductsByCategory: (() => {
     const cache = new Map<
       string,
@@ -326,6 +328,30 @@ export const shopAPI = {
     apiClient.post("/shop/category", payload),
   getCategoryById: (categoryId: string): Promise<TypedAxiosResponse<CategoryResponse>> =>
     fetchCategoryById(categoryId) as Promise<TypedAxiosResponse<CategoryResponse>>,
+  getOrdersStats: (): Promise<
+    TypedAxiosResponse<{
+      total: number;
+      avg: number;
+      sum: number;
+      pending: number;
+      recent?: Array<{
+        id: string | number;
+        name: string;
+        client: string;
+        status: string;
+        sum: number;
+        date: string;
+      }>;
+    }>
+  > => apiClient.get("/admin/dashboard/orders-stats"),
+  getWarehouseStats: (): Promise<
+    TypedAxiosResponse<{
+      total: number;
+      low: number;
+      out: number;
+      amount: number;
+    }>
+  > => apiClient.get("/admin/dashboard/warehouse-stats"),
   // Extended method for fetching product variants
   getAllProductVariants: (() => {
     const cache = new Map<string, { 

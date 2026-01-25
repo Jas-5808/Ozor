@@ -47,54 +47,94 @@ export default function Dashboard() {
       try {
         setLoading(true);
         // fetch in parallel
-        const [ordersRes, productsRes, categoriesRes] = await Promise.all([
-          shopAPI.getAllOrders().catch(()=> ({ data: [] } as any)),
-          shopAPI.getProducts({ limit: 1000 }).catch(()=> ({ data: [] } as any)),
-          shopAPI.getCategories().catch(()=> ({ data: [] } as any)),
+        const [ordersStatsRes, warehouseStatsRes] = await Promise.allSettled([
+          shopAPI.getOrdersStats(),
+          shopAPI.getWarehouseStats(),
         ]);
 
-        // Orders
-        const ordersRaw = Array.isArray(ordersRes.data) ? ordersRes.data : (ordersRes.data?.results || ordersRes.data?.data || []);
-        const orders = normalizeOrders(ordersRaw || []);
-        const total = orders.length;
-        const sum = orders.reduce((acc, o:any)=> acc + (Number(o.total)||0), 0);
-        const pending = orders.filter((o:any)=> o.status === 'pending').length;
-        const avg = total ? Math.round(sum / total) : 0;
-        if (!ignore) {
-          setOrdersStats({ total, avg, sum, pending });
-          const statusLabels: Record<string, string> = {
-            pending: t('admin.dashboard.recent.status.pending'),
-            cancelled: t('admin.dashboard.recent.status.cancelled'),
-            delivered: t('admin.dashboard.recent.status.delivered'),
-            confirmed: t('admin.dashboard.recent.status.confirmed'),
-            packing: t('admin.dashboard.recent.status.packing'),
-          };
-          const sortedRecent = [...orders].sort((a:any,b:any)=>{
-            const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
-            const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
-            return tb - ta;
-          }).slice(0, 5).map(o=> ({
-            id: o.id,
-            name: o.order_number || o.name || '—',
-            client: o.customer,
-            statusCode: o.status,
-            status: statusLabels[o.status] || statusLabels.confirmed,
-            sum: o.total || 0,
-            date: o.created_at ? new Date(o.created_at).toLocaleString('ru-RU') : '—'
-          }));
-          setRecent(sortedRecent);
+        const hasOrdersStats = ordersStatsRes.status === "fulfilled";
+        const hasWarehouseStats = warehouseStatsRes.status === "fulfilled";
+
+        if (hasOrdersStats) {
+          const statsPayload: any = (ordersStatsRes as any).value?.data ?? (ordersStatsRes as any).value;
+          const stats = statsPayload?.data ?? statsPayload;
+          if (!ignore) {
+            setOrdersStats({
+              total: Number(stats?.total || 0),
+              avg: Number(stats?.avg || 0),
+              sum: Number(stats?.sum || 0),
+              pending: Number(stats?.pending || 0),
+            });
+            if (Array.isArray(stats?.recent)) {
+              setRecent(stats.recent);
+            }
+          }
         }
 
-        // Products / Warehouse
-        const productsRaw = Array.isArray(productsRes.data) ? productsRes.data : (productsRes.data?.results || productsRes.data?.data || []);
-        const totalProducts = (productsRaw || []).length;
-        const out = (productsRaw || []).filter((p:any)=> Number(p.stock||0) <= 0).length;
-        const low = (productsRaw || []).filter((p:any)=> Number(p.stock||0) > 0 && Number(p.stock||0) <= 5).length;
-        const amount = (productsRaw || []).reduce((acc:number, p:any)=> acc + (Number(p.price||0) * Number(p.stock||0)), 0);
-        if (!ignore) setWarehouseStats({ total: totalProducts, low, out, amount });
+        if (hasWarehouseStats) {
+          const statsPayload: any = (warehouseStatsRes as any).value?.data ?? (warehouseStatsRes as any).value;
+          const stats = statsPayload?.data ?? statsPayload;
+          if (!ignore) {
+            setWarehouseStats({
+              total: Number(stats?.total || 0),
+              low: Number(stats?.low || 0),
+              out: Number(stats?.out || 0),
+              amount: Number(stats?.amount || 0),
+            });
+          }
+        }
 
-        // Categories are not shown numerically here, but fetched to warm cache
-        void categoriesRes;
+        if (!hasOrdersStats || !hasWarehouseStats) {
+          const [ordersRes, productsRes, categoriesRes] = await Promise.all([
+            shopAPI.getAllOrders().catch(()=> ({ data: [] } as any)),
+            shopAPI.getProducts({ limit: 1000 }).catch(()=> ({ data: [] } as any)),
+            shopAPI.getCategories().catch(()=> ({ data: [] } as any)),
+          ]);
+
+          if (!hasOrdersStats) {
+            const ordersRaw = Array.isArray(ordersRes.data) ? ordersRes.data : (ordersRes.data?.results || ordersRes.data?.data || []);
+            const orders = normalizeOrders(ordersRaw || []);
+            const total = orders.length;
+            const sum = orders.reduce((acc, o:any)=> acc + (Number(o.total)||0), 0);
+            const pending = orders.filter((o:any)=> o.status === 'pending').length;
+            const avg = total ? Math.round(sum / total) : 0;
+            if (!ignore) {
+              setOrdersStats({ total, avg, sum, pending });
+              const statusLabels: Record<string, string> = {
+                pending: t('admin.dashboard.recent.status.pending'),
+                cancelled: t('admin.dashboard.recent.status.cancelled'),
+                delivered: t('admin.dashboard.recent.status.delivered'),
+                confirmed: t('admin.dashboard.recent.status.confirmed'),
+                packing: t('admin.dashboard.recent.status.packing'),
+              };
+              const sortedRecent = [...orders].sort((a:any,b:any)=>{
+                const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+                const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+                return tb - ta;
+              }).slice(0, 5).map(o=> ({
+                id: o.id,
+                name: o.order_number || o.name || '—',
+                client: o.customer,
+                statusCode: o.status,
+                status: statusLabels[o.status] || statusLabels.confirmed,
+                sum: o.total || 0,
+                date: o.created_at ? new Date(o.created_at).toLocaleString('ru-RU') : '—'
+              }));
+              setRecent(sortedRecent);
+            }
+          }
+
+          if (!hasWarehouseStats) {
+            const productsRaw = Array.isArray(productsRes.data) ? productsRes.data : (productsRes.data?.results || productsRes.data?.data || []);
+            const totalProducts = (productsRaw || []).length;
+            const out = (productsRaw || []).filter((p:any)=> Number(p.stock||0) <= 0).length;
+            const low = (productsRaw || []).filter((p:any)=> Number(p.stock||0) > 0 && Number(p.stock||0) <= 5).length;
+            const amount = (productsRaw || []).reduce((acc:number, p:any)=> acc + (Number(p.price||0) * Number(p.stock||0)), 0);
+            if (!ignore) setWarehouseStats({ total: totalProducts, low, out, amount });
+          }
+
+          void categoriesRes;
+        }
       } finally {
         if (!ignore) setLoading(false);
       }

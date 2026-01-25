@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { shopAPI } from "../services/api";
 import { useDebounce } from "../hooks/useDebounce";
+import { fetchSearchSuggestions } from "../utils/searchSuggestions";
+import { SEARCH_SUGGESTIONS_LIMIT } from "../config/pagination";
 
 interface SearchSuggestion {
   product_name: string;
@@ -18,6 +19,7 @@ export default function MobileSearchBar() {
   const { t } = useTranslation();
   const debouncedQuery = useDebounce(q, 300);
   const searchRef = useRef<HTMLDivElement>(null);
+  const requestIdRef = useRef(0);
 
   // Закрытие подсказок при клике вне компонента
   useEffect(() => {
@@ -42,10 +44,11 @@ export default function MobileSearchBar() {
         return;
       }
 
+      const requestId = ++requestIdRef.current;
       setLoading(true);
       try {
-        const response = await shopAPI.searchProducts(debouncedQuery.trim(), { offset: 0, limit: 5 });
-        const data = response.data || [];
+        const data = await fetchSearchSuggestions(debouncedQuery.trim(), SEARCH_SUGGESTIONS_LIMIT);
+        if (requestId !== requestIdRef.current) return;
         
         const uniqueSuggestions: SearchSuggestion[] = [];
         const seenNames = new Set<string>();
@@ -64,10 +67,12 @@ export default function MobileSearchBar() {
         setSuggestions(uniqueSuggestions);
         setShowSuggestions(uniqueSuggestions.length > 0);
       } catch (error) {
+        if (requestId !== requestIdRef.current) return;
         console.error("Error fetching search suggestions:", error);
         setSuggestions([]);
         setShowSuggestions(false);
       } finally {
+        if (requestId !== requestIdRef.current) return;
         setLoading(false);
       }
     };

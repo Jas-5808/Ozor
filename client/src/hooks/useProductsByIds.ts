@@ -10,6 +10,7 @@ const getLocaleKey = () => (i18n.language?.split("-")[0] || "ru").toLowerCase();
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const MAX_CONCURRENT = 4;
+const BATCH_CHUNK = 50;
 
 type CacheEntry = {
   time: number;
@@ -105,6 +106,36 @@ async function runWithConcurrency<T>(tasks: Array<() => Promise<T>>, limit: numb
   return results;
 }
 
+async function fetchMany(productIds: string[]): Promise<Product[]> {
+  const ids = productIds.map((id) => String(id || "").trim()).filter(Boolean);
+  if (!ids.length) return [];
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += BATCH_CHUNK) {
+    chunks.push(ids.slice(i, i + BATCH_CHUNK));
+  }
+  const results: Product[] = [];
+  for (const chunk of chunks) {
+    const response = await shopAPI.getProductsByIds(chunk);
+    const payload: any = (response as any)?.data ?? response;
+    const data = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
+    for (const item of data) {
+      const product = mapProductDetailToProduct(item);
+      const key = String(product.product_id || "");
+      if (key) {
+        cache.set(key, {
+          time: Date.now(),
+          product,
+          raw: item,
+          language: getLocaleKey(),
+          promise: null,
+        });
+        results.push(product);
+      }
+    }
+  }
+  return results;
+}
+
 export function useProductsByIds(productIds: string[]) {
   const normalized = useMemo(() => {
     const ids = (productIds || [])
@@ -129,9 +160,32 @@ export function useProductsByIds(productIds: string[]) {
       setLoading(true);
       setError(null);
 
-      const tasks = normalized.map((id) => () => fetchOne(id));
-      const data = await runWithConcurrency(tasks, MAX_CONCURRENT);
-      setProducts(data);
+      const now = Date.now();
+      const cachedProducts: Product[] = [];
+      const missingIds: string[] = [];
+      normalized.forEach((id) => {
+        const entry = cache.get(id);
+        if (entry?.product && now - entry.time < CACHE_TTL) {
+          cachedProducts.push(entry.product);
+        } else {
+          missingIds.push(id);
+        }
+      });
+
+      if (missingIds.length) {
+        try {
+          await fetchMany(missingIds);
+        } catch (batchError) {
+          logger.warn?.("Batch products fetch failed, falling back", { count: missingIds.length });
+          const tasks = missingIds.map((id) => () => fetchOne(id));
+          await runWithConcurrency(tasks, MAX_CONCURRENT);
+        }
+      }
+
+      const finalProducts = normalized
+        .map((id) => cache.get(id)?.product)
+        .filter(Boolean) as Product[];
+      setProducts(finalProducts.length ? finalProducts : cachedProducts);
     } catch (e) {
       const appError = handleApiError(e);
       const msg = getUserFriendlyMessage(appError) || i18n.t("common.errors.productsLoad");

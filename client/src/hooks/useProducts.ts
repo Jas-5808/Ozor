@@ -5,14 +5,48 @@ import { Product } from "../types";
 import { logger } from "../utils/logger";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
 import { buildDisplayProducts, resolveProductDescription, resolveProductName, splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
+import {
+  MAIN_PRODUCTS_API_LIMIT,
+  MAIN_PRODUCTS_FIRST_PAGE_LIMIT,
+  MAIN_PRODUCTS_PAGED_LIMIT,
+} from "../config/pagination";
 
 const getLocaleKey = () => (i18n.language?.split("-")[0] || "ru").toLowerCase();
 
 const ITEMS_PER_PAGE = 20; // Количество товаров на страницу
-const API_LIMIT = 100; // Максимальный лимит для API запроса
-const FIRST_PAGE_LIMIT = 40; // Быстрая первая страница для улучшения LCP
-const PAGED_LIMIT = 40; // Лимит для постраничной витрины (infinite scroll)
 const CACHE_TTL = 5 * 60 * 1000; // 5 минут кэш
+const MAIN_PRODUCTS_CACHE_KEY = "main_products_cache";
+
+const readMainCache = () => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(MAIN_PRODUCTS_CACHE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== "object") return null;
+    if (Date.now() - Number(data.timestamp || 0) > CACHE_TTL) return null;
+    return data;
+  } catch {
+    return null;
+  }
+};
+
+const writeMainCache = (payload: { raw: any[]; offset: number; hasMore: boolean }) => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(
+      MAIN_PRODUCTS_CACHE_KEY,
+      JSON.stringify({
+        raw: payload.raw,
+        offset: payload.offset,
+        hasMore: payload.hasMore,
+        timestamp: Date.now(),
+      })
+    );
+  } catch {
+    // ignore
+  }
+};
 
 // Простой кэш для продуктов
 let productsCache: {
@@ -69,6 +103,21 @@ export const useProductsPaged = () => {
         setLoading(false);
         return;
       }
+      const persisted = readMainCache();
+      if (persisted?.raw?.length) {
+        pagedCache = {
+          raw: persisted.raw,
+          offset: Number(persisted.offset || 0),
+          hasMore: Boolean(persisted.hasMore),
+          timestamp: Number(persisted.timestamp || Date.now()),
+        };
+        setRaw(pagedCache.raw);
+        hydrateFromRaw(pagedCache.raw);
+        setOffset(pagedCache.offset);
+        setHasMore(pagedCache.hasMore);
+        setLoading(false);
+        return;
+      }
 
       if (pagedInFlight) {
         await pagedInFlight;
@@ -83,7 +132,7 @@ export const useProductsPaged = () => {
       }
 
       const run = async () => {
-        const response = await shopAPI.getProducts({ limit: FIRST_PAGE_LIMIT, offset: 0 });
+        const response = await shopAPI.getProducts({ limit: MAIN_PRODUCTS_FIRST_PAGE_LIMIT, offset: 0 });
         const data = response.data || [];
         const nextOffset = data.length;
         // Некоторые бэки игнорируют limit и отдают меньше, но страниц ещё много.
@@ -96,6 +145,7 @@ export const useProductsPaged = () => {
           hasMore: nextHasMore,
           timestamp: Date.now(),
         };
+        writeMainCache({ raw: data, offset: nextOffset, hasMore: nextHasMore });
 
         setRaw(data);
         hydrateFromRaw(data);
@@ -131,7 +181,7 @@ export const useProductsPaged = () => {
       }
 
       const run = async () => {
-        const response = await shopAPI.getProducts({ limit: PAGED_LIMIT, offset });
+        const response = await shopAPI.getProducts({ limit: MAIN_PRODUCTS_PAGED_LIMIT, offset });
         const data = response.data || [];
         const nextOffset = offset + data.length;
 
@@ -160,6 +210,7 @@ export const useProductsPaged = () => {
           hasMore: nextHasMore,
           timestamp: Date.now(),
         };
+        writeMainCache({ raw: merged, offset: nextOffset, hasMore: nextHasMore });
 
         setRaw(merged);
         hydrateFromRaw(merged);
@@ -186,6 +237,13 @@ export const useProductsPaged = () => {
     pagedCache = null;
     pagedInFlight = null;
     pagedLoadMoreInFlight = null;
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(MAIN_PRODUCTS_CACHE_KEY);
+      } catch {
+        // ignore
+      }
+    }
     setRaw([]);
     setOffset(0);
     setHasMore(true);
@@ -291,7 +349,7 @@ export const useProducts = () => {
       // Быстрая первая страница для мгновенного рендера
       const run = async () => {
         const allFetchedProducts: any[] = [];
-        const firstResponse = await shopAPI.getProducts({ limit: FIRST_PAGE_LIMIT, offset: 0 });
+        const firstResponse = await shopAPI.getProducts({ limit: MAIN_PRODUCTS_FIRST_PAGE_LIMIT, offset: 0 });
         const firstData = firstResponse.data || [];
         allFetchedProducts.push(...firstData);
         rawProductsRef.current = allFetchedProducts;
@@ -308,14 +366,14 @@ export const useProducts = () => {
         let offset = allFetchedProducts.length;
         let hasMore = true;
         while (hasMore) {
-          const response = await shopAPI.getProducts({ limit: API_LIMIT, offset });
+          const response = await shopAPI.getProducts({ limit: MAIN_PRODUCTS_API_LIMIT, offset });
           const data = response.data || [];
           if (data.length === 0) {
             hasMore = false;
           } else {
             allFetchedProducts.push(...data);
             offset += data.length;
-            if (data.length < API_LIMIT) {
+            if (data.length < MAIN_PRODUCTS_API_LIMIT) {
               hasMore = false;
             }
           }

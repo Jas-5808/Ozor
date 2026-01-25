@@ -7,6 +7,7 @@ import { useProductsPaged } from "../hooks/useProducts";
 import { formatPrice, getProductImageUrl, getVariantMainImage, shortenUrl } from "../utils/helpers";
 import { logger } from "../utils/logger";
 import { resolveProductDescription, resolveProductName } from "../utils/productUtils";
+import { PROFILE_MARKET_SEARCH_LIMIT } from "../config/pagination";
 import { useFlows } from "../hooks/useFlows";
 import SkeletonGrid from "../components/SkeletonGrid";
 import useSEO from "../hooks/useSEO";
@@ -64,7 +65,7 @@ export function Profile() {
   const [marketSearchHasMore, setMarketSearchHasMore] = useState(true);
   const [marketSearchLoading, setMarketSearchLoading] = useState(false);
   const [marketSearchError, setMarketSearchError] = useState<string | null>(null);
-  const MARKET_SEARCH_LIMIT = 40;
+  const MARKET_SEARCH_LIMIT = PROFILE_MARKET_SEARCH_LIMIT;
   const isMarketSearchMode = debouncedSearchQuery.trim().length >= 2;
   
   // Состояния для раздела платежей

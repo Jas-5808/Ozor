@@ -14,6 +14,7 @@ import { logger } from "../utils/logger";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
 import { ERROR_MESSAGES } from "../constants";
 import { resolveProductDescription, resolveProductName, splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
+import { PRODUCT_RELATED_LIMIT } from "../config/pagination";
 
 type LocationState = { product?: ProductType };
 
@@ -546,7 +547,7 @@ export function Product() {
     setRecommendedError(null);
     shopAPI
       // Берём больше кандидатов, чтобы выбрать лучшие и убрать дубли
-      .getProductsByCategory(categoryId, { offset: 0, limit: 30 })
+      .getProductsByCategory(categoryId, { offset: 0, limit: PRODUCT_RELATED_LIMIT })
       .then((res) => {
         if (ignore) return;
         const results = (res as any)?.data?.results ?? (res as any)?.data ?? [];

@@ -9,6 +9,7 @@ import useSEO from "../hooks/useSEO";
 import SkeletonGrid from "../components/SkeletonGrid";
 import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
 import { buildDisplayProducts, splitProductsIntoPrimaryAndVariants, transformProductFromApi } from "../utils/productUtils";
+import { CATEGORY_PAGE_LIMIT } from "../config/pagination";
 
 const PAGE_SIZE = 20;
 const INITIAL_TARGET_ITEMS = 60; // сколько "сырых" items хотим быстро собрать до первого уверенного UX
@@ -48,6 +49,10 @@ export function CategoryPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState(0); // индекс следующей подкатегории для подгрузки
+  const [categoriesHasMore, setCategoriesHasMore] = useState(true);
+  const categoryOffsetsRef = useRef<Record<string, number>>({});
+  const categoryHasMoreRef = useRef<Record<string, boolean>>({});
+  const categoryQueueRef = useRef<string[]>([]);
   const cacheKey = useMemo(
     () => (id ? `category_products_cache:${id}` : ""),
     [id]
@@ -204,7 +209,16 @@ export function CategoryPage() {
       if (Date.now() - Number(payload.ts || 0) > CATEGORY_CACHE_TTL) return null;
       const items = Array.isArray(payload.items) ? payload.items : [];
       const nextCursor = Number(payload.cursor || 0);
-      return { items, cursor: Number.isFinite(nextCursor) ? nextCursor : 0 };
+      const offsets = payload.offsets && typeof payload.offsets === "object" ? payload.offsets : {};
+      const hasMore = payload.hasMore && typeof payload.hasMore === "object" ? payload.hasMore : {};
+      const queue = Array.isArray(payload.queue) ? payload.queue : [];
+      return {
+        items,
+        cursor: Number.isFinite(nextCursor) ? nextCursor : 0,
+        offsets,
+        hasMore,
+        queue,
+      };
     } catch {
       return null;
     }
@@ -218,7 +232,14 @@ export function CategoryPage() {
           items.length > CATEGORY_CACHE_MAX_ITEMS ? items.slice(0, CATEGORY_CACHE_MAX_ITEMS) : items;
         localStorage.setItem(
           cacheKey,
-          JSON.stringify({ ts: Date.now(), items: trimmed, cursor: nextCursor })
+          JSON.stringify({
+            ts: Date.now(),
+            items: trimmed,
+            cursor: nextCursor,
+            offsets: categoryOffsetsRef.current,
+            hasMore: categoryHasMoreRef.current,
+            queue: categoryQueueRef.current,
+          })
         );
       } catch {
         // ignore cache write errors
@@ -272,7 +293,10 @@ export function CategoryPage() {
   const fetchNextCategories = useCallback(async (opts?: { minTotalRaw?: number }) => {
     if (!id) return;
     if (loadingMoreRef.current) return;
-    if (cursorRef.current >= categoryIds.length) return;
+    if (categoryQueueRef.current.length === 0) {
+      setCategoriesHasMore(false);
+      return;
+    }
 
     loadingMoreRef.current = true;
     setLoadingMore(true);
@@ -280,24 +304,55 @@ export function CategoryPage() {
       let localCursor = cursorRef.current;
       let localRaw = rawItemsRef.current;
 
-      while (localCursor < categoryIds.length) {
-        const batch = categoryIds.slice(localCursor, localCursor + MAX_CONCURRENT);
+      while (categoryQueueRef.current.length > 0) {
+        const batch: string[] = [];
+        while (batch.length < MAX_CONCURRENT && categoryQueueRef.current.length > 0) {
+          const nextId = categoryQueueRef.current.shift() as string;
+          if (categoryHasMoreRef.current[nextId] === false) {
+            continue;
+          }
+          batch.push(nextId);
+        }
+        if (batch.length === 0) {
+          setCategoriesHasMore(false);
+          break;
+        }
         const responses = await Promise.all(
-          batch.map((categoryId) =>
-            shopAPI
-              .getProductsByCategory(categoryId, { limit: 80, offset: 0 })
-              .then((r) => {
-                const data = (r as any)?.data ?? r;
-                const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-                return items.map((item: any) => ({ ...item, __categoryId: categoryId }));
-              })
-              .catch(() => [])
-          )
+          batch.map(async (categoryId) => {
+            if (categoryHasMoreRef.current[categoryId] === false) {
+              return { categoryId, items: [], skipped: true, error: false };
+            }
+            const offset = Number(categoryOffsetsRef.current[categoryId] || 0);
+            try {
+              const r = await shopAPI.getProductsByCategory(categoryId, {
+                limit: CATEGORY_PAGE_LIMIT,
+                offset,
+              });
+              const data = (r as any)?.data ?? r;
+              const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+              const mapped = items.map((item: any) => ({ ...item, __categoryId: categoryId }));
+              const nextOffset = offset + items.length;
+              categoryOffsetsRef.current[categoryId] = nextOffset;
+              if (items.length < CATEGORY_PAGE_LIMIT) {
+                categoryHasMoreRef.current[categoryId] = false;
+              }
+              return { categoryId, items: mapped, skipped: false, error: false };
+            } catch {
+              return { categoryId, items: [], skipped: false, error: true };
+            }
+          })
         );
 
-        const flat = responses.flat();
+        const flat = responses.flatMap((r) => r.items || []);
         localRaw = mergeRawItems(localRaw, flat);
         localCursor += batch.length;
+
+        responses.forEach((res) => {
+          const hasMore = categoryHasMoreRef.current[res.categoryId] !== false;
+          if (hasMore) {
+            categoryQueueRef.current.push(res.categoryId);
+          }
+        });
 
         // если нам достаточно для UX — выходим раньше (остальное догрузим по скроллу)
         if (opts?.minTotalRaw && localRaw.length >= opts.minTotalRaw) {
@@ -310,6 +365,7 @@ export function CategoryPage() {
       syncDerivedProducts(localRaw);
       setCursor(localCursor);
       cursorRef.current = localCursor;
+      setCategoriesHasMore(categoryQueueRef.current.length > 0);
     } finally {
       loadingMoreRef.current = false;
       setLoadingMore(false);
@@ -336,6 +392,11 @@ export function CategoryPage() {
         syncDerivedProducts(restored.items);
         setCursor(restored.cursor || 0);
         cursorRef.current = restored.cursor || 0;
+        categoryOffsetsRef.current = restored.offsets || {};
+        categoryHasMoreRef.current = restored.hasMore || {};
+        categoryQueueRef.current =
+          restored.queue && restored.queue.length ? restored.queue : categoryIds.slice();
+        setCategoriesHasMore(categoryQueueRef.current.length > 0);
         setDisplayedCount(Math.min(PAGE_SIZE, restored.items.length));
         setOtherDisplayedCount(PAGE_SIZE);
         loadingMoreRef.current = false;
@@ -352,6 +413,10 @@ export function CategoryPage() {
         // sync refs too
         rawItemsRef.current = [];
         cursorRef.current = 0;
+        categoryOffsetsRef.current = {};
+        categoryHasMoreRef.current = {};
+        categoryQueueRef.current = categoryIds.slice();
+        setCategoriesHasMore(categoryQueueRef.current.length > 0);
         loadingMoreRef.current = false;
       }
       
@@ -408,8 +473,8 @@ export function CategoryPage() {
 
   const hasMore = useMemo(() => {
     // есть ещё что показать ИЛИ есть что догрузить по категориям
-    return displayedCount < totalProductsCount || cursor < categoryIds.length;
-  }, [displayedCount, totalProductsCount, cursor, categoryIds.length]);
+    return displayedCount < totalProductsCount || categoriesHasMore;
+  }, [displayedCount, totalProductsCount, categoriesHasMore]);
 
   const loadMore = useCallback(() => {
     if (!hasMore || loading) return;
@@ -421,10 +486,10 @@ export function CategoryPage() {
     }
 
     // Если показать нечего, но есть что догрузить — догружаем следующую порцию категорий
-    if (cursor < categoryIds.length && !loadingMore) {
+    if (categoriesHasMore && !loadingMore) {
       void fetchNextCategories();
     }
-  }, [categoryIds.length, cursor, displayedCount, fetchNextCategories, hasMore, loading, loadingMore, totalProductsCount]);
+  }, [categoriesHasMore, displayedCount, fetchNextCategories, hasMore, loading, loadingMore, totalProductsCount]);
 
   const { ref: sentinelRef } = useInfiniteScroll({
     hasMore,
@@ -435,8 +500,8 @@ export function CategoryPage() {
 
   // Infinite scroll для "Boshqa mahsulotlar" (товары из подкатегорий / других подгруженных категорий)
   const hasMoreOther = useMemo(() => {
-    return otherDisplayedCount < otherProductsCount || cursor < categoryIds.length;
-  }, [categoryIds.length, cursor, otherDisplayedCount, otherProductsCount]);
+    return otherDisplayedCount < otherProductsCount || categoriesHasMore;
+  }, [categoriesHasMore, otherDisplayedCount, otherProductsCount]);
 
   const loadMoreOther = useCallback(() => {
     if (loading) return;
@@ -449,10 +514,10 @@ export function CategoryPage() {
     }
 
     // 2) если показать нечего, но есть что догрузить — догружаем следующую порцию категорий
-    if (cursor < categoryIds.length && !loadingMore) {
+    if (categoriesHasMore && !loadingMore) {
       void fetchNextCategories();
     }
-  }, [categoryIds.length, cursor, fetchNextCategories, hasMoreOther, loading, loadingMore, otherDisplayedCount, otherProductsCount]);
+  }, [categoriesHasMore, fetchNextCategories, hasMoreOther, loading, loadingMore, otherDisplayedCount, otherProductsCount]);
 
   const { ref: otherSentinelRef } = useInfiniteScroll({
     hasMore: hasMoreOther,
