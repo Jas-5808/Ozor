@@ -638,7 +638,7 @@ export function Profile() {
         if (cancelled) return;
         setMarketSearchRaw(data);
         setMarketSearchOffset(data.length);
-        setMarketSearchHasMore(data.length === MARKET_SEARCH_LIMIT);
+        setMarketSearchHasMore(data.length > 0);
       } catch (e: any) {
         if (cancelled) return;
         setMarketSearchError(e?.response?.data?.message || e?.message || t("search.error"));
@@ -677,8 +677,9 @@ export function Profile() {
         }
       }
       setMarketSearchRaw(merged);
+      const grew = merged.length > marketSearchRaw.length;
       setMarketSearchOffset(marketSearchOffset + data.length);
-      setMarketSearchHasMore(data.length === MARKET_SEARCH_LIMIT);
+      setMarketSearchHasMore(data.length > 0 && grew);
     } catch (e: any) {
       setMarketSearchError(e?.response?.data?.message || e?.message || t("search.error"));
     } finally {

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { shopAPI } from "../services/api";
 import { Product } from "../types";
@@ -33,6 +33,14 @@ export function SearchPage() {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [matchScores, setMatchScores] = useState<Record<string, number>>({});
+  const [minMatchPercent, setMinMatchPercent] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("searchMinMatchPercent");
+      return saved ? Number(saved) : 0;
+    }
+    return 0;
+  });
+  const [hiddenCount, setHiddenCount] = useState<number>(0);
 
   const normalizedQuery = useMemo(() => query.trim(), [query]);
   const queryLower = useMemo(() => normalizedQuery.toLowerCase(), [normalizedQuery]);
@@ -101,7 +109,10 @@ export function SearchPage() {
         return { product, score };
       });
 
-      scored.sort((a, b) => {
+      const filtered = scored.filter((s) => s.score >= minMatchPercent);
+      const hidden = scored.length - filtered.length;
+
+      filtered.sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         const aInStock = (a.product.stock ?? 0) > 0;
         const bInStock = (b.product.stock ?? 0) > 0;
@@ -110,9 +121,9 @@ export function SearchPage() {
         return (a.product.price ?? 0) - (b.product.price ?? 0);
       });
 
-      return { products: scored.map((s) => s.product), scores };
+      return { products: filtered.map((s) => s.product), scores, hidden };
     },
-    [calcMatchPercent, queryLower]
+    [calcMatchPercent, queryLower, minMatchPercent]
   );
 
   useEffect(() => {
@@ -141,6 +152,7 @@ export function SearchPage() {
           const computed = computeProducts(cached.raw);
           setProducts(computed.products);
           setMatchScores(computed.scores);
+          setHiddenCount(computed.hidden);
           setOffset(cached.offset);
           setHasMore(cached.hasMore);
           return;
@@ -154,7 +166,8 @@ export function SearchPage() {
               offset: 0,
               limit: SEARCH_PAGE_LIMIT,
             });
-            return response.data || [];
+            const payload: any = (response as any)?.data ?? response;
+            return Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
           })();
 
         if (!existing) {
@@ -179,6 +192,7 @@ export function SearchPage() {
         const computed = computeProducts(data);
         setProducts(computed.products);
         setMatchScores(computed.scores);
+        setHiddenCount(computed.hidden);
         setOffset(nextOffset);
         setHasMore(nextHasMore);
       } catch (err: any) {
@@ -198,6 +212,21 @@ export function SearchPage() {
     };
   }, [computeProducts, normalizedQuery, t]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("searchMinMatchPercent", minMatchPercent.toString());
+    }
+  }, [minMatchPercent]);
+
+  useEffect(() => {
+    if (rawItems.length > 0) {
+      const computed = computeProducts(rawItems);
+      setProducts(computed.products);
+      setMatchScores(computed.scores);
+      setHiddenCount(computed.hidden);
+    }
+  }, [minMatchPercent, computeProducts, rawItems]);
+
   const loadMore = useCallback(async () => {
     if (loading || !hasMore || !normalizedQuery) return;
 
@@ -212,7 +241,8 @@ export function SearchPage() {
             offset,
             limit: SEARCH_PAGE_LIMIT,
           });
-          return response.data || [];
+          const payload: any = (response as any)?.data ?? response;
+          return Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
         })();
 
       if (!existing) {
@@ -249,6 +279,7 @@ export function SearchPage() {
       const computed = computeProducts(merged);
       setProducts(computed.products);
       setMatchScores(computed.scores);
+      setHiddenCount(computed.hidden);
       setOffset(nextOffset);
       setHasMore(nextHasMore);
     } catch (err: any) {
@@ -285,12 +316,39 @@ export function SearchPage() {
       <div className="max-w-6xl mx-auto">
         <div className="mb-6">
           {products.length > 0 && (
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
-              {t("search.foundInCategories", { 
-                productsCount: products.length, 
-                categoriesCount: uniqueCategoriesCount 
-              })}
-            </h1>
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+                  {t("search.foundInCategories", { 
+                    productsCount: products.length, 
+                    categoriesCount: uniqueCategoriesCount 
+                  })}
+                </h1>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-600 whitespace-nowrap">
+                    {t("search.minMatch", "Мин. совпадение")}:
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={minMatchPercent}
+                    onChange={(e) => setMinMatchPercent(Number(e.target.value))}
+                    className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                  />
+                  <span className="text-xs font-semibold text-slate-700 min-w-12 text-right">
+                    {minMatchPercent}%
+                  </span>
+                </div>
+              </div>
+              {minMatchPercent > 0 && hiddenCount > 0 && (
+                <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2 inline-block">
+                  {t("search.hiddenProducts", "Скрыто товаров: {count}", { 
+                    count: hiddenCount
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
 
