@@ -10,6 +10,7 @@ import SkeletonGrid from "../components/SkeletonGrid";
 import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
 import { buildDisplayProducts, splitProductsIntoPrimaryAndVariants, transformProductFromApi } from "../utils/productUtils";
 import { CATEGORY_PAGE_LIMIT } from "../config/pagination";
+import { logger } from "../utils/logger";
 
 const PAGE_SIZE = 20;
 const INITIAL_TARGET_ITEMS = 60; // сколько "сырых" items хотим быстро собрать до первого уверенного UX
@@ -194,11 +195,6 @@ export function CategoryPage() {
     loadingMoreRef.current = loadingMore;
   }, [loadingMore]);
 
-  useEffect(() => {
-    if (!rawItems.length) return;
-    persistCache(rawItems, cursor);
-  }, [rawItems, cursor, persistCache]);
-
   const restoreFromCache = useCallback(() => {
     if (!cacheKey || typeof window === "undefined") return null;
     try {
@@ -247,6 +243,11 @@ export function CategoryPage() {
     },
     [cacheKey]
   );
+
+  useEffect(() => {
+    if (!rawItems.length) return;
+    persistCache(rawItems, cursor);
+  }, [rawItems, cursor, persistCache]);
 
   const mergeRawItems = useCallback((prev: any[], next: any[]) => {
     const existing = new Set(
@@ -450,7 +451,7 @@ export function CategoryPage() {
         });
       } catch (err) {
         if (!cancelled) {
-          console.error("Error fetching products:", err);
+          logger.errorWithContext(err, { context: "CategoryPage.fetchProducts" });
           setError(t("common.errors.productsLoad"));
         }
       } finally {

@@ -24,12 +24,15 @@ export function useThrottle<T>(value: T, limit: number = 100): T {
   const lastRan = useRef<number>(Date.now());
 
   useEffect(() => {
+    const elapsed = Date.now() - lastRan.current;
+    const delay = Math.max(0, limit - elapsed);
+    
     const handler = setTimeout(() => {
       if (Date.now() - lastRan.current >= limit) {
         setThrottledValue(value);
         lastRan.current = Date.now();
       }
-    }, limit - (Date.now() - lastRan.current));
+    }, delay);
 
     return () => {
       clearTimeout(handler);
