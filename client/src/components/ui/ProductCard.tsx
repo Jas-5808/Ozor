@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useApp } from "../../context/AppContext";
 import { formatPrice, truncateText, getProductImageUrl, getVariantMainImage } from "../../utils/helpers";
+import { resolveProductName, resolveProductDescription } from "../../utils/productUtils";
 import { Product } from "../../types";
 import type { VariantMedia } from "../../types/api";
 
@@ -22,8 +23,26 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
   matchPercent,
 }) => {
   const { toggleLike, isLiked: isProductLiked } = useApp();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
+  
+  // Получаем локализованное название и описание с учетом текущего языка
+  // Используем name_uz и name_ru напрямую, чтобы обновляться при смене языка
+  const localizedName = useMemo(() => {
+    const locale = i18n.language?.split("-")[0] || "ru";
+    if (locale === "uz") {
+      return product.name_uz || product.product_name || "";
+    }
+    return product.name_ru || product.name_uz || product.product_name || "";
+  }, [product.name_uz, product.name_ru, product.product_name, i18n.language]);
+  
+  const localizedDescription = useMemo(() => {
+    const locale = i18n.language?.split("-")[0] || "ru";
+    if (locale === "uz") {
+      return product.description_uz || product.description_ru || product.product_description || "";
+    }
+    return product.description_ru || product.description_uz || product.product_description || "";
+  }, [product.description_uz, product.description_ru, product.product_description, i18n.language]);
 
   const isCompact = size === "compact";
 
@@ -115,7 +134,7 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
         >
           <img
             src={productImage}
-            alt={product.product_name}
+            alt={localizedName}
             className={[
               "w-full h-full",
               isCompact ? "object-contain p-2" : "object-cover",
@@ -193,12 +212,12 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
               isCompact ? "text-xs line-clamp-2" : "text-sm",
             ].join(" ")}
           >
-            {truncateText(product.product_name, isCompact ? 32 : 40)}
+            {truncateText(localizedName, isCompact ? 32 : 40)}
           </div>
 
-          {!isCompact && product.product_description && (
+          {!isCompact && localizedDescription && (
             <div className="text-[10px] text-gray-600 leading-tight line-clamp-2">
-              {truncateText(product.product_description, 60)}
+              {truncateText(localizedDescription, 60)}
             </div>
           )}
         </div>
@@ -207,15 +226,42 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
   );
 };
 
-// Мемоизация компонента для предотвращения ненужных ререндеров
+// Мемоизация для оптимизации производительности при большом количестве продуктов
+// Сравниваем name_uz/name_ru, чтобы компонент перерисовывался при смене языка
+// (когда язык меняется, продукты пересчитываются и создаются новые объекты с обновленными полями)
 export const ProductCard = memo(ProductCardComponent, (prevProps, nextProps) => {
-  return (
+  // Сравниваем ключевые поля для идентификации продукта
+  const sameProduct = 
     prevProps.product.product_id === nextProps.product.product_id &&
-    prevProps.product.variant_id === nextProps.product.variant_id &&
+    prevProps.product.variant_id === nextProps.product.variant_id;
+  
+  if (!sameProduct) return false;
+  
+  // Сравниваем поля, влияющие на отображение
+  // При смене языка продукты пересчитываются через transformProductFromApi,
+  // который создает новые объекты с обновленными product_name и product_description
+  // (через resolveProductName/resolveProductDescription, зависящие от языка)
+  const sameDisplayData =
+    prevProps.product.name_uz === nextProps.product.name_uz &&
+    prevProps.product.name_ru === nextProps.product.name_ru &&
+    prevProps.product.description_uz === nextProps.product.description_uz &&
+    prevProps.product.description_ru === nextProps.product.description_ru &&
+    prevProps.product.product_name === nextProps.product.product_name &&
+    prevProps.product.product_description === nextProps.product.product_description &&
+    prevProps.product.price === nextProps.product.price &&
+    prevProps.product.base_price === nextProps.product.base_price &&
+    prevProps.product.stock === nextProps.product.stock;
+  
+  // Сравниваем остальные props
+  const sameProps =
     prevProps.isLiked === nextProps.isLiked &&
     prevProps.size === nextProps.size &&
-    prevProps.matchPercent === nextProps.matchPercent
-  );
+    prevProps.matchPercent === nextProps.matchPercent;
+  
+  // Компонент не нужно перерисовывать, если все совпадает
+  // useMemo внутри компонента с зависимостью от i18n.language обеспечит
+  // правильное отображение локализованных названий при смене языка
+  return sameDisplayData && sameProps;
 });
 
 ProductCard.displayName = "ProductCard";

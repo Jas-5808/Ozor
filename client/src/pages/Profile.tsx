@@ -397,28 +397,56 @@ export function Profile() {
   }, [apiFlows]);
 
   const filteredReferralStats = useMemo(() => {
-    if (!oqimQuery) return Array.isArray(referralStats) ? referralStats : [];
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return (Array.isArray(referralStats) ? referralStats : []).filter((r: any) => {
-      const linkedFlow = apiFlowById.get(String(r?.id || ""));
-      const referralCode = String(linkedFlow?.code || "").trim();
-      const shareLink = linkedFlow?.link
-        ? String(linkedFlow.link)
-        : (linkedFlow && linkedFlow.product_id && referralCode)
-        ? `${origin}/r/${encodeURIComponent(String(linkedFlow.product_id))}/${encodeURIComponent(referralCode)}`
-        : "";
-      const productName = linkedFlow?.orders?.[0]?.items?.[0]?.product_name || linkedFlow?.product_name || "";
-      const linkTitle = r?.title || r?.code || "";
-      const hay = [linkTitle, r?.code, productName, referralCode, shareLink].join(" ").toLowerCase();
-      return hay.includes(oqimQuery);
+    let result = Array.isArray(referralStats) ? referralStats : [];
+    
+    // Фильтрация по поисковому запросу
+    if (oqimQuery) {
+      result = result.filter((r: any) => {
+        const linkedFlow = apiFlowById.get(String(r?.id || ""));
+        const referralCode = String(linkedFlow?.code || "").trim();
+        const shareLink = linkedFlow?.link
+          ? String(linkedFlow.link)
+          : (linkedFlow && linkedFlow.product_id && referralCode)
+          ? `${origin}/r/${encodeURIComponent(String(linkedFlow.product_id))}/${encodeURIComponent(referralCode)}`
+          : "";
+        const productName = linkedFlow?.orders?.[0]?.items?.[0]?.product_name || linkedFlow?.product_name || "";
+        const linkTitle = r?.title || r?.code || "";
+        const hay = [linkTitle, r?.code, productName, referralCode, shareLink].join(" ").toLowerCase();
+        return hay.includes(oqimQuery);
+      });
+    }
+    
+    // Сортировка по дате создания (новые сверху)
+    return result.slice().sort((a: any, b: any) => {
+      const linkedFlowA = apiFlowById.get(String(a?.id || ""));
+      const linkedFlowB = apiFlowById.get(String(b?.id || ""));
+      const dateA = linkedFlowA?.created_at || (linkedFlowA as any)?.createdAt || "";
+      const dateB = linkedFlowB?.created_at || (linkedFlowB as any)?.createdAt || "";
+      const timeA = dateA ? new Date(dateA).getTime() : 0;
+      const timeB = dateB ? new Date(dateB).getTime() : 0;
+      return timeB - timeA; // Новые сверху (убывание)
     });
   }, [oqimQuery, referralStats, apiFlowById]);
 
   const filteredLocalFlows = useMemo(() => {
-    if (!oqimQuery) return Array.isArray(flows) ? flows : [];
-    return (Array.isArray(flows) ? flows : []).filter((f: any) => {
-      const hay = [f?.productName, f?.link, f?.id].join(" ").toLowerCase();
-      return hay.includes(oqimQuery);
+    let result = Array.isArray(flows) ? flows : [];
+    
+    // Фильтрация по поисковому запросу
+    if (oqimQuery) {
+      result = result.filter((f: any) => {
+        const hay = [f?.productName, f?.link, f?.id].join(" ").toLowerCase();
+        return hay.includes(oqimQuery);
+      });
+    }
+    
+    // Сортировка по дате создания (новые сверху)
+    return result.slice().sort((a: any, b: any) => {
+      const dateA = a?.createdAt || "";
+      const dateB = b?.createdAt || "";
+      const timeA = dateA ? new Date(dateA).getTime() : 0;
+      const timeB = dateB ? new Date(dateB).getTime() : 0;
+      return timeB - timeA; // Новые сверху (убывание)
     });
   }, [oqimQuery, flows]);
 
