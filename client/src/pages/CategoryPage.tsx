@@ -173,18 +173,19 @@ export function CategoryPage() {
     return subcategories.map(s => s.id).sort().join(',');
   }, [subcategories]);
 
-  // Список categoryIds (текущая + все подкатегории)
+  // Список categoryIds (текущая + все подкатегории) - стабильный массив
   const categoryIds = useMemo(() => {
     const ids = new Set<string>();
     if (id) ids.add(id);
     subcategories.forEach((sub) => ids.add(sub.id));
-    return Array.from(ids);
+    return Array.from(ids).sort(); // Сортируем для стабильности
   }, [id, subcategoriesKey]);
 
   // refs: чтобы fetchNextCategories был стабильным и не ломал зависимости useEffect
   const rawItemsRef = useRef<any[]>([]);
   const cursorRef = useRef(0);
   const loadingMoreRef = useRef(false);
+  const categoryIdsRef = useRef<string[]>([]);
   useEffect(() => {
     rawItemsRef.current = rawItems;
   }, [rawItems]);
@@ -194,6 +195,9 @@ export function CategoryPage() {
   useEffect(() => {
     loadingMoreRef.current = loadingMore;
   }, [loadingMore]);
+  useEffect(() => {
+    categoryIdsRef.current = categoryIds;
+  }, [categoryIds]);
 
   const restoreFromCache = useCallback(() => {
     if (!cacheKey || typeof window === "undefined") return null;
@@ -294,9 +298,14 @@ export function CategoryPage() {
   const fetchNextCategories = useCallback(async (opts?: { minTotalRaw?: number }) => {
     if (!id) return;
     if (loadingMoreRef.current) return;
+    // Инициализируем очередь из categoryIdsRef, если она пуста
     if (categoryQueueRef.current.length === 0) {
-      setCategoriesHasMore(false);
-      return;
+      const ids = categoryIdsRef.current.length > 0 ? categoryIdsRef.current : categoryIds;
+      if (ids.length === 0) {
+        setCategoriesHasMore(false);
+        return;
+      }
+      categoryQueueRef.current = ids.slice();
     }
 
     loadingMoreRef.current = true;
@@ -348,9 +357,14 @@ export function CategoryPage() {
         localRaw = mergeRawItems(localRaw, flat);
         localCursor += batch.length;
 
+        // Добавляем категории обратно в очередь ТОЛЬКО если есть еще данные
+        // и только если они не были пропущены/ошибка
         responses.forEach((res) => {
+          if (res.skipped || res.error) return;
           const hasMore = categoryHasMoreRef.current[res.categoryId] !== false;
-          if (hasMore) {
+          // Проверяем, что offset действительно увеличился (есть новые данные)
+          const currentOffset = categoryOffsetsRef.current[res.categoryId] || 0;
+          if (hasMore && currentOffset > 0 && res.items.length > 0) {
             categoryQueueRef.current.push(res.categoryId);
           }
         });
@@ -371,7 +385,7 @@ export function CategoryPage() {
       loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [categoryIds, id, mergeRawItems, syncDerivedProducts]);
+  }, [id, mergeRawItems, syncDerivedProducts]); // Убрали categoryIds из зависимостей, используем ref
 
   useEffect(() => {
     let cancelled = false;
