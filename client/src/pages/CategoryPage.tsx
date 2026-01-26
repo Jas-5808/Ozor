@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { shopAPI } from "../services/api";
 import { useCategoryById, useCategories, getAllSubcategories } from "../hooks/useCategories";
@@ -36,7 +36,8 @@ const adaptProductsFromCategory = (items: any[], categoryCtx?: { id?: string; na
 
 export function CategoryPage() {
   const { id } = useParams<{ id: string }>();
-  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const { category, loading: categoryLoading, error: categoryError } = useCategoryById(id);
   const { categories } = useCategories();
   const [rawItems, setRawItems] = useState<any[]>([]);
@@ -60,9 +61,14 @@ export function CategoryPage() {
   );
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const categoryUrl = origin && id ? `${origin}/category/${id}` : undefined;
-  const categoryTitle = category?.name ? `${category.name} — OZAR` : "Категория — OZAR";
-  const categoryDescription = category?.name
-    ? `Купить ${category.name} в OZAR. Актуальные цены, варианты и быстрая доставка.`
+  const getCategoryDisplayName = (cat: typeof category) => {
+    if (!cat) return "";
+    return i18n.language?.split("-")[0] === "uz" ? cat.name : (cat.name_ru || cat.name);
+  };
+  const categoryDisplayName = getCategoryDisplayName(category);
+  const categoryTitle = categoryDisplayName ? `${categoryDisplayName} — OZAR` : "Категория — OZAR";
+  const categoryDescription = categoryDisplayName
+    ? `Купить ${categoryDisplayName} в OZAR. Актуальные цены, варианты и быстрая доставка.`
     : "Категория товаров в OZAR. Актуальные цены и быстрая доставка.";
 
   // Важно: displayedProducts должен быть объявлен ДО использования в JSON-LD (иначе возможен runtime-crash)
@@ -76,7 +82,7 @@ export function CategoryPage() {
   }, [otherDisplayedCount, otherPrimaryProducts, otherVariantProducts]);
 
   const categoryJsonLd = useMemo(() => {
-    const name = category?.name || "";
+    const name = getCategoryDisplayName(category) || "";
     const parentName = category?.parent_name || "";
     const parentId = category?.parent_id ? String(category.parent_id) : "";
 
@@ -142,7 +148,7 @@ export function CategoryPage() {
         },
       },
     ];
-  }, [category?.name, category?.parent_id, category?.parent_name, categoryUrl, displayedProducts, origin, t]);
+  }, [category, categoryUrl, displayedProducts, origin, t, i18n.language]);
 
   useSEO({
     title: categoryTitle,
@@ -162,6 +168,68 @@ export function CategoryPage() {
     },
     jsonLd: categoryJsonLd,
   });
+
+  // Обработка браузерной кнопки "назад" для навигации по иерархии категорий
+  const categoryIdRef = useRef<string | null>(null);
+  const parentIdRef = useRef<string | null>(null);
+  const isHandlingBackRef = useRef(false);
+  
+  // Сохраняем текущие значения в refs для использования в обработчике
+  useEffect(() => {
+    categoryIdRef.current = id || null;
+    parentIdRef.current = category?.parent_id || null;
+  }, [id, category?.parent_id]);
+  
+  // Обработчик popstate для перехвата навигации назад
+  useEffect(() => {
+    if (!id || categoryLoading) return;
+
+    const handlePopState = () => {
+      // Предотвращаем множественные вызовы
+      if (isHandlingBackRef.current) return;
+      
+      isHandlingBackRef.current = true;
+      
+      // Используем актуальные значения из refs
+      const currentCategoryId = categoryIdRef.current;
+      const currentParentId = parentIdRef.current;
+      
+      if (!currentCategoryId) {
+        isHandlingBackRef.current = false;
+        return;
+      }
+      
+      // Небольшая задержка для синхронизации с браузером
+      setTimeout(() => {
+        const currentPath = window.location.pathname;
+        
+        // Проверяем, находимся ли мы на странице текущей категории
+        if (currentPath.startsWith('/category/')) {
+          const pathCategoryId = currentPath.split('/category/')[1]?.split('/')[0];
+          
+          // Если это текущая категория, перехватываем навигацию
+          if (pathCategoryId === currentCategoryId) {
+            // Если у категории есть родитель, переходим на него
+            if (currentParentId) {
+              navigate(`/category/${currentParentId}`, { replace: false });
+            } else {
+              // Если родителя нет, переходим на каталог
+              navigate('/catalog', { replace: false });
+            }
+          }
+        }
+        
+        isHandlingBackRef.current = false;
+      }, 10);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      isHandlingBackRef.current = false;
+    };
+  }, [id, categoryLoading, navigate]);
 
   // Получаем подкатегории для текущей категории - мемоизировано
   const subcategories = useMemo(() => {
@@ -572,7 +640,7 @@ export function CategoryPage() {
           )}
           <li>/</li>
           <li className="text-slate-900 font-medium">
-            {categoryLoading ? "..." : category?.name || t("catalog.category")}
+            {categoryLoading ? "..." : categoryDisplayName || t("catalog.category")}
           </li>
         </ol>
       </nav>
@@ -583,7 +651,7 @@ export function CategoryPage() {
           {categoryLoading ? (
             <div className="h-8 w-48 bg-slate-200 rounded animate-pulse"></div>
           ) : (
-            category?.name || t("catalog.category")
+            categoryDisplayName || t("catalog.category")
           )}
         </h1>
             {category?.parent_id && category?.parent_name && (
@@ -616,16 +684,19 @@ export function CategoryPage() {
             {t("catalog.subcategories")}
           </h2>
           <div className="flex flex-wrap gap-2">
-            {subcategories.map((sub) => (
-              <Link
-                key={sub.id}
-                to={`/category/${sub.id}`}
-                className="px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-medium text-slate-700 hover:border-[#04734b] hover:text-[#04734b] transition shadow-sm"
-              >
-                {sub.name}
-                <span className="ml-1 text-slate-400">({sub.products_count})</span>
-              </Link>
-            ))}
+            {subcategories.map((sub) => {
+              const subName = i18n.language?.split("-")[0] === "uz" ? sub.name : (sub.name_ru || sub.name);
+              return (
+                <Link
+                  key={sub.id}
+                  to={`/category/${sub.id}`}
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-medium text-slate-700 hover:border-[#04734b] hover:text-[#04734b] transition shadow-sm"
+                >
+                  {subName}
+                  <span className="ml-1 text-slate-400">({sub.products_count})</span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}

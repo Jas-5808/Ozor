@@ -150,6 +150,8 @@ export interface VariantMedia {
 export interface CategoryResponse {
   id: string;
   name: string;
+  name_ru?: string;
+  image?: string;
   parent_id: string | null;
   parent_name: string | null;
   subcategories_count: number;

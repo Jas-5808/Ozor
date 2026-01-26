@@ -7,7 +7,7 @@ import useSEO from "../hooks/useSEO";
 import { Category } from "../types";
 
 export function CatalogPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // Оставляем SEO индексируемым, но возвращаем старый UI/дизайн
   useSEO({
     title: t("catalog.seoTitle"),
@@ -20,6 +20,10 @@ export function CatalogPage() {
   const [activeParent, setActiveParent] = useState<Category | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const { categories, loading } = useCategories();
+  
+  const getCategoryName = (cat: Category) => {
+    return i18n.language?.split("-")[0] === "uz" ? cat.name : (cat.name_ru || cat.name);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,15 +35,18 @@ export function CatalogPage() {
   const mainCategories = getMainCategories(categories);
   const filteredCategories = useMemo(() => {
     if (searchQuery.trim()) {
-      return mainCategories.filter((cat) => 
-        cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        getSubcategories(categories, cat.id).some((sub) =>
-          sub.name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      );
+      return mainCategories.filter((cat) => {
+        const catName = getCategoryName(cat).toLowerCase();
+        const searchLower = searchQuery.toLowerCase();
+        return catName.includes(searchLower) ||
+          getSubcategories(categories, cat.id).some((sub) => {
+            const subName = i18n.language?.split("-")[0] === "uz" ? sub.name : (sub.name_ru || sub.name);
+            return subName.toLowerCase().includes(searchLower);
+          });
+      });
     }
     return mainCategories;
-  }, [searchQuery, mainCategories, categories]);
+  }, [searchQuery, mainCategories, categories, i18n.language]);
 
   const currentSubcategories = activeParent ? getSubcategories(categories, activeParent.id) : [];
 
@@ -85,7 +92,7 @@ export function CatalogPage() {
       {/* Каталог */}
       <div className={cn.mobileCatalogContent}>
         <div className={cn.mobileCatalogHeader}>
-          <h2>{activeParent ? activeParent.name : t("catalog.header")}</h2>
+          <h2>{activeParent ? getCategoryName(activeParent) : t("catalog.header")}</h2>
           {activeParent && (
             <button
               type="button"
@@ -106,17 +113,20 @@ export function CatalogPage() {
                 <p>{t("catalog.empty")}</p>
               </div>
             ) : (
-              currentSubcategories.map((subcategory) => (
-                <div key={subcategory.id} className={cn.mobileCatalogCategory}>
-                  <button
-                    type="button"
-                    className={cn.mobileCatalogSubcategory}
-                    onClick={() => handleSubcategoryClick(subcategory.id)}
-                  >
-                    {subcategory.name}
-                  </button>
-                </div>
-              ))
+              currentSubcategories.map((subcategory) => {
+                const subName = i18n.language?.split("-")[0] === "uz" ? subcategory.name : (subcategory.name_ru || subcategory.name);
+                return (
+                  <div key={subcategory.id} className={cn.mobileCatalogCategory}>
+                    <button
+                      type="button"
+                      className={cn.mobileCatalogSubcategory}
+                      onClick={() => handleSubcategoryClick(subcategory.id)}
+                    >
+                      {subName}
+                    </button>
+                  </div>
+                );
+              })
             )
           ) : filteredCategories.length === 0 ? (
             <div className={cn.mobileCatalogEmpty}>
@@ -126,6 +136,7 @@ export function CatalogPage() {
             filteredCategories.map((category) => {
               const subcategories = getSubcategories(categories, category.id);
               const hasSubcategories = subcategories.length > 0;
+              const categoryName = getCategoryName(category);
               return (
                 <div key={category.id} className={cn.mobileCatalogCategory}>
                   <div className={`${cn.mobileCatalogItem} ${hasSubcategories ? cn.mobileCatalogItemWithSub : ""}`}>
@@ -134,7 +145,7 @@ export function CatalogPage() {
                       onClick={() => handleCategoryClick(category)}
                       className="flex-1 text-left hover:text-[#04734b] transition"
                     >
-                      {category.name}
+                      {categoryName}
                     </button>
                   </div>
                 </div>

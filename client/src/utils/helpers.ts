@@ -111,6 +111,19 @@ export const getProductImageUrl = (imagePath: string): string => {
   return `${baseUrl.replace(/\/+$/, "")}/${imagePath}`;
 };
 
+export const getCategoryImageUrl = (imagePath: string | undefined): string => {
+  if (!imagePath) return '';
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  if (imagePath.startsWith('/')) {
+    return imagePath;
+  }
+  // API возвращает относительные пути вида categories/...
+  const baseUrl = config.media.baseUrl;
+  return `${baseUrl.replace(/\/+$/, "")}/${imagePath}`;
+};
+
 // Безопасное извлечение изображения варианта (если приходит variant_media).
 // Важно: media может содержать видео (mp4) — его нельзя подставлять в <img>.
 export const getVariantMainImage = (

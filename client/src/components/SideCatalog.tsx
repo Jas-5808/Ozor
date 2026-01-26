@@ -11,7 +11,11 @@ export default function SideCatalog({ open, onClose }: SideCatalogProps) {
   const [isVisible, setIsVisible] = useState(open);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const { categories, loading } = useCategories();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  
+  const getCategoryName = (cat: typeof categories[0]) => {
+    return i18n.language?.split("-")[0] === "uz" ? cat.name : (cat.name_ru || cat.name);
+  };
   useEffect(() => {
     if (open) {
       setIsVisible(true);
@@ -83,7 +87,7 @@ export default function SideCatalog({ open, onClose }: SideCatalogProps) {
                       className={cn.sideCatalog_link}
                       onClick={onClose}
                   >
-                      {category.name}
+                      {getCategoryName(category)}
                     </Link>
                     {hasSubcategories && (
                       <button
@@ -97,19 +101,22 @@ export default function SideCatalog({ open, onClose }: SideCatalogProps) {
                   </div>
                   {hasSubcategories && isExpanded && (
                     <div className={cn.sideCatalog_subcategories}>
-                      {subcategories.map((subcategory) => (
-                        <Link 
-                          key={subcategory.id} 
-                          to={`/category/${subcategory.id}`}
-                          className={cn.sideCatalog_subcategory}
-                          onClick={onClose}
-                        >
-                          {subcategory.name}
-                          <span className={cn.sideCatalog_count}>
-                            ({subcategory.products_count})
-                          </span>
-                        </Link>
-                      ))}
+                      {subcategories.map((subcategory) => {
+                        const subName = i18n.language?.split("-")[0] === "uz" ? subcategory.name : (subcategory.name_ru || subcategory.name);
+                        return (
+                          <Link 
+                            key={subcategory.id} 
+                            to={`/category/${subcategory.id}`}
+                            className={cn.sideCatalog_subcategory}
+                            onClick={onClose}
+                          >
+                            {subName}
+                            <span className={cn.sideCatalog_count}>
+                              ({subcategory.products_count})
+                            </span>
+                          </Link>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
