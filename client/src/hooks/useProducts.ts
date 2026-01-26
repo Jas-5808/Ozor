@@ -290,6 +290,7 @@ export const useProducts = () => {
   const locale = getLocaleKey();
   
   const fetchProducts = useCallback(async () => {
+    const currentLocale = getLocaleKey();
     // Если уже есть кэш — используем его сразу
     try {
       setLoading(true);
@@ -299,14 +300,14 @@ export const useProducts = () => {
       const now = Date.now();
       if (productsCache && (now - productsCache.timestamp) < CACHE_TTL) {
         rawProductsRef.current = productsCache.raw || [];
-        if (productsCache.language !== activeLocale && rawProductsRef.current.length) {
+        if (productsCache.language !== currentLocale && rawProductsRef.current.length) {
           const { primaryProducts: primary, variantProducts: variants } =
             splitProductsIntoPrimaryAndVariants(rawProductsRef.current);
           productsCache = {
             ...productsCache,
             primary,
             variants,
-            language: activeLocale,
+            language: currentLocale,
           };
           setPrimaryProducts(primary);
           setVariantProducts(variants);
@@ -325,14 +326,14 @@ export const useProducts = () => {
         const cached = productsCache;
         if (cached) {
           rawProductsRef.current = cached.raw || [];
-          if (cached.language !== activeLocale && rawProductsRef.current.length) {
+          if (cached.language !== currentLocale && rawProductsRef.current.length) {
             const { primaryProducts: primary, variantProducts: variants } =
               splitProductsIntoPrimaryAndVariants(rawProductsRef.current);
             productsCache = {
               ...cached,
               primary,
               variants,
-              language: activeLocale,
+              language: currentLocale,
             };
             setPrimaryProducts(primary);
             setVariantProducts(variants);
@@ -383,13 +384,12 @@ export const useProducts = () => {
         const { primaryProducts: primary, variantProducts: variants } =
           splitProductsIntoPrimaryAndVariants(allFetchedProducts);
         rawProductsRef.current = allFetchedProducts;
-        const resolvedLocale = getLocaleKey();
         productsCache = {
           raw: allFetchedProducts,
           primary,
           variants,
           timestamp: Date.now(),
-          language: resolvedLocale,
+          language: currentLocale,
         };
         setPrimaryProducts(primary);
         setVariantProducts(variants);
@@ -415,12 +415,17 @@ export const useProducts = () => {
     return ()=>{ cancelled = true; };
   }, [fetchProducts]);
 
+  // Пересчитываем продукты при смене языка (без перезагрузки с сервера)
   useEffect(() => {
     if (!rawProductsRef.current.length) return;
+    
+    // Перетрансформируем уже загруженные данные с учетом нового языка
     const { primaryProducts: primary, variantProducts: variants } =
       splitProductsIntoPrimaryAndVariants(rawProductsRef.current);
     setPrimaryProducts(primary);
     setVariantProducts(variants);
+    
+    // Обновляем кеш с новым языком
     if (productsCache) {
       productsCache = {
         ...productsCache,
@@ -473,8 +478,11 @@ export const useProducts = () => {
 };
 export const useProductById = (productId: string | undefined) => {
   const [product, setProduct] = useState<Product | null>(null);
+  const [rawProductData, setRawProductData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const locale = getLocaleKey();
+  
   const fetchProduct = async () => {
     if (!productId) {
       setLoading(false);
@@ -486,6 +494,10 @@ export const useProductById = (productId: string | undefined) => {
       const response = await shopAPI.getProductById(productId);
       const payload: any = (response as any)?.data ?? response;
       const data: any = payload?.data ?? payload;
+      
+      // Сохраняем сырые данные для пересчета при смене языка
+      setRawProductData(data);
+      
       const firstVariant = Array.isArray(data?.variants) ? data.variants[0] : null;
       setProduct({
         product_id: String(data?.id || data?.product_id || ""),
@@ -523,11 +535,47 @@ export const useProductById = (productId: string | undefined) => {
       setLoading(false);
     }
   };
+  
   useEffect(() => {
     let cancelled = false;
     fetchProduct().finally(()=>{ if (cancelled) return; });
     return ()=>{ cancelled = true; };
   }, [productId]);
+  
+  // Пересчитываем продукт при смене языка (без перезагрузки с сервера)
+  useEffect(() => {
+    if (!rawProductData) return;
+    
+    const firstVariant = Array.isArray(rawProductData?.variants) ? rawProductData.variants[0] : null;
+    setProduct({
+      product_id: String(rawProductData?.id || rawProductData?.product_id || ""),
+      product_name: resolveProductName(rawProductData),
+      product_description: resolveProductDescription(rawProductData),
+      name_uz: rawProductData?.name_uz || rawProductData?.name || rawProductData?.product_name || rawProductData?.product_name_uz,
+      name_ru: rawProductData?.name_ru || rawProductData?.product_name_ru,
+      description_uz: rawProductData?.description_uz || rawProductData?.product_description_uz || rawProductData?.description || rawProductData?.product_description,
+      description_ru: rawProductData?.description_ru || rawProductData?.product_description_ru || rawProductData?.description || rawProductData?.product_description,
+      category: rawProductData?.category || { id: String(rawProductData?.category_id || ""), name: String(rawProductData?.category_name || "") },
+      refferal_price: Number(rawProductData?.refferal_price || 0),
+      base_price: Number(firstVariant?.base_price ?? rawProductData?.base_price ?? null),
+      main_image: rawProductData?.main_image || "",
+      variant_id: String(firstVariant?.id || rawProductData?.variant_id || ""),
+      variant_sku: String(firstVariant?.sku || rawProductData?.variant_sku || ""),
+      price: Number(firstVariant?.price ?? rawProductData?.price ?? rawProductData?.base_price ?? 0),
+      stock: Number(firstVariant?.stock ?? rawProductData?.stock ?? 0),
+      variant_attributes: Array.isArray(firstVariant?.attribute_values)
+        ? firstVariant.attribute_values
+        : Array.isArray(rawProductData?.variant_attributes)
+        ? rawProductData.variant_attributes
+        : [],
+      variant_media: Array.isArray(firstVariant?.media)
+        ? firstVariant.media
+        : Array.isArray(rawProductData?.variant_media)
+        ? rawProductData.variant_media
+        : [],
+    });
+  }, [locale, rawProductData]);
+  
   return {
     product,
     loading,

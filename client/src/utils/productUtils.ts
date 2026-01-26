@@ -68,8 +68,12 @@ export const splitProductsIntoPrimaryAndVariants = (rawProducts: any[]) => {
 
   for (let i = 0; i < rawProducts.length; i++) {
     const item = rawProducts[i];
-    const effectivePrice = item?.price ?? item?.base_price;
-    if (!item || !effectivePrice || Number(effectivePrice) <= 0) continue;
+    if (!item) continue;
+    // Проверяем, что хотя бы одна из цен валидна (price или base_price)
+    const price = typeof item?.price === "number" ? item.price : null;
+    const basePrice = typeof item?.base_price === "number" ? item.base_price : null;
+    const effectivePrice = price ?? basePrice;
+    if (effectivePrice === null || Number(effectivePrice) <= 0) continue;
 
     const product = transformProductFromApi(item);
     const key = product.product_id;

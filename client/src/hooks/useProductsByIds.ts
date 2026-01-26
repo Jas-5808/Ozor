@@ -166,7 +166,17 @@ export function useProductsByIds(productIds: string[]) {
       normalized.forEach((id) => {
         const entry = cache.get(id);
         if (entry?.product && now - entry.time < CACHE_TTL) {
-          cachedProducts.push(entry.product);
+          // Проверяем язык и пересчитываем при необходимости
+          if (entry.language === locale && entry.product) {
+            cachedProducts.push(entry.product);
+          } else if (entry.raw) {
+            // Пересчитываем из raw данных
+            const product = mapProductDetailToProduct(entry.raw);
+            cache.set(id, { ...entry, product, language: locale });
+            cachedProducts.push(product);
+          } else {
+            missingIds.push(id);
+          }
         } else {
           missingIds.push(id);
         }
@@ -183,7 +193,16 @@ export function useProductsByIds(productIds: string[]) {
       }
 
       const finalProducts = normalized
-        .map((id) => cache.get(id)?.product)
+        .map((id) => {
+          const entry = cache.get(id);
+          if (entry?.raw && entry.language !== locale) {
+            // Пересчитываем при смене языка
+            const product = mapProductDetailToProduct(entry.raw);
+            cache.set(id, { ...entry, product, language: locale });
+            return product;
+          }
+          return entry?.product;
+        })
         .filter(Boolean) as Product[];
       setProducts(finalProducts.length ? finalProducts : cachedProducts);
     } catch (e) {
@@ -194,7 +213,30 @@ export function useProductsByIds(productIds: string[]) {
     } finally {
       setLoading(false);
     }
-  }, [normalized, locale]);
+  }, [normalized]);
+  
+  // Пересчитываем продукты при смене языка (без перезагрузки с сервера)
+  useEffect(() => {
+    if (normalized.length === 0) return;
+    
+    const now = Date.now();
+    const recalculatedProducts: Product[] = [];
+    normalized.forEach((id) => {
+      const entry = cache.get(id);
+      if (entry?.raw && now - entry.time < CACHE_TTL) {
+        // Пересчитываем из raw данных с учетом нового языка
+        const product = mapProductDetailToProduct(entry.raw);
+        cache.set(id, { ...entry, product, language: locale });
+        recalculatedProducts.push(product);
+      } else if (entry?.product && entry.language === locale) {
+        recalculatedProducts.push(entry.product);
+      }
+    });
+    
+    if (recalculatedProducts.length > 0) {
+      setProducts(recalculatedProducts);
+    }
+  }, [locale, normalized]);
 
   useEffect(() => {
     let cancelled = false;

@@ -85,7 +85,7 @@ export interface ProductResponse {
     name: string;
   };
   refferal_price: number;
-  base_price: number;
+  base_price?: number | null;
   main_image: string;
   variant_id: string;
   variant_sku: string;

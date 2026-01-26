@@ -5,6 +5,9 @@ import { Category } from "../types";
 import { logger } from "../utils/logger";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
 
+const CATEGORIES_CACHE_KEY = "ozar:categories:v1";
+const CATEGORIES_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 часа
+
 const normalizeCategories = (payload: unknown): Category[] => {
   if (Array.isArray(payload)) return payload;
   const data = (payload as any)?.data;
@@ -22,32 +25,96 @@ const normalizeCategory = (payload: unknown): Category | null => {
   logger.warn?.("Неверный формат ответа для категории", { payload });
   return null;
 };
+
+const readCategoriesCache = (): { categories: Category[]; timestamp: number } | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(CATEGORIES_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.categories)) return null;
+    const timestamp = Number(parsed.timestamp || 0);
+    if (!timestamp || isNaN(timestamp)) return null;
+    return { categories: parsed.categories, timestamp };
+  } catch {
+    return null;
+  }
+};
+
+const writeCategoriesCache = (categories: Category[]) => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(
+      CATEGORIES_CACHE_KEY,
+      JSON.stringify({
+        categories,
+        timestamp: Date.now(),
+      })
+    );
+  } catch {
+    // Игнорируем ошибки записи в localStorage
+  }
+};
+
 export const useCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  
   const fetchCategories = async () => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Проверяем кеш перед запросом
+      const cached = readCategoriesCache();
+      const now = Date.now();
+      if (cached && (now - cached.timestamp) < CATEGORIES_CACHE_TTL) {
+        setCategories(cached.categories);
+        setLoading(false);
+        return;
+      }
+      
       const response = await shopAPI.getCategories();
       const normalized = normalizeCategories(response.data);
       setCategories(normalized);
+      
+      // Сохраняем в кеш
+      writeCategoriesCache(normalized);
     } catch (error) {
       const appError = handleApiError(error);
       const errorMessage = getUserFriendlyMessage(appError) || i18n.t("common.errors.categoriesLoad");
       setError(errorMessage);
       logger.errorWithContext(appError, { context: 'fetchCategories' });
+      
+      // При ошибке пытаемся использовать кеш, даже если он устарел
+      const cached = readCategoriesCache();
+      if (cached && cached.categories.length > 0) {
+        setCategories(cached.categories);
+      }
     } finally {
       setLoading(false);
     }
   };
+  
   useEffect(() => {
-    fetchCategories();
+    // Сначала пытаемся загрузить из кеша синхронно для мгновенного отображения
+    const cached = readCategoriesCache();
+    const now = Date.now();
+    if (cached && (now - cached.timestamp) < CATEGORIES_CACHE_TTL) {
+      setCategories(cached.categories);
+      setLoading(false);
+      // Загружаем свежие данные в фоне
+      fetchCategories();
+    } else {
+      fetchCategories();
+    }
   }, []);
+  
   const refetch = () => {
     fetchCategories();
   };
+  
   return {
     categories,
     loading,

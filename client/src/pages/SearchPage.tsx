@@ -149,10 +149,35 @@ export function SearchPage() {
         if (cached && (now - cached.time) < SEARCH_CACHE_TTL) {
           if (cancelled) return;
           setRawItems(cached.raw);
-          const computed = computeProducts(cached.raw);
-          setProducts(computed.products);
-          setMatchScores(computed.scores);
-          setHiddenCount(computed.hidden);
+          // Пересчитываем локально без зависимости от computeProducts
+          const { primaryProducts } = splitProductsIntoPrimaryAndVariants(cached.raw);
+          const scores: Record<string, number> = {};
+          const scored = primaryProducts.map((product) => {
+            const nameUz = product.product_name || "";
+            const nameRu = product.name_ru || "";
+            const score = Math.max(
+              calcMatchPercent(queryLower, nameUz),
+              calcMatchPercent(queryLower, nameRu)
+            );
+            const key = product.variant_id
+              ? `${product.product_id}-${product.variant_id}`
+              : `${product.product_id}`;
+            scores[key] = score;
+            return { product, score };
+          });
+          const filtered = scored.filter((s) => s.score >= minMatchPercent);
+          const hidden = scored.length - filtered.length;
+          filtered.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            const aInStock = (a.product.stock ?? 0) > 0;
+            const bInStock = (b.product.stock ?? 0) > 0;
+            if (aInStock && !bInStock) return -1;
+            if (!aInStock && bInStock) return 1;
+            return (a.product.price ?? 0) - (b.product.price ?? 0);
+          });
+          setProducts(filtered.map((s) => s.product));
+          setMatchScores(scores);
+          setHiddenCount(hidden);
           setOffset(cached.offset);
           setHasMore(cached.hasMore);
           return;
@@ -175,7 +200,6 @@ export function SearchPage() {
         }
 
         const data = await promise;
-        searchInFlight.delete(normalizedQuery);
         if (cancelled) return;
 
         const nextOffset = data.length;
@@ -189,10 +213,35 @@ export function SearchPage() {
         });
 
         setRawItems(data);
-        const computed = computeProducts(data);
-        setProducts(computed.products);
-        setMatchScores(computed.scores);
-        setHiddenCount(computed.hidden);
+        // Пересчитываем локально без зависимости от computeProducts
+        const { primaryProducts } = splitProductsIntoPrimaryAndVariants(data);
+        const scores: Record<string, number> = {};
+        const scored = primaryProducts.map((product) => {
+          const nameUz = product.product_name || "";
+          const nameRu = product.name_ru || "";
+          const score = Math.max(
+            calcMatchPercent(queryLower, nameUz),
+            calcMatchPercent(queryLower, nameRu)
+          );
+          const key = product.variant_id
+            ? `${product.product_id}-${product.variant_id}`
+            : `${product.product_id}`;
+          scores[key] = score;
+          return { product, score };
+        });
+        const filtered = scored.filter((s) => s.score >= minMatchPercent);
+        const hidden = scored.length - filtered.length;
+        filtered.sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          const aInStock = (a.product.stock ?? 0) > 0;
+          const bInStock = (b.product.stock ?? 0) > 0;
+          if (aInStock && !bInStock) return -1;
+          if (!aInStock && bInStock) return 1;
+          return (a.product.price ?? 0) - (b.product.price ?? 0);
+        });
+        setProducts(filtered.map((s) => s.product));
+        setMatchScores(scores);
+        setHiddenCount(hidden);
         setOffset(nextOffset);
         setHasMore(nextHasMore);
       } catch (err: any) {
@@ -202,6 +251,7 @@ export function SearchPage() {
         setMatchScores({});
         setRawItems([]);
       } finally {
+        searchInFlight.delete(normalizedQuery);
         if (!cancelled) setLoading(false);
       }
     };
@@ -210,7 +260,7 @@ export function SearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [computeProducts, normalizedQuery, t]);
+  }, [normalizedQuery, queryLower, minMatchPercent, calcMatchPercent, t]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -220,12 +270,37 @@ export function SearchPage() {
 
   useEffect(() => {
     if (rawItems.length > 0) {
-      const computed = computeProducts(rawItems);
-      setProducts(computed.products);
-      setMatchScores(computed.scores);
-      setHiddenCount(computed.hidden);
+      // Пересчитываем локально без зависимости от computeProducts
+      const { primaryProducts } = splitProductsIntoPrimaryAndVariants(rawItems);
+      const scores: Record<string, number> = {};
+      const scored = primaryProducts.map((product) => {
+        const nameUz = product.product_name || "";
+        const nameRu = product.name_ru || "";
+        const score = Math.max(
+          calcMatchPercent(queryLower, nameUz),
+          calcMatchPercent(queryLower, nameRu)
+        );
+        const key = product.variant_id
+          ? `${product.product_id}-${product.variant_id}`
+          : `${product.product_id}`;
+        scores[key] = score;
+        return { product, score };
+      });
+      const filtered = scored.filter((s) => s.score >= minMatchPercent);
+      const hidden = scored.length - filtered.length;
+      filtered.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const aInStock = (a.product.stock ?? 0) > 0;
+        const bInStock = (b.product.stock ?? 0) > 0;
+        if (aInStock && !bInStock) return -1;
+        if (!aInStock && bInStock) return 1;
+        return (a.product.price ?? 0) - (b.product.price ?? 0);
+      });
+      setProducts(filtered.map((s) => s.product));
+      setMatchScores(scores);
+      setHiddenCount(hidden);
     }
-  }, [minMatchPercent, computeProducts, rawItems]);
+  }, [minMatchPercent, rawItems, queryLower, calcMatchPercent]);
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore || !normalizedQuery) return;
@@ -250,7 +325,6 @@ export function SearchPage() {
       }
 
       const data = await promise;
-      searchLoadMoreInFlight.delete(key);
 
       const existingKeys = new Set(
         rawItems.map((it: any) => `${it?.product_id || it?.id || ""}_${it?.variant_id || it?.variantId || ""}`)
@@ -285,6 +359,7 @@ export function SearchPage() {
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || t("search.error"));
     } finally {
+      searchLoadMoreInFlight.delete(key);
       setLoading(false);
     }
   }, [computeProducts, hasMore, loading, normalizedQuery, offset, rawItems, t]);

@@ -362,6 +362,13 @@ export function CategoryPage() {
     setOtherPrimaryProducts(otherPrimary);
     setOtherVariantProducts(otherVariants);
   }, [id]);
+  
+  // Пересчитываем продукты при смене языка (без перезагрузки с сервера)
+  useEffect(() => {
+    if (rawItems.length > 0) {
+      syncDerivedProducts(rawItems);
+    }
+  }, [i18n.language, rawItems, syncDerivedProducts]);
 
   const fetchNextCategories = useCallback(async (opts?: { minTotalRaw?: number }) => {
     if (!id) return;
