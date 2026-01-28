@@ -111,7 +111,6 @@ export function useReferralActions(
       setCreateModal((prev) => ({
         ...prev,
         createdLink: link,
-        agree: true,
       }));
 
       onSuccess?.();
