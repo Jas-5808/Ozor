@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import apiClient, { warehouseAPI, orderAPI } from '../../services/api';
 import { getProductImageUrl, truncateText } from '../../utils/helpers';
@@ -10,7 +10,6 @@ type SectionKey = 'orders' | 'add' | 'warehouses';
 export default function Warehouse() {
   const { t } = useTranslation();
   const location = useLocation();
-  const navigate = useNavigate();
   const ordersRef = useRef<HTMLDivElement>(null);
   const addRef = useRef<HTMLDivElement>(null);
   const warehousesRef = useRef<HTMLDivElement>(null);
@@ -93,30 +92,11 @@ export default function Warehouse() {
     );
   };
 
-  const sections: Array<{ id: SectionKey; label: string; path: string; ref: React.RefObject<HTMLDivElement | null> }> = useMemo(
-    () => [
-      { id: 'orders', label: t('admin.warehouse.nav.orders', { defaultValue: 'Заказы' }), path: '/admin/warehouse/orders', ref: ordersRef },
-      { id: 'add', label: t('admin.warehouse.nav.add', { defaultValue: 'Добавить на склад' }), path: '/admin/warehouse/add', ref: addRef },
-      { id: 'warehouses', label: t('admin.warehouse.nav.locations', { defaultValue: 'Склады' }), path: '/admin/warehouse/locations', ref: warehousesRef },
-    ],
-    [t]
-  );
-
-  const handleScroll = (ref: React.RefObject<HTMLDivElement | null>) => {
-    if (ref.current) {
-      ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
   const activeKey: SectionKey = useMemo(() => {
     if (location.pathname.includes('/warehouse/add')) return 'add';
     if (location.pathname.includes('/warehouse/locations')) return 'warehouses';
     return 'orders';
   }, [location.pathname]);
-
-  const navLinkBase =
-    'rounded-xl px-5 py-2.5 text-sm md:text-base font-semibold border border-emerald-200 bg-emerald-500 text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-emerald-600 hover:border-emerald-300';
-  const navLinkActive = 'bg-emerald-700 text-white border-emerald-700 shadow-md';
 
   const fetchWarehouseOrders = useCallback(async () => {
     if (activeKey !== 'orders') return;
@@ -316,27 +296,6 @@ export default function Warehouse() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-6 space-y-6">
-      <section className="sticky top-0 z-10 bg-emerald-50 backdrop-blur border border-emerald-200 rounded-2xl p-4 shadow-md">
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          {sections.map((item) => (
-            <NavLink
-              key={item.id}
-              to={item.path}
-              className={({ isActive }) =>
-                [navLinkBase, isActive ? navLinkActive : ''].filter(Boolean).join(' ')
-              }
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(item.path);
-                handleScroll(item.ref);
-              }}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
-      </section>
-
       {activeKey === 'orders' && (
         <section ref={ordersRef} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <h2 className="mb-2 text-lg font-bold">

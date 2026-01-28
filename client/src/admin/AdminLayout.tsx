@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import AdminLanguageSwitcher from './components/AdminLanguageSwitcher';
@@ -128,12 +128,18 @@ const ACTION_ICON_MAP = {
 
 type NavIconKey = keyof typeof NAV_ICON_MAP;
 
-const NAV_ITEMS: Array<{ to: string; labelKey: string; icon: NavIconKey; roles: string[] }> = [
+const WAREHOUSE_SUB_ITEMS = [
+  { to: '/admin/warehouse/orders', labelKey: 'admin.warehouse.nav.orders' as const },
+  { to: '/admin/warehouse/add', labelKey: 'admin.warehouse.nav.add' as const },
+  { to: '/admin/warehouse/locations', labelKey: 'admin.warehouse.nav.locations' as const },
+];
+
+const NAV_ITEMS: Array<{ to: string; labelKey: string; icon: NavIconKey; roles: string[]; subItems?: { to: string; labelKey: string }[] }> = [
   { to: '/admin', labelKey: 'admin.nav.dashboard', icon: 'dashboard', roles: ['admin', 'manager', 'seo', 'ceo'] },
   { to: '/admin/orders', labelKey: 'admin.nav.orders', icon: 'orders', roles: ['admin', 'manager', 'seo', 'ceo'] },
   { to: '/admin/users', labelKey: 'admin.nav.users', icon: 'users', roles: ['admin', 'seo', 'ceo'] },
   { to: '/admin/products', labelKey: 'admin.nav.products', icon: 'products', roles: ['admin', 'manager', 'seo', 'ceo'] },
-  { to: '/admin/warehouse', labelKey: 'admin.nav.warehouse', icon: 'warehouse', roles: ['admin', 'manager', 'seo', 'ceo'] },
+  { to: '/admin/warehouse', labelKey: 'admin.nav.warehouse', icon: 'warehouse', roles: ['admin', 'manager', 'seo', 'ceo'], subItems: WAREHOUSE_SUB_ITEMS },
   { to: '/admin/categories', labelKey: 'admin.nav.categories', icon: 'categories', roles: ['admin', 'seo', 'ceo'] },
   { to: '/admin/banners', labelKey: 'admin.nav.banners', icon: 'banners', roles: ['admin', 'seo', 'ceo'] },
   { to: '/admin/audit', labelKey: 'admin.nav.audit', icon: 'audit', roles: ['admin', 'seo', 'ceo'] },
@@ -143,6 +149,8 @@ const NAV_ITEMS: Array<{ to: string; labelKey: string; icon: NavIconKey; roles: 
 export default function AdminLayout() {
   const { t } = useTranslation();
   const { profile, logout } = useAuth();
+  const location = useLocation();
+  const pathname = location.pathname;
 
   useSEO({
     title: 'Admin — OZAR',
@@ -235,7 +243,7 @@ export default function AdminLayout() {
 
   const sidebarClasses = [
     'bg-gradient-to-b from-emerald-900 via-emerald-800 to-teal-700 text-emerald-50 p-6 flex flex-col gap-6 transition-all duration-300 overflow-hidden relative z-20',
-    isSidebarExpanded ? 'md:w-[260px]' : 'md:w-[80px]',
+    isSidebarExpanded ? 'md:w-[260px]' : 'md:w-[90px]',
     isMobile
       ? `fixed left-0 top-0 h-full w-[260px] transform ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`
       : '',
@@ -297,26 +305,56 @@ export default function AdminLayout() {
         <nav className="flex-1 space-y-1">
           {navigation.map((item) => {
             const Icon = NAV_ICON_MAP[item.icon];
+            const isParentActive = item.subItems ? pathname.startsWith(item.to) : undefined;
             return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/admin'}
-                className={({ isActive }) =>
-                  [navLinkBase, isActive ? navLinkActive : navLinkInactive].join(' ')
-                }
-                title={!isSidebarExpanded ? t(item.labelKey) : undefined}
-                onClick={() => {
-                  if (isMobile) {
-                    closeMobileMenu();
+              <div key={item.to} className="space-y-0.5">
+                <NavLink
+                  to={item.to}
+                  end={item.to === '/admin' || !item.subItems}
+                  className={({ isActive }) =>
+                    [navLinkBase, (isParentActive ?? isActive) ? navLinkActive : navLinkInactive].join(' ')
                   }
-                }}
-              >
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-white">
-                  <Icon />
-                </span>
-                {(isSidebarExpanded || isMobile) && <span>{t(item.labelKey)}</span>}
-              </NavLink>
+                  title={!isSidebarExpanded ? t(item.labelKey) : undefined}
+                  onClick={() => {
+                    if (isMobile) {
+                      closeMobileMenu();
+                    }
+                  }}
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-white">
+                    <Icon />
+                  </span>
+                  {(isSidebarExpanded || isMobile) && <span>{t(item.labelKey)}</span>}
+                </NavLink>
+                {item.subItems && isParentActive && (isSidebarExpanded || isMobile) && (
+                  <div className="ml-12 flex flex-col gap-0.5 py-1">
+                    {item.subItems.map((sub) => (
+                      <NavLink
+                        key={sub.to}
+                        to={sub.to}
+                        className={({ isActive }) =>
+                          [
+                            'rounded-lg py-1.5 pl-3 text-sm font-medium transition-colors',
+                            isActive ? 'bg-white/20 text-white' : 'text-emerald-50/90 hover:bg-white/10 hover:text-white',
+                          ].join(' ')
+                        }
+                        onClick={() => {
+                          if (isMobile) closeMobileMenu();
+                        }}
+                      >
+                        {t(sub.labelKey, {
+                          defaultValue:
+                            sub.labelKey === 'admin.warehouse.nav.orders'
+                              ? 'Заказы'
+                              : sub.labelKey === 'admin.warehouse.nav.add'
+                                ? 'Добавить на склад'
+                                : 'Склады',
+                        })}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
