@@ -384,6 +384,7 @@ export default function Warehouse() {
                               setOrdersActionId(o.id);
                               await warehouseAPI.submitOrder(o.id);
                               await fetchWarehouseOrders();
+                              await fetchMyOrders();
                             } catch (e) {
                               // ignore
                             } finally {
@@ -492,26 +493,40 @@ export default function Warehouse() {
                           {o.created_at ? new Date(o.created_at).toLocaleString('ru-RU') : '—'}
                         </td>
                         <td className="px-3 py-2">
-                          <button
-                            className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            title={t('admin.ordersPage.statuses.packed', { defaultValue: 'Упакован' })}
-                            disabled={myActionId === o.id}
-                            onClick={async () => {
-                              try {
-                                setMyActionId(o.id);
-                                await orderAPI.updateStatus(o.id, 'packed');
-                                await fetchMyOrders();
-                              } catch {
-                                // ignore
-                              } finally {
-                                setMyActionId(null);
-                              }
-                            }}
-                          >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </button>
+                          {String(o.status || '').toLowerCase() === 'packed' ? (
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition"
+                              title={t('admin.warehouse.actions.print', { defaultValue: 'Распечатать' })}
+                              onClick={() => window.print()}
+                            >
+                              <svg className="size-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                              </svg>
+                              <span>{t('admin.warehouse.actions.print', { defaultValue: 'Распечатать' })}</span>
+                            </button>
+                          ) : (
+                            <button
+                              className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={t('admin.ordersPage.statuses.packed', { defaultValue: 'Упакован' })}
+                              disabled={myActionId === o.id}
+                              onClick={async () => {
+                                try {
+                                  setMyActionId(o.id);
+                                  await orderAPI.updateStatus(o.id, 'packed');
+                                  await fetchMyOrders();
+                                } catch {
+                                  // ignore
+                                } finally {
+                                  setMyActionId(null);
+                                }
+                              }}
+                            >
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
