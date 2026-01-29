@@ -1175,7 +1175,6 @@ export function Profile() {
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="text-xs uppercase tracking-[0.35em] text-[#015338]">{t("profile.tabs.flows")}</p>
-                <h3 className="text-2xl font-black text-slate-900">{t("profile.flows.income")}</h3>
               </div>
               <div className="w-full sm:max-w-md">
                 <div className="relative">

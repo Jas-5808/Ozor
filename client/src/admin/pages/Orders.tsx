@@ -341,7 +341,7 @@ export default function Orders() {
   useEffect(() => {
     let ignore = false;
     const fetchStats = async () => {
-      if (!canViewAdminOrders) return;
+      if (!hasAccess) return;
       try {
         setOrderStatsLoading(true);
         const res = await warehouseAPI.getOrdersStatsByCity();
@@ -358,12 +358,12 @@ export default function Orders() {
     return () => {
       ignore = true;
     };
-  }, [canViewAdminOrders]);
+  }, [hasAccess]);
 
   useEffect(() => {
     let ignore = false;
     const fetchRequestStats = async () => {
-      if (!canViewAdminOrders) return;
+      if (!hasAccess) return;
       try {
         setRequestStatsLoading(true);
         const res = await warehouseAPI.getRequestsStatsByCity();
@@ -380,7 +380,7 @@ export default function Orders() {
     return () => {
       ignore = true;
     };
-  }, [canViewAdminOrders]);
+  }, [hasAccess]);
 
   // Функция для загрузки информации о продукте по variant_id
   const loadProductByVariantId = useCallback(async (variantId: string) => {
@@ -624,7 +624,7 @@ export default function Orders() {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
       {/* Статистика по городам (актуальные заказы) */}
-      {canViewAdminOrders && (
+      {hasAccess && (
         <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
           <div className="mb-2 text-sm font-bold text-slate-700">
             {t("admin.ordersPage.statsByCity", { defaultValue: "Актуальные заказы по городам" })}
@@ -662,7 +662,7 @@ export default function Orders() {
       )}
 
       {/* Заявки по городам */}
-      {canViewAdminOrders && (
+      {hasAccess && (
         <div className="mb-4 rounded-2xl border border-slate-200 bg-amber-50/70 px-4 py-3">
           <div className="mb-2 text-sm font-bold text-slate-700">
             {t("admin.ordersPage.statsRequestsByCity", { defaultValue: "Заявки по городам" })}
