@@ -16,6 +16,7 @@ const LOCATION_OPTIONS: Array<{ value: string; labelKey: string }> = [
 ];
 
 import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { adminStore } from "../storage";
 import { shopAPI, userAPI } from "../../services/api";
@@ -1343,14 +1344,15 @@ export default function Orders() {
         </div>
       )}
 
-      {/* Модальное окно продукта */}
-      {productModal.open && productModal.variantId && (
+      {/* Модальное окно продукта — фиксировано по центру экрана при любом скролле (портал в body) */}
+      {productModal.open && productModal.variantId && createPortal(
         <div 
-          className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4 overflow-hidden"
           onClick={() => setProductModal({ open: false, variantId: null })}
         >
           <div 
-            className="relative w-full max-w-2xl rounded-2xl bg-white shadow-xl max-h-[85vh] overflow-y-auto"
+            className="relative w-full max-w-2xl rounded-2xl bg-white shadow-xl overflow-y-auto"
+            style={{ maxHeight: 'min(85vh, calc(100vh - 2rem))' }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -1462,7 +1464,8 @@ export default function Orders() {
               );
             })()}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
