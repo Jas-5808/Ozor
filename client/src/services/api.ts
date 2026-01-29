@@ -241,6 +241,11 @@ export const shopAPI = {
     params: { offset?: number; limit?: number } = {}
   ): Promise<TypedAxiosResponse<ProductResponse[]>> => 
     apiClient.get("/shop/products/search", { params: { q: query, ...params } }),
+  getSimilarProducts: (
+    q?: string,
+    limit: number = 12
+  ): Promise<TypedAxiosResponse<ProductResponse[]>> =>
+    apiClient.get("/shop/products/similar", { params: q ? { q, limit } : { limit } }),
   getProductById: (id: string): Promise<TypedAxiosResponse<ProductDetailResponse>> => 
     apiClient.get(`/shop/product/${id}`),
   getProductsByIds: (ids: string[]): Promise<TypedAxiosResponse<ProductDetailResponse[]>> =>

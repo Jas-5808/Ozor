@@ -311,7 +311,7 @@ export function SearchPage() {
     let cancelled = false;
     setSimilarLoading(true);
     shopAPI
-      .getProducts({ limit: 12 })
+      .getSimilarProducts(normalizedQuery, 12)
       .then((res) => {
         if (cancelled) return;
         const payload: any = (res as any)?.data ?? res;
