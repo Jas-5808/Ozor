@@ -102,7 +102,8 @@ export function Profile() {
     limit: 10,
     total: 0,
   });
-  
+  const [statementDetails, setStatementDetails] = useState<typeof statements[0] | null>(null);
+
   // Состояние для отслеживания скопированных ссылок (для показа галочки)
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
 
@@ -1857,61 +1858,28 @@ export function Profile() {
                   <table className="min-w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-200 text-slate-500">
-                        <th className="text-left py-3 px-2">{t("profile.payments.statements.table.image", "Фото")}</th>
                         <th className="text-left py-3 px-2">Дата</th>
                         <th className="text-left py-3 px-2">Сумма</th>
                         <th className="text-left py-3 px-2">Карта</th>
                         <th className="text-left py-3 px-2">Держатель</th>
                         <th className="text-left py-3 px-2">Статус</th>
-                        <th className="text-left py-3 px-2">Описание</th>
+                        <th className="text-left py-3 px-2">{t("profile.payments.statements.details", "Подробнее")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {statements.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="py-8 text-center text-slate-500">
+                          <td colSpan={6} className="py-8 text-center text-slate-500">
                             Нет поручений
                           </td>
                         </tr>
                       ) : (
                         statements.map((s) => {
                           const statusValue = s.status || s.type || "";
-                          const normalizedDescription =
-                            (s.description || "").trim().toLowerCase() === "string"
-                              ? "----"
-                              : (s.description || "----");
                           const cardLast4 = s.card_number ? String(s.card_number).slice(-4) : "----";
-                          const statementImageBase = "https://api.ozar.uz/media";
-                          const imageUrl = s.image
-                            ? (s.image.startsWith("http")
-                              ? s.image
-                              : `${statementImageBase.replace(/\/+$/, "")}/${s.image.replace(/^\/+/, "")}`)
-                            : null;
 
                           return (
                             <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
-                              <td className="py-3 px-2 align-middle">
-                                {imageUrl ? (
-                                  <a
-                                    href={imageUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-block rounded-lg border border-slate-200 overflow-hidden bg-slate-50 hover:opacity-90 transition"
-                                    title={t("profile.payments.statements.viewImage", "Открыть изображение")}
-                                  >
-                                    <img
-                                      src={imageUrl}
-                                      alt=""
-                                      className="h-12 w-12 object-cover"
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).style.display = "none";
-                                      }}
-                                    />
-                                  </a>
-                                ) : (
-                                  <span className="text-slate-400 text-xs">—</span>
-                                )}
-                              </td>
                               <td className="py-3 px-2 text-slate-600">{new Date(s.created_at).toLocaleString()}</td>
                               <td className="py-3 px-2 font-semibold text-slate-900">{formatPrice(s.amount, "UZS")}</td>
                               <td className="py-3 px-2 text-slate-600">**** {cardLast4}</td>
@@ -1931,8 +1899,14 @@ export function Profile() {
                                   {t(`profile.payments.statements.status.${statusValue}`, { defaultValue: statusValue || "----" })}
                                 </span>
                               </td>
-                              <td className="py-3 px-2 text-slate-600">
-                                {normalizedDescription}
+                              <td className="py-3 px-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setStatementDetails(s)}
+                                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+                                >
+                                  {t("profile.payments.statements.details", "Подробнее")}
+                                </button>
                               </td>
                             </tr>
                           );
@@ -1940,6 +1914,96 @@ export function Profile() {
                       )}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {statementDetails && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"
+                  onClick={() => setStatementDetails(null)}
+                >
+                  <div
+                    className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
+                      <h4 className="text-lg font-bold text-slate-900">{t("profile.payments.statements.detailsTitle", "Платежное поручение")}</h4>
+                      <button
+                        type="button"
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                        onClick={() => setStatementDetails(null)}
+                        aria-label={t("common.actions.close")}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      {statementDetails.image && (() => {
+                        const base = "https://api.ozar.uz/media";
+                        const imageUrl = statementDetails.image.startsWith("http")
+                          ? statementDetails.image
+                          : `${base.replace(/\/+$/, "")}/${statementDetails.image.replace(/^\/+/, "")}`;
+                        return (
+                          <div>
+                            <div className="mb-1 text-xs font-semibold uppercase text-slate-500">{t("profile.payments.statements.table.image", "Фото")}</div>
+                            <a
+                              href={imageUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block rounded-xl border border-slate-200 overflow-hidden bg-slate-50"
+                            >
+                              <img
+                                src={imageUrl}
+                                alt=""
+                                className="w-full max-h-64 object-contain"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = "none";
+                                }}
+                              />
+                            </a>
+                          </div>
+                        );
+                      })()}
+                      <div>
+                        <div className="mb-1 text-xs font-semibold uppercase text-slate-500">Дата</div>
+                        <div className="text-slate-900">{new Date(statementDetails.created_at).toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <div className="mb-1 text-xs font-semibold uppercase text-slate-500">Сумма</div>
+                        <div className="font-semibold text-slate-900">{formatPrice(statementDetails.amount, "UZS")}</div>
+                      </div>
+                      <div>
+                        <div className="mb-1 text-xs font-semibold uppercase text-slate-500">Карта</div>
+                        <div className="text-slate-700">**** {statementDetails.card_number ? String(statementDetails.card_number).slice(-4) : "----"}</div>
+                      </div>
+                      <div>
+                        <div className="mb-1 text-xs font-semibold uppercase text-slate-500">Держатель</div>
+                        <div className="text-slate-700">{statementDetails.card_holder_name || "—"}</div>
+                      </div>
+                      <div>
+                        <div className="mb-1 text-xs font-semibold uppercase text-slate-500">Статус</div>
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+                            (statementDetails.status || statementDetails.type) === "approved"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : (statementDetails.status || statementDetails.type) === "pending"
+                              ? "bg-amber-100 text-amber-700"
+                              : (statementDetails.status || statementDetails.type) === "rejected"
+                              ? "bg-rose-100 text-rose-700"
+                              : "bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          {t(`profile.payments.statements.status.${statementDetails.status || statementDetails.type || ""}`, { defaultValue: statementDetails.status || statementDetails.type || "—" })}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="mb-1 text-xs font-semibold uppercase text-slate-500">Описание</div>
+                        <div className="text-slate-700">
+                          {(statementDetails.description || "").trim().toLowerCase() === "string" ? "—" : (statementDetails.description || "—")}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
