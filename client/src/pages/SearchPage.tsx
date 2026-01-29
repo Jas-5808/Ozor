@@ -300,16 +300,35 @@ export function SearchPage() {
     }
   }, [rawItems, queryLower, calcMatchPercent]);
 
-  // Подсчет уникальных категорий
-  const uniqueCategoriesCount = useMemo(() => {
-    const categoryIds = new Set<string>();
-    products.forEach((product) => {
-      if (product.category?.id) {
-        categoryIds.add(product.category.id);
-      }
-    });
-    return categoryIds.size;
-  }, [products]);
+  const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
+
+  useEffect(() => {
+    if (!normalizedQuery || loading || products.length > 0) {
+      setSimilarProducts([]);
+      return;
+    }
+    let cancelled = false;
+    setSimilarLoading(true);
+    shopAPI
+      .getProducts({ limit: 12 })
+      .then((res) => {
+        if (cancelled) return;
+        const payload: any = (res as any)?.data ?? res;
+        const data = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
+        const { primaryProducts } = splitProductsIntoPrimaryAndVariants(data);
+        setSimilarProducts(primaryProducts.slice(0, 12));
+      })
+      .catch(() => {
+        if (!cancelled) setSimilarProducts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSimilarLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [normalizedQuery, loading, products.length]);
 
   if (!normalizedQuery) {
     return (
@@ -325,17 +344,6 @@ export function SearchPage() {
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-6">
-          {products.length > 0 && (
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-              {t("search.foundInCategories", {
-                productsCount: products.length,
-                categoriesCount: uniqueCategoriesCount,
-              })}
-            </h1>
-          )}
-        </div>
-
         {loading && products.length === 0 && (
           <div className="rounded-2xl border border-gray-200 p-6">
             <SkeletonGrid count={8} columns={4} />
@@ -349,10 +357,28 @@ export function SearchPage() {
         )}
 
         {!loading && !error && products.length === 0 && (
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center">
-            <p className="text-lg text-slate-600 mb-2">{t("search.noResults")}</p>
-            <p className="text-sm text-slate-500">{t("search.tryDifferent")}</p>
-          </div>
+          <>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center mb-8">
+              <p className="text-lg text-slate-600">{t("search.noProductsMessage")}</p>
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900 mb-4">{t("search.similarProductsTitle")}</h2>
+              {similarLoading ? (
+                <div className="rounded-2xl border border-gray-200 p-6">
+                  <SkeletonGrid count={8} columns={4} />
+                </div>
+              ) : similarProducts.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {similarProducts.map((product) => {
+                    const key = product.variant_id
+                      ? `${product.product_id}-${product.variant_id}`
+                      : `${product.product_id}`;
+                    return <ProductCard key={key} product={product} />;
+                  })}
+                </div>
+              ) : null}
+            </div>
+          </>
         )}
 
         {products.length > 0 && (

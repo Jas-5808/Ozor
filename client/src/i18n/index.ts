@@ -45,6 +45,8 @@ const minimalResources = {
         loading: 'Загрузка…',
         loadMore: 'Загрузить ещё',
         foundInCategories: 'Найдено {{productsCount}} товара в {{categoriesCount}} категориях',
+        noProductsMessage: 'Извините, но таких товаров нет',
+        similarProductsTitle: 'Похожие товары',
       },
       profile: {
         seoTitle: 'Профиль',
@@ -91,6 +93,8 @@ const minimalResources = {
         loading: 'Yuklanmoqda…',
         loadMore: 'Yana yuklash',
         foundInCategories: '{{productsCount}} ta mahsulot {{categoriesCount}} ta kategoriyada topildi',
+        noProductsMessage: "Kechirasiz, bunday mahsulotlar topilmadi",
+        similarProductsTitle: "O'xshash mahsulotlar",
       },
       profile: {
         seoTitle: 'Profil',
