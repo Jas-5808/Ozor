@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import apiClient, { warehouseAPI, orderAPI } from '../../services/api';
 import { getProductImageUrl, truncateText } from '../../utils/helpers';
 import { resolveProductDescription, resolveProductName } from '../../utils/productUtils';
+import { getRegions, getLocationById } from '../../data/uzbekistanLocations';
 
 type SectionKey = 'orders' | 'add' | 'warehouses';
 
@@ -24,6 +25,7 @@ export default function Warehouse() {
   const [myOffset, setMyOffset] = useState(0);
   const [myLimit, setMyLimit] = useState(10);
   const [myActionId, setMyActionId] = useState<string | null>(null);
+  const [myOrdersDeliveryFilter, setMyOrdersDeliveryFilter] = useState<string>('');
   const [locations, setLocations] = useState<any[]>([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [locationsError, setLocationsError] = useState<string | null>(null);
@@ -98,6 +100,26 @@ export default function Warehouse() {
     if (location.pathname.includes('/warehouse/locations')) return 'warehouses';
     return 'orders';
   }, [location.pathname]);
+
+  const deliveryFilterOptions = useMemo(() => {
+    const regions = getRegions();
+    const tashkentCity = getLocationById('tashkent');
+    const list = [
+      { id: '', name: t('admin.warehouse.filterAll', { defaultValue: 'Все' }) },
+      ...regions,
+      ...(tashkentCity ? [tashkentCity] : []),
+    ];
+    return list;
+  }, [t]);
+
+  const myOrdersFiltered = useMemo(() => {
+    if (!myOrdersDeliveryFilter) return myOrders;
+    return myOrders.filter(
+      (o) =>
+        String(o?.order_region || '').toLowerCase() === myOrdersDeliveryFilter.toLowerCase() ||
+        String(o?.city || '').toLowerCase() === myOrdersDeliveryFilter.toLowerCase()
+    );
+  }, [myOrders, myOrdersDeliveryFilter]);
 
   const fetchWarehouseOrders = useCallback(async () => {
     if (activeKey !== 'orders') return;
@@ -311,7 +333,7 @@ export default function Warehouse() {
                   <tr>
                     <th className="px-3 py-2 text-left">#</th>
                     <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.status') || 'Статус'}</th>
-                    <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.location', { defaultValue: 'Локация склада' }) || 'Локация склада'}</th>
+                    <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.location', { defaultValue: 'Адрес доставки' }) || 'Адрес доставки'}</th>
                     <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.date', { defaultValue: 'Дата' }) || 'Дата'}</th>
                     <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.action') || 'Действие'}</th>
                   </tr>
@@ -343,8 +365,21 @@ export default function Warehouse() {
                             try {
                               setOrdersActionId(o.id);
                               await warehouseAPI.submitOrder(o.id);
-                              await fetchWarehouseOrders();
-                              await fetchMyOrders();
+                              // Без перезагрузки страницы: убираем заказ из «Заказы», добавляем в «Мои заказы»
+                              setOrders((prev) => prev.filter((order) => order.id !== o.id));
+                              const acceptedOrder = { ...o, status: 'accepted' };
+                              setMyOrders((prev) => [acceptedOrder, ...prev]);
+                              // В фоне подгружаем полный список «Мои заказы», чтобы новая строка имела все поля (товар, номер заказа)
+                              warehouseAPI.getMyOrders({ offset: myOffset, limit: myLimit }).then((res) => {
+                                const payload = res.data as any;
+                                const data = Array.isArray(payload) ? payload : payload?.results || payload?.items || payload?.data || [];
+                                const sorted = [...data].sort((a: any, b: any) => {
+                                  const ta = a?.created_at ? new Date(a.created_at).getTime() : 0;
+                                  const tb = b?.created_at ? new Date(b.created_at).getTime() : 0;
+                                  return tb - ta;
+                                });
+                                setMyOrders(sorted);
+                              }).catch(() => {});
                             } catch (e) {
                               // ignore
                             } finally {
@@ -364,7 +399,23 @@ export default function Warehouse() {
             </div>
           )}
           <div className="mt-6">
-            <h3 className="mb-2 text-base font-bold text-slate-900">{t('admin.warehouse.nav.orders', { defaultValue: 'Мои заказы' })}</h3>
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              <h3 className="text-base font-bold text-slate-900">{t('admin.warehouse.nav.orders', { defaultValue: 'Мои заказы' })}</h3>
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <span>{t('admin.warehouse.filterByDelivery', { defaultValue: 'Адрес доставки:' })}</span>
+                <select
+                  value={myOrdersDeliveryFilter}
+                  onChange={(e) => setMyOrdersDeliveryFilter(e.target.value)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  {deliveryFilterOptions.map((opt) => (
+                    <option key={opt.id || 'all'} value={opt.id}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
             {myOrdersLoading && <p className="text-sm text-slate-500">{t('common.loading') || 'Загрузка...'}</p>}
             {myOrdersError && <p className="text-sm text-rose-600">{myOrdersError}</p>}
             {!myOrdersLoading && !myOrdersError && (
@@ -376,7 +427,7 @@ export default function Warehouse() {
                       <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.order') || 'Заказ'}</th>
                       <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.status') || 'Статус'}</th>
                       <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.product', { defaultValue: 'Товар' }) || 'Товар'}</th>
-                      <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.location', { defaultValue: 'Локация склада' }) || 'Локация склада'}</th>
+                      <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.location', { defaultValue: 'Адрес доставки' }) || 'Адрес доставки'}</th>
                       <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.comment', { defaultValue: 'Комментарий' }) || 'Комментарий'}</th>
                       <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.total', { defaultValue: 'Кол-во позиций' }) || 'Кол-во позиций'}</th>
                       <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.date', { defaultValue: 'Дата' }) || 'Дата'}</th>
@@ -384,16 +435,18 @@ export default function Warehouse() {
                     </tr>
                   </thead>
                   <tbody>
-                    {myOrders.length === 0 && (
+                    {myOrdersFiltered.length === 0 && (
                       <tr>
                         <td colSpan={9} className="px-3 py-3 text-center text-slate-500">
-                          {t('common.empty') || 'Нет заказов'}
+                          {myOrdersDeliveryFilter
+                            ? (t('admin.warehouse.filterEmpty', { defaultValue: 'Нет заказов по выбранному адресу доставки' }) || 'Нет заказов по выбранному адресу доставки')
+                            : (t('common.empty') || 'Нет заказов')}
                         </td>
                       </tr>
                     )}
-                    {myOrders.map((o, idx) => (
+                    {myOrdersFiltered.map((o, idx) => (
                       <tr key={o.id || idx} className="border-t border-slate-200 hover:bg-slate-50">
-                        <td className="px-3 py-2 text-slate-700">{idx + 1 + myOffset}</td>
+                        <td className="px-3 py-2 text-slate-700">{idx + 1}</td>
                         <td className="px-3 py-2 text-slate-900 font-semibold">{o.order_number || o.id}</td>
                         <td className="px-3 py-2">{renderStatus(o.status)}</td>
                         <td className="px-3 py-2 text-slate-700">
