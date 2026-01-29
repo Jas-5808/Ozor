@@ -137,17 +137,18 @@ export function useReferralActions(
         type: 'success',
         message: 'Реферальная ссылка удалена',
       });
-      onSuccess?.();
+      // Не вызываем onSuccess (refetch) — удаление оптимистичное, список уже обновлён
     } catch (error) {
       setReferralNotice({
         type: 'error',
         message: error instanceof Error ? error.message : ERROR_MESSAGES.UNKNOWN,
       });
       logger.errorWithContext(error, { context: 'handleDeleteReferral' });
+      throw error;
     } finally {
       setDeletingReferralId(null);
     }
-  }, [onSuccess]);
+  }, []);
 
   const handleCopy = useCallback(async (text: string) => {
     try {

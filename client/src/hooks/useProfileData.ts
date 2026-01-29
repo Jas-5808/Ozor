@@ -51,6 +51,8 @@ interface ProfileDataReturn {
   // Actions
   loadReferrals: () => Promise<void>;
   refreshBalance: () => Promise<void>;
+  /** Удалить реферал из списка оптимистично (без перезагрузки) */
+  removeReferralById: (id: string) => void;
 }
 
 /**
@@ -88,6 +90,10 @@ export function useProfileData(): ProfileDataReturn {
     } finally {
       setApiFlowsLoading(false);
     }
+  };
+
+  const removeReferralById = (id: string): void => {
+    setApiFlows((prev) => prev.filter((r) => String((r as any)?.id ?? '') !== String(id)));
   };
 
   const loadBalance = async (): Promise<void> => {
@@ -202,6 +208,7 @@ export function useProfileData(): ProfileDataReturn {
     balanceError,
     loadReferrals,
     refreshBalance,
+    removeReferralById,
   };
 }
 

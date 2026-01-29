@@ -1368,7 +1368,12 @@ export function Profile() {
                                   confirmLabel: t("common.actions.delete"),
                                   danger: true,
                                   onConfirm: async () => {
-                                    await handleDeleteReferral(r.id);
+                                    profileData.removeReferralById(r.id);
+                                    try {
+                                      await handleDeleteReferral(r.id);
+                                    } catch {
+                                      profileData.loadReferrals();
+                                    }
                                   },
                                 });
                               }}
