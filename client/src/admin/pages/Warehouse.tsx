@@ -26,6 +26,8 @@ export default function Warehouse() {
   const [myLimit, setMyLimit] = useState(10);
   const [myActionId, setMyActionId] = useState<string | null>(null);
   const [myOrdersDeliveryFilter, setMyOrdersDeliveryFilter] = useState<string>('');
+  const [orderStatsByCity, setOrderStatsByCity] = useState<Array<{ order_region: string; count: number }>>([]);
+  const [orderStatsLoading, setOrderStatsLoading] = useState(false);
   const [locations, setLocations] = useState<any[]>([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [locationsError, setLocationsError] = useState<string | null>(null);
@@ -343,6 +345,35 @@ export default function Warehouse() {
     };
   }, [activeKey, locationFilter]);
 
+  useEffect(() => {
+    if (activeKey !== 'orders') return;
+    let ignore = false;
+    const fetchStats = async () => {
+      try {
+        setOrderStatsLoading(true);
+        const res = await warehouseAPI.getOrdersStatsByCity();
+        if (ignore) return;
+        const data = Array.isArray(res.data) ? res.data : (res.data as any)?.data || [];
+        setOrderStatsByCity(data || []);
+      } catch {
+        if (!ignore) setOrderStatsByCity([]);
+      } finally {
+        if (!ignore) setOrderStatsLoading(false);
+      }
+    };
+    fetchStats();
+    return () => {
+      ignore = true;
+    };
+  }, [activeKey]);
+
+  const getCityLabel = (orderRegion: string) => {
+    const region = getRegions().find((r) => r.id === orderRegion);
+    if (region) return region.name;
+    const city = getLocationById(orderRegion);
+    return city?.name || orderRegion;
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-6 space-y-6">
       {activeKey === 'orders' && (
@@ -350,6 +381,37 @@ export default function Warehouse() {
           <h2 className="mb-2 text-lg font-bold">
             {t('admin.warehouse.nav.orders', { defaultValue: 'Заказы' })}
           </h2>
+          {/* Статистика по городам (актуальные заказы) */}
+          <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+            <div className="mb-2 text-sm font-bold text-slate-700">
+              {t('admin.ordersPage.statsByCity', { defaultValue: 'Актуальные заказы по городам' })}
+            </div>
+            {orderStatsLoading ? (
+              <div className="flex flex-wrap gap-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <span key={i} className="h-8 w-24 animate-pulse rounded-xl bg-slate-200" />
+                ))}
+              </div>
+            ) : orderStatsByCity.length === 0 ? (
+              <p className="text-xs text-slate-500">
+                {t('admin.ordersPage.statsEmpty', { defaultValue: 'Нет заказов на данный момент' })}
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {orderStatsByCity.map((row) => (
+                  <span
+                    key={row.order_region}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm"
+                  >
+                    <span>{getCityLabel(row.order_region)}</span>
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+                      {row.count}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
           {ordersLoading && <p className="text-sm text-slate-500">{t('common.loading') || 'Загрузка...'}</p>}
           {ordersError && <p className="text-sm text-rose-600">{ordersError}</p>}
           {!ordersLoading && !ordersError && (
