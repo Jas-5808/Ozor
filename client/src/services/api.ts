@@ -597,6 +597,8 @@ export const warehouseAPI = {
   ): Promise<TypedAxiosResponse<any>> => apiClient.get("/warehouse/orders", { params }),
   getOrdersStatsByCity: (): Promise<TypedAxiosResponse<Array<{ order_region: string; count: number }>>> =>
     apiClient.get("/warehouse/orders-stats-by-city"),
+  getRequestsStatsByCity: (): Promise<TypedAxiosResponse<Array<{ order_region: string; count: number }>>> =>
+    apiClient.get("/warehouse/requests-stats-by-city"),
   submitOrder: (orderId: string): Promise<TypedAxiosResponse<any>> =>
     apiClient.post("/warehouse/submit", { order_id: orderId }),
   getMyOrders: (

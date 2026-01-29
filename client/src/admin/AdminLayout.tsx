@@ -381,38 +381,39 @@ export default function AdminLayout() {
 
       <div className="flex min-h-screen flex-col bg-white/70 backdrop-blur">
         <header
-          className={`sticky top-0 z-10 flex items-center justify-between gap-3 border-b px-4 py-3 ${
+          className={`sticky top-0 z-10 flex items-center gap-3 border-b px-4 py-3 ${
             isDarkTheme ? 'bg-slate-900/80 border-slate-800 text-slate-100' : 'bg-white/80 border-slate-200'
           }`}
         >
-          <div className="flex items-center gap-3 flex-1">
+          <div className="flex items-center flex-1 min-w-0 justify-start">
             {isMobile && (
               <button
-                className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 bg-slate-100 text-slate-500 hover:bg-slate-200 transition"
                 onClick={toggleMobileMenu}
                 aria-label="Toggle menu"
               >
                 <BurgerIcon />
               </button>
             )}
-            <div
-              className={`flex items-center gap-2 rounded-xl border px-3 py-2 flex-1 max-w-xl ${
-                isDarkTheme ? 'bg-slate-900/70 border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-700'
-              }`}
-            >
-              <SearchIcon />
-              <input
-                type="search"
-                placeholder={t('admin.toolbar.searchPlaceholder')}
-                className="w-full bg-transparent outline-none placeholder:text-slate-400 text-sm"
-              />
-            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div
+            className={`flex items-center gap-2 rounded-xl border px-3 py-2 w-full max-w-md mx-2 flex-1 min-w-0 justify-center ${
+              isDarkTheme ? 'bg-slate-900/70 border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-700'
+            }`}
+          >
+            <span className="shrink-0 text-slate-500"><SearchIcon /></span>
+            <input
+              type="search"
+              placeholder={t('admin.toolbar.searchPlaceholder')}
+              className="w-full min-w-0 bg-transparent outline-none placeholder:text-slate-400 text-sm"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
             <AdminLanguageSwitcher />
             <button
-              className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
+              className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-slate-100 text-slate-500 hover:bg-slate-200 transition"
               type="button"
               title={isDarkTheme ? t('admin.toolbar.themeLight') : t('admin.toolbar.themeDark')}
               aria-pressed={isDarkTheme}
@@ -421,7 +422,7 @@ export default function AdminLayout() {
               <ThemeIcon />
             </button>
             <button
-              className="relative grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
+              className="relative grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-slate-100 text-slate-500 hover:bg-slate-200 transition"
               type="button"
               title={t('admin.toolbar.notifications')}
             >
@@ -429,7 +430,7 @@ export default function AdminLayout() {
               <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-orange-500" />
             </button>
             <button
-              className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
+              className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-slate-100 text-slate-500 hover:bg-slate-200 transition"
               type="button"
               title={t('admin.toolbar.quickAdd')}
             >

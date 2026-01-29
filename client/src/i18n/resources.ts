@@ -802,6 +802,9 @@ export const resources = {
         },
         ordersPage: {
           title: 'Orders',
+          statsByCity: 'Актуальные заказы по городам',
+          statsRequestsByCity: 'Заявки по городам',
+          statsEmpty: 'Нет заказов на данный момент',
           hero: {
             title: 'Управление заказами',
             subtitle: 'Следите за новыми заказами и распределяйте их между сотрудниками call-center.',
@@ -1830,6 +1833,9 @@ export const resources = {
         },
         ordersPage: {
           title: 'Buyurtmalar',
+          statsByCity: 'Shaharlar bo‘yicha joriy buyurtmalar',
+          statsRequestsByCity: 'Shaharlar bo‘yicha arizalar',
+          statsEmpty: 'Hozircha buyurtmalar yo‘q',
           hero: {
             title: 'Buyurtmalar boshqaruvi',
             subtitle: "Yangi buyurtmalarni kuzating va call-center uchun taqsimlang.",

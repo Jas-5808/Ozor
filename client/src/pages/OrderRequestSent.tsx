@@ -25,8 +25,8 @@ export function OrderRequestSent() {
   const fullName = state?.fullName || t("common.orderRequest.fallbackName");
 
   return (
-    <div className="container py-10">
-      <div className="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_10px_40px_rgba(15,23,42,0.08)]">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_10px_40px_rgba(15,23,42,0.08)]">
         <div className="mb-6 flex flex-col items-center text-center gap-3">
           <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 shadow-md">
             <div className="absolute h-14 w-14 rounded-full bg-emerald-200/50 animate-ping" aria-hidden />

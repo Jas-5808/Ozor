@@ -149,6 +149,8 @@ export default function Orders() {
   const [ordersLimit, setOrdersLimit] = useState(20);
   const [orderStatsByCity, setOrderStatsByCity] = useState<Array<{ order_region: string; count: number }>>([]);
   const [orderStatsLoading, setOrderStatsLoading] = useState(false);
+  const [requestStatsByCity, setRequestStatsByCity] = useState<Array<{ order_region: string; count: number }>>([]);
+  const [requestStatsLoading, setRequestStatsLoading] = useState(false);
 
   const [ccPage, setCcPage] = useState(1);
   const [ccLimit, setCcLimit] = useState(20);
@@ -353,6 +355,28 @@ export default function Orders() {
       }
     };
     fetchStats();
+    return () => {
+      ignore = true;
+    };
+  }, [canViewAdminOrders]);
+
+  useEffect(() => {
+    let ignore = false;
+    const fetchRequestStats = async () => {
+      if (!canViewAdminOrders) return;
+      try {
+        setRequestStatsLoading(true);
+        const res = await warehouseAPI.getRequestsStatsByCity();
+        if (ignore) return;
+        const data = Array.isArray(res.data) ? res.data : (res.data as any)?.data || [];
+        setRequestStatsByCity(data || []);
+      } catch {
+        if (!ignore) setRequestStatsByCity([]);
+      } finally {
+        if (!ignore) setRequestStatsLoading(false);
+      }
+    };
+    fetchRequestStats();
     return () => {
       ignore = true;
     };
@@ -599,23 +623,6 @@ export default function Orders() {
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      {/* HERO */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-purple-200 bg-gradient-to-br from-indigo-50 to-purple-50 p-4">
-        <div>
-          <div className="text-lg font-black text-indigo-900">
-            {t("admin.ordersPage.hero.title")}
-          </div>
-          <div className="mt-1 text-xs text-slate-500">
-            {t("admin.ordersPage.hero.subtitle")}
-          </div>
-        </div>
-        {isSale && (
-          <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-extrabold text-cyan-800">
-            {t("admin.ordersPage.hero.sale")}
-          </span>
-        )}
-      </div>
-
       {/* Статистика по городам (актуальные заказы) */}
       {canViewAdminOrders && (
         <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
@@ -644,6 +651,44 @@ export default function Orders() {
                   >
                     <span>{label}</span>
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+                      {row.count}
+                    </span>
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Заявки по городам */}
+      {canViewAdminOrders && (
+        <div className="mb-4 rounded-2xl border border-slate-200 bg-amber-50/70 px-4 py-3">
+          <div className="mb-2 text-sm font-bold text-slate-700">
+            {t("admin.ordersPage.statsRequestsByCity", { defaultValue: "Заявки по городам" })}
+          </div>
+          {requestStatsLoading ? (
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <span key={i} className="h-8 w-24 animate-pulse rounded-xl bg-slate-200" />
+              ))}
+            </div>
+          ) : requestStatsByCity.length === 0 ? (
+            <p className="text-xs text-slate-500">
+              {t("admin.ordersPage.statsEmpty", { defaultValue: "Нет заявок на данный момент" })}
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {requestStatsByCity.map((row) => {
+                const labelKey = LOCATION_OPTIONS.find((o) => o.value === row.order_region)?.labelKey;
+                const label = labelKey ? t(labelKey) : row.order_region;
+                return (
+                  <span
+                    key={row.order_region}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm"
+                  >
+                    <span>{label}</span>
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
                       {row.count}
                     </span>
                   </span>
