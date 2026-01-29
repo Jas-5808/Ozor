@@ -17,6 +17,8 @@ import { ERROR_MESSAGES } from "../constants";
 import { resolveProductDescription, resolveProductName, splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
 import { PRODUCT_RELATED_LIMIT } from "../config/pagination";
 
+const USER_AGREEMENT_PDF_URL = "/user-agreement.pdf";
+
 type LocationState = { product?: ProductType };
 
 // Функция для загрузки всех вариантов товара (использует новый API /api/v1/shop/product/{product_id})
@@ -254,7 +256,7 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
               />
             </div>
 
-            <label className="flex items-start gap-3 text-sm text-gray-600">
+            <label className="flex items-start gap-3 text-sm text-gray-600 cursor-pointer">
               <input
                 type="checkbox"
                 checked={agreeTerms}
@@ -262,9 +264,15 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
                 className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
               />
               <span>
-                {t("product.quickOrder.consent")}{" "}
-                <a href="/terms" className="text-emerald-600 hover:underline">
-                  {t("product.quickOrder.terms")}
+                {t("common.cart.agreementAccept")}{" "}
+                <a
+                  href={USER_AGREEMENT_PDF_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-emerald-600 font-semibold underline hover:no-underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {t("common.cart.agreementLink")}
                 </a>
               </span>
             </label>
@@ -1446,8 +1454,8 @@ export function Product() {
                   </select>
                 </div>
 
-                {/* FIX (п.7): agreeTerms тут тоже */}
-                <label className="flex items-start gap-3 text-sm text-slate-600">
+                {/* Пользовательское соглашение — тот же текст и PDF, что и в корзине */}
+                <label className="flex items-start gap-3 text-sm text-slate-600 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={agreeTerms}
@@ -1455,9 +1463,15 @@ export function Product() {
                     className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                   />
                   <span>
-                    {t("product.quickOrder.consent")}{" "}
-                    <a href="/terms" className="text-emerald-700 hover:underline">
-                      {t("product.quickOrder.terms")}
+                    {t("common.cart.agreementAccept")}{" "}
+                    <a
+                      href={USER_AGREEMENT_PDF_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-emerald-700 font-semibold underline hover:no-underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {t("common.cart.agreementLink")}
                     </a>
                   </span>
                 </label>

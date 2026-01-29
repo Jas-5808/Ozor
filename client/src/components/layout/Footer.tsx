@@ -115,6 +115,22 @@ export function Footer() {
             <Link to="/search" className="hover:text-emerald-700 transition">
               Поиск
             </Link>
+            <a
+              href="/user-agreement.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-emerald-700 transition"
+            >
+              {t("common.cart.agreementLink")}
+            </a>
+            <a
+              href="/terms-and-definitions.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-emerald-700 transition"
+            >
+              {t("footer.termsAndDefinitions")}
+            </a>
           </div>
         </div>
       </div>

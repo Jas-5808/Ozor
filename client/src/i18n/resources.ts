@@ -94,6 +94,9 @@ export const resources = {
           grandTotal: 'Итого',
           quantity: 'Количество',
           removeItem: 'Удалить товар',
+          agreementAccept: 'Я согласен с условиями пользовательского соглашения',
+          agreementLink: 'Пользовательское соглашение (PDF)',
+          agreementRequired: 'Для оформления заказа необходимо принять пользовательское соглашение',
         },
         orderRequest: {
           title: 'Заявка отправлена',
@@ -151,6 +154,7 @@ export const resources = {
         rights: 'Все права защищены',
         contacts: 'Контакты',
         help: 'Помощь',
+        termsAndDefinitions: 'Термины и определения (PDF)',
       },
       product: {
         badges: {
@@ -1117,6 +1121,9 @@ export const resources = {
           grandTotal: 'Jami',
           quantity: 'Miqdori',
           removeItem: 'Mahsulotni o‘chirish',
+          agreementAccept: 'Foydalanuvchi shartnomasi shartlariga roziman',
+          agreementLink: 'Foydalanuvchi shartnomasi (PDF)',
+          agreementRequired: 'Buyurtma berish uchun foydalanuvchi shartnomasini qabul qilishingiz kerak',
         },
         orderRequest: {
           title: 'So‘rov yuborildi',
@@ -1174,6 +1181,7 @@ export const resources = {
         rights: 'Barcha huquqlar himoyalangan',
         contacts: 'Aloqa',
         help: 'Yordam',
+        termsAndDefinitions: "Atamalar va ta'riflar (PDF)",
       },
       product: {
         badges: {

@@ -5,9 +5,12 @@ import { formatPrice } from "../utils/helpers";
 import useSEO from "../hooks/useSEO";
 import { useTranslation } from "react-i18next";
 
+const USER_AGREEMENT_PDF_URL = '/user-agreement.pdf';
+
 export function Cart() {
   const { t } = useTranslation();
   const [showComingSoonModal, setShowComingSoonModal] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   useSEO({
     title: `${t("common.cart.title")} — OZAR`,
     robots: "noindex,nofollow",
@@ -179,11 +182,40 @@ export function Cart() {
                   <div className={`${cn.summaryTotalLabel} text-slate-700 font-black`}>{t("common.cart.grandTotal")}</div>
                   <div className={`${cn.summaryTotalValue} text-[20px] font-black`}>{formatPrice(grandTotal)}</div>
                 </div>
+                <label className="flex items-start gap-3 cursor-pointer mt-3 p-3 rounded-xl border border-gray-200 bg-slate-50 hover:bg-slate-100/80 transition">
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-[#04734b] focus:ring-[#04734b]"
+                  />
+                  <span className="text-sm text-slate-700">
+                    {t("common.cart.agreementAccept")}{' '}
+                    <a
+                      href={USER_AGREEMENT_PDF_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#04734b] font-semibold underline hover:no-underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {t("common.cart.agreementLink")}
+                    </a>
+                  </span>
+                </label>
+                {!agreedToTerms && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    {t("common.cart.agreementRequired")}
+                  </p>
+                )}
                 <button 
                   type="button"
-                  onClick={() => setShowComingSoonModal(true)}
-                  className={`${cn.checkoutBtn} w-full h-11 rounded-2xl text-white font-semibold transition hover:brightness-110 active:scale-[0.98]`}
-                  style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
+                  onClick={() => agreedToTerms && setShowComingSoonModal(true)}
+                  disabled={!agreedToTerms}
+                  className={`${cn.checkoutBtn} w-full h-11 rounded-2xl text-white font-semibold transition active:scale-[0.98] ${
+                    agreedToTerms ? 'hover:brightness-110' : 'cursor-not-allowed bg-slate-400'
+                  }`}
+                  style={agreedToTerms ? { background: "linear-gradient(92.41deg, #003d32, #04734b)" } : undefined}
+                  title={!agreedToTerms ? t("common.cart.agreementRequired") : undefined}
                 >
                   {t("common.cart.checkout")}
                 </button>
