@@ -19,7 +19,7 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { adminStore } from "../storage";
-import { shopAPI, userAPI } from "../../services/api";
+import { shopAPI, userAPI, warehouseAPI } from "../../services/api";
 import apiClient from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
 import { getProductImageUrl } from "../../utils/helpers";
@@ -147,6 +147,8 @@ export default function Orders() {
 
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersLimit, setOrdersLimit] = useState(20);
+  const [orderStatsByCity, setOrderStatsByCity] = useState<Array<{ order_region: string; count: number }>>([]);
+  const [orderStatsLoading, setOrderStatsLoading] = useState(false);
 
   const [ccPage, setCcPage] = useState(1);
   const [ccLimit, setCcLimit] = useState(20);
@@ -333,6 +335,28 @@ export default function Orders() {
       ignore = true;
     };
   }, [hasAccess]);
+
+  useEffect(() => {
+    let ignore = false;
+    const fetchStats = async () => {
+      if (!canViewAdminOrders) return;
+      try {
+        setOrderStatsLoading(true);
+        const res = await warehouseAPI.getOrdersStatsByCity();
+        if (ignore) return;
+        const data = Array.isArray(res.data) ? res.data : (res.data as any)?.data || [];
+        setOrderStatsByCity(data || []);
+      } catch {
+        if (!ignore) setOrderStatsByCity([]);
+      } finally {
+        if (!ignore) setOrderStatsLoading(false);
+      }
+    };
+    fetchStats();
+    return () => {
+      ignore = true;
+    };
+  }, [canViewAdminOrders]);
 
   // Функция для загрузки информации о продукте по variant_id
   const loadProductByVariantId = useCallback(async (variantId: string) => {
@@ -591,6 +615,44 @@ export default function Orders() {
           </span>
         )}
       </div>
+
+      {/* Статистика по городам (актуальные заказы) */}
+      {canViewAdminOrders && (
+        <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+          <div className="mb-2 text-sm font-bold text-slate-700">
+            {t("admin.ordersPage.statsByCity", { defaultValue: "Актуальные заказы по городам" })}
+          </div>
+          {orderStatsLoading ? (
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <span key={i} className="h-8 w-24 animate-pulse rounded-xl bg-slate-200" />
+              ))}
+            </div>
+          ) : orderStatsByCity.length === 0 ? (
+            <p className="text-xs text-slate-500">
+              {t("admin.ordersPage.statsEmpty", { defaultValue: "Нет заказов на данный момент" })}
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {orderStatsByCity.map((row) => {
+                const labelKey = LOCATION_OPTIONS.find((o) => o.value === row.order_region)?.labelKey;
+                const label = labelKey ? t(labelKey) : row.order_region;
+                return (
+                  <span
+                    key={row.order_region}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm"
+                  >
+                    <span>{label}</span>
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+                      {row.count}
+                    </span>
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* FILTERS */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
