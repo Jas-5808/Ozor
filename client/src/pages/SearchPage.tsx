@@ -10,8 +10,8 @@ import { splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
 import { SEARCH_PAGE_LIMIT } from "../config/pagination";
 const SEARCH_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
 const NGRAM_SIZE = 3;
-/** Показывать все товары с оценкой совпадения от 5%; выше процент — выше в выдаче. */
-const MIN_MATCH_PERCENT = 5;
+/** Показывать все совпадения с оценкой от 1%; выше процент — выше в выдаче. */
+const MIN_MATCH_PERCENT = 1;
 
 /**
  * Как работает поиск (SearchPage):
@@ -32,11 +32,9 @@ const MIN_MATCH_PERCENT = 5;
  *    запросом и названием (product_name, name_ru) по n-граммам (длина 3). Чем выше процент —
  *    тем выше товар в выдаче.
  *
- * 6. Порог показа: показываются все товары с оценкой >= MIN_MATCH_PERCENT (5%). Ниже 5% — скрыты.
+ * 6. Порог показа: показываются все товары с оценкой >= MIN_MATCH_PERCENT (1%).
  *
  * 7. Сортировка: по убыванию релевантности, при равенстве — в наличии выше, затем по цене.
- *
- * 8. Подгрузка: «Показать ещё» — следующая порция с API, объединение и пересчёт локально.
  */
 
 type SearchCacheEntry = {
@@ -48,7 +46,6 @@ type SearchCacheEntry = {
 
 const searchCache = new Map<string, SearchCacheEntry>();
 const searchInFlight = new Map<string, Promise<any[]>>();
-const searchLoadMoreInFlight = new Map<string, Promise<any[]>>();
 
 export function SearchPage() {
   const [searchParams] = useSearchParams();
@@ -60,7 +57,6 @@ export function SearchPage() {
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [matchScores, setMatchScores] = useState<Record<string, number>>({});
 
   const normalizedQuery = useMemo(() => query.trim(), [query]);
   const queryLower = useMemo(() => normalizedQuery.toLowerCase(), [normalizedQuery]);
@@ -194,7 +190,6 @@ export function SearchPage() {
             return (a.product.price ?? 0) - (b.product.price ?? 0);
           });
           setProducts(filtered.map((s) => s.product));
-          setMatchScores(scores);
           setOffset(cached.offset);
           setHasMore(cached.hasMore);
           return;
@@ -256,14 +251,12 @@ export function SearchPage() {
           return (a.product.price ?? 0) - (b.product.price ?? 0);
         });
         setProducts(filtered.map((s) => s.product));
-        setMatchScores(scores);
         setOffset(nextOffset);
         setHasMore(nextHasMore);
       } catch (err: any) {
         if (cancelled) return;
         setError(err?.response?.data?.message || err?.message || t("search.error"));
         setProducts([]);
-        setMatchScores({});
         setRawItems([]);
       } finally {
         searchInFlight.delete(normalizedQuery);
@@ -304,70 +297,8 @@ export function SearchPage() {
         return (a.product.price ?? 0) - (b.product.price ?? 0);
       });
       setProducts(filtered.map((s) => s.product));
-      setMatchScores(scores);
     }
   }, [rawItems, queryLower, calcMatchPercent]);
-
-  const loadMore = useCallback(async () => {
-    if (loading || !hasMore || !normalizedQuery) return;
-
-    setLoading(true);
-    try {
-      const key = `${normalizedQuery}:${offset}`;
-      const existing = searchLoadMoreInFlight.get(key);
-      const promise =
-        existing ??
-        (async () => {
-          const response = await shopAPI.searchProducts(normalizedQuery, {
-            offset,
-            limit: SEARCH_PAGE_LIMIT,
-          });
-          const payload: any = (response as any)?.data ?? response;
-          return Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
-        })();
-
-      if (!existing) {
-        searchLoadMoreInFlight.set(key, promise);
-      }
-
-      const data = await promise;
-
-      const existingKeys = new Set(
-        rawItems.map((it: any) => `${it?.product_id || it?.id || ""}_${it?.variant_id || it?.variantId || ""}`)
-      );
-      const merged = rawItems.slice();
-      for (const item of data) {
-        const k = `${item?.product_id || item?.id || ""}_${item?.variant_id || item?.variantId || ""}`;
-        if (!existingKeys.has(k)) {
-          existingKeys.add(k);
-          merged.push(item);
-        }
-      }
-
-      const nextOffset = offset + data.length;
-      const grew = merged.length > rawItems.length;
-      const nextHasMore = data.length > 0 && grew;
-
-      searchCache.set(normalizedQuery, {
-        time: Date.now(),
-        raw: merged,
-        offset: nextOffset,
-        hasMore: nextHasMore,
-      });
-
-      setRawItems(merged);
-      const computed = computeProducts(merged);
-      setProducts(computed.products);
-      setMatchScores(computed.scores);
-      setOffset(nextOffset);
-      setHasMore(nextHasMore);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || t("search.error"));
-    } finally {
-      searchLoadMoreInFlight.delete(key);
-      setLoading(false);
-    }
-  }, [computeProducts, hasMore, loading, normalizedQuery, offset, rawItems, t]);
 
   // Подсчет уникальных категорий
   const uniqueCategoriesCount = useMemo(() => {
@@ -435,23 +366,10 @@ export function SearchPage() {
                   <ProductCard
                     key={key}
                     product={product}
-                    matchPercent={matchScores[key]}
                   />
                 );
               })}
             </div>
-
-            {hasMore && (
-              <div className="text-center">
-                <button
-                  onClick={loadMore}
-                  disabled={loading}
-                  className="px-6 py-3 rounded-2xl bg-white border border-gray-200 text-slate-700 font-semibold hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? t("search.loading") : t("search.loadMore")}
-                </button>
-              </div>
-            )}
           </>
         )}
       </div>

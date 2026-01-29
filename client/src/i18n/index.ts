@@ -44,6 +44,7 @@ const minimalResources = {
         error: 'Ошибка поиска',
         loading: 'Загрузка…',
         loadMore: 'Загрузить ещё',
+        foundInCategories: 'Найдено {{productsCount}} товара в {{categoriesCount}} категориях',
       },
       profile: {
         seoTitle: 'Профиль',
@@ -89,6 +90,7 @@ const minimalResources = {
         error: 'Qidiruv xatosi',
         loading: 'Yuklanmoqda…',
         loadMore: 'Yana yuklash',
+        foundInCategories: '{{productsCount}} ta mahsulot {{categoriesCount}} ta kategoriyada topildi',
       },
       profile: {
         seoTitle: 'Profil',

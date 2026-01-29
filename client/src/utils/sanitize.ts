@@ -32,6 +32,42 @@ export function stripHtml(html: string): string {
   return tmp.textContent || tmp.innerText || '';
 }
 
+/** Распространённые HTML-сущности → символ */
+const HTML_ENTITIES: Record<string, string> = {
+  '&nbsp;': '\u00A0',
+  '&ndash;': '\u2013',
+  '&mdash;': '\u2014',
+  '&hellip;': '\u2026',
+  '&hearts;': '\u2665',
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&#039;': "'",
+  '&apos;': "'",
+  '&copy;': '\u00A9',
+  '&reg;': '\u00AE',
+  '&trade;': '\u2122',
+};
+
+/**
+ * Преобразует HTML-строку в обычный текст: убирает теги и декодирует сущности (&ndash;, &nbsp; и т.д.).
+ * Подходит для отображения описаний товаров из БД в карточках.
+ */
+export function htmlToPlainText(html: string): string {
+  if (typeof html !== 'string') return '';
+  let s = html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  for (const [entity, char] of Object.entries(HTML_ENTITIES)) {
+    s = s.split(entity).join(char);
+  }
+  s = s.replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)));
+  s = s.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  return s.replace(/\s+/g, ' ').trim();
+}
+
 /**
  * Валидирует и санитизирует телефонный номер
  */

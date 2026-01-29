@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useApp } from "../../context/AppContext";
 import { formatPrice, truncateText, getProductImageUrl, getVariantMainImage } from "../../utils/helpers";
+import { htmlToPlainText } from "../../utils/sanitize";
 import { resolveProductName, resolveProductDescription } from "../../utils/productUtils";
 import { Product } from "../../types";
 import type { VariantMedia } from "../../types/api";
@@ -38,10 +39,11 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
   
   const localizedDescription = useMemo(() => {
     const locale = i18n.language?.split("-")[0] || "ru";
-    if (locale === "uz") {
-      return product.description_uz || product.description_ru || product.product_description || "";
-    }
-    return product.description_ru || product.description_uz || product.product_description || "";
+    const raw =
+      locale === "uz"
+        ? product.description_uz || product.description_ru || product.product_description || ""
+        : product.description_ru || product.description_uz || product.product_description || "";
+    return htmlToPlainText(raw);
   }, [product.description_uz, product.description_ru, product.product_description, i18n.language]);
 
   const isCompact = size === "compact";
