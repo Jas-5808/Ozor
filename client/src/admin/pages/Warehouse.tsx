@@ -112,13 +112,29 @@ export default function Warehouse() {
     return list;
   }, [t]);
 
+  const myOrdersStatusOrder = (s: string) => {
+    const v = String(s || '').toLowerCase();
+    if (v === 'packing') return 0;
+    if (v === 'packed') return 1;
+    return 2;
+  };
+
   const myOrdersFiltered = useMemo(() => {
-    if (!myOrdersDeliveryFilter) return myOrders;
-    return myOrders.filter(
-      (o) =>
-        String(o?.order_region || '').toLowerCase() === myOrdersDeliveryFilter.toLowerCase() ||
-        String(o?.city || '').toLowerCase() === myOrdersDeliveryFilter.toLowerCase()
-    );
+    const list = !myOrdersDeliveryFilter
+      ? myOrders
+      : myOrders.filter(
+          (o) =>
+            String(o?.order_region || '').toLowerCase() === myOrdersDeliveryFilter.toLowerCase() ||
+            String(o?.city || '').toLowerCase() === myOrdersDeliveryFilter.toLowerCase()
+        );
+    return [...list].sort((a: any, b: any) => {
+      const pa = myOrdersStatusOrder(a?.status);
+      const pb = myOrdersStatusOrder(b?.status);
+      if (pa !== pb) return pa - pb;
+      const ta = a?.created_at ? new Date(a.created_at).getTime() : 0;
+      const tb = b?.created_at ? new Date(b.created_at).getTime() : 0;
+      return tb - ta;
+    });
   }, [myOrders, myOrdersDeliveryFilter]);
 
   const fetchWarehouseOrders = useCallback(async () => {
@@ -157,7 +173,16 @@ export default function Warehouse() {
       if (ignore) return;
       const payload = res.data as any;
       const data = Array.isArray(payload) ? payload : payload?.results || payload?.items || payload?.data || [];
+      const statusOrder = (s: string) => {
+        const v = String(s || '').toLowerCase();
+        if (v === 'packing') return 0;
+        if (v === 'packed') return 1;
+        return 2;
+      };
       const sorted = [...data].sort((a: any, b: any) => {
+        const pa = statusOrder(a?.status);
+        const pb = statusOrder(b?.status);
+        if (pa !== pb) return pa - pb;
         const ta = a?.created_at ? new Date(a.created_at).getTime() : 0;
         const tb = b?.created_at ? new Date(b.created_at).getTime() : 0;
         return tb - ta;
@@ -262,8 +287,9 @@ export default function Warehouse() {
   useEffect(() => {
     (myOrders || []).forEach((o: any) => {
       (o?.items || []).forEach((item: any) => {
-        if (item?.variant_id && !productCache[item.variant_id]) {
-          loadProductByVariantId(item.variant_id);
+        const vid = item?.variant_id != null ? String(item.variant_id) : '';
+        if (vid && !productCache[vid]) {
+          loadProductByVariantId(vid);
         }
       });
     });
@@ -342,7 +368,7 @@ export default function Warehouse() {
                   {orders.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-3 py-3 text-center text-slate-500">
-                        {t('common.empty') || 'Нет заказов'}
+                        {t('common.empty', { defaultValue: 'Нет заказов на данный момент' })}
                       </td>
                     </tr>
                   )}
@@ -365,10 +391,14 @@ export default function Warehouse() {
                             try {
                               setOrdersActionId(o.id);
                               await warehouseAPI.submitOrder(o.id);
-                              // Без перезагрузки страницы: убираем заказ из «Заказы», добавляем в «Мои заказы»
-                              setOrders((prev) => prev.filter((order) => order.id !== o.id));
                               const acceptedOrder = { ...o, status: 'accepted' };
+                              setOrders((prev) => prev.filter((order) => order.id !== o.id));
                               setMyOrders((prev) => [acceptedOrder, ...prev]);
+                              // Сразу подгружаем картинки товаров для нового заказа (чтобы отображались без перезагрузки)
+                              (acceptedOrder?.items || []).forEach((item: any) => {
+                                const vid = item?.variant_id != null ? String(item.variant_id) : '';
+                                if (vid) loadProductByVariantId(vid);
+                              });
                               // В фоне подгружаем полный список «Мои заказы», чтобы новая строка имела все поля (товар, номер заказа)
                               warehouseAPI.getMyOrders({ offset: myOffset, limit: myLimit }).then((res) => {
                                 const payload = res.data as any;
@@ -378,7 +408,15 @@ export default function Warehouse() {
                                   const tb = b?.created_at ? new Date(b.created_at).getTime() : 0;
                                   return tb - ta;
                                 });
-                                setMyOrders(sorted);
+                                setMyOrders((prev) => {
+                                  const serverIds = new Set((sorted || []).map((x: any) => x.id));
+                                  const optimisticOnly = prev.filter((x: any) => x.id && !serverIds.has(x.id));
+                                  const merged = [...(sorted || []), ...optimisticOnly];
+                                  if (optimisticOnly.length > 0) {
+                                    setTimeout(() => fetchMyOrders(), 800);
+                                  }
+                                  return merged.length ? merged : prev;
+                                });
                               }).catch(() => {});
                             } catch (e) {
                               // ignore
@@ -453,7 +491,8 @@ export default function Warehouse() {
                           {Array.isArray(o.items) && o.items.length > 0 ? (
                             <div className="flex flex-col gap-2">
                               {o.items.map((item: any) => {
-                                const info = item?.variant_id ? productCache[item.variant_id] : null;
+                                const vid = item?.variant_id != null ? String(item.variant_id) : '';
+                                const info = vid ? productCache[vid] : null;
                               const img = info?.image;
                               const name = info?.name || item?.product_name || '—';
                               const shortName = name ? truncateText(name, 28) : '—';

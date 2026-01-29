@@ -82,6 +82,7 @@ export const resources = {
           success: 'Заявка успешно отправлена',
           error: 'Произошла ошибка, попробуйте позже',
         },
+        empty: 'Нет заказов на данный момент',
         cart: {
           title: 'Корзина',
           remove: 'Удалить',
@@ -1109,6 +1110,7 @@ export const resources = {
           success: 'So‘rov muvaffaqiyatli yuborildi',
           error: 'Xatolik yuz berdi, keyinroq urinib ko‘ring',
         },
+        empty: "Hozircha buyurtmalar yo'q",
         cart: {
           title: 'Savat',
           remove: "O'chirish",
