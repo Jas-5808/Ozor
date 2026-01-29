@@ -10,6 +10,34 @@ import { splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
 import { SEARCH_PAGE_LIMIT } from "../config/pagination";
 const SEARCH_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
 const NGRAM_SIZE = 3;
+/** Показывать все товары с оценкой совпадения от 5%; выше процент — выше в выдаче. */
+const MIN_MATCH_PERCENT = 5;
+
+/**
+ * Как работает поиск (SearchPage):
+ *
+ * 1. Запрос: пользователь вводит текст в поисковую строку (Header/SearchBar) и переходит на /search?q=...
+ *
+ * 2. Бэкенд (referal-shop):
+ *    - Регистр не важен: запрос и поля сравниваются в lower(), «Телефон» и «телефон» найдут одно и то же.
+ *    - Опечатки: используется расширение PostgreSQL pg_trgm (similarity > 0.15), поэтому похожие
+ *      написания и мелкие опечатки тоже находят товары.
+ *    - Ищет по: name, name_ru, description_uz, description_ru, SKU варианта (LIKE + триграммы).
+ *
+ * 3. Загрузка: API shopAPI.searchProducts(query, { offset, limit }) возвращает товары с сервера.
+ *
+ * 4. Кэш: результаты кэшируются в памяти на 2 мин; повторный тот же запрос — из кэша.
+ *
+ * 5. Релевантность на фронте: для каждого товара считается оценка совпадения 0–100% между
+ *    запросом и названием (product_name, name_ru) по n-граммам (длина 3). Чем выше процент —
+ *    тем выше товар в выдаче.
+ *
+ * 6. Порог показа: показываются все товары с оценкой >= MIN_MATCH_PERCENT (5%). Ниже 5% — скрыты.
+ *
+ * 7. Сортировка: по убыванию релевантности, при равенстве — в наличии выше, затем по цене.
+ *
+ * 8. Подгрузка: «Показать ещё» — следующая порция с API, объединение и пересчёт локально.
+ */
 
 type SearchCacheEntry = {
   time: number;
@@ -33,14 +61,6 @@ export function SearchPage() {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [matchScores, setMatchScores] = useState<Record<string, number>>({});
-  const [minMatchPercent, setMinMatchPercent] = useState<number>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("searchMinMatchPercent");
-      return saved ? Number(saved) : 0;
-    }
-    return 0;
-  });
-  const [hiddenCount, setHiddenCount] = useState<number>(0);
 
   const normalizedQuery = useMemo(() => query.trim(), [query]);
   const queryLower = useMemo(() => normalizedQuery.toLowerCase(), [normalizedQuery]);
@@ -109,8 +129,7 @@ export function SearchPage() {
         return { product, score };
       });
 
-      const filtered = scored.filter((s) => s.score >= minMatchPercent);
-      const hidden = scored.length - filtered.length;
+      const filtered = scored.filter((s) => s.score >= MIN_MATCH_PERCENT);
 
       filtered.sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
@@ -121,9 +140,9 @@ export function SearchPage() {
         return (a.product.price ?? 0) - (b.product.price ?? 0);
       });
 
-      return { products: filtered.map((s) => s.product), scores, hidden };
+      return { products: filtered.map((s) => s.product), scores };
     },
-    [calcMatchPercent, queryLower, minMatchPercent]
+    [calcMatchPercent, queryLower]
   );
 
   useEffect(() => {
@@ -165,8 +184,7 @@ export function SearchPage() {
             scores[key] = score;
             return { product, score };
           });
-          const filtered = scored.filter((s) => s.score >= minMatchPercent);
-          const hidden = scored.length - filtered.length;
+          const filtered = scored.filter((s) => s.score >= MIN_MATCH_PERCENT);
           filtered.sort((a, b) => {
             if (b.score !== a.score) return b.score - a.score;
             const aInStock = (a.product.stock ?? 0) > 0;
@@ -177,7 +195,6 @@ export function SearchPage() {
           });
           setProducts(filtered.map((s) => s.product));
           setMatchScores(scores);
-          setHiddenCount(hidden);
           setOffset(cached.offset);
           setHasMore(cached.hasMore);
           return;
@@ -229,8 +246,7 @@ export function SearchPage() {
           scores[key] = score;
           return { product, score };
         });
-        const filtered = scored.filter((s) => s.score >= minMatchPercent);
-        const hidden = scored.length - filtered.length;
+        const filtered = scored.filter((s) => s.score >= MIN_MATCH_PERCENT);
         filtered.sort((a, b) => {
           if (b.score !== a.score) return b.score - a.score;
           const aInStock = (a.product.stock ?? 0) > 0;
@@ -241,7 +257,6 @@ export function SearchPage() {
         });
         setProducts(filtered.map((s) => s.product));
         setMatchScores(scores);
-        setHiddenCount(hidden);
         setOffset(nextOffset);
         setHasMore(nextHasMore);
       } catch (err: any) {
@@ -260,17 +275,10 @@ export function SearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [normalizedQuery, queryLower, minMatchPercent, calcMatchPercent, t]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("searchMinMatchPercent", minMatchPercent.toString());
-    }
-  }, [minMatchPercent]);
+  }, [normalizedQuery, queryLower, calcMatchPercent, t]);
 
   useEffect(() => {
     if (rawItems.length > 0) {
-      // Пересчитываем локально без зависимости от computeProducts
       const { primaryProducts } = splitProductsIntoPrimaryAndVariants(rawItems);
       const scores: Record<string, number> = {};
       const scored = primaryProducts.map((product) => {
@@ -286,8 +294,7 @@ export function SearchPage() {
         scores[key] = score;
         return { product, score };
       });
-      const filtered = scored.filter((s) => s.score >= minMatchPercent);
-      const hidden = scored.length - filtered.length;
+      const filtered = scored.filter((s) => s.score >= MIN_MATCH_PERCENT);
       filtered.sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         const aInStock = (a.product.stock ?? 0) > 0;
@@ -298,9 +305,8 @@ export function SearchPage() {
       });
       setProducts(filtered.map((s) => s.product));
       setMatchScores(scores);
-      setHiddenCount(hidden);
     }
-  }, [minMatchPercent, rawItems, queryLower, calcMatchPercent]);
+  }, [rawItems, queryLower, calcMatchPercent]);
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore || !normalizedQuery) return;
@@ -353,7 +359,6 @@ export function SearchPage() {
       const computed = computeProducts(merged);
       setProducts(computed.products);
       setMatchScores(computed.scores);
-      setHiddenCount(computed.hidden);
       setOffset(nextOffset);
       setHasMore(nextHasMore);
     } catch (err: any) {
@@ -391,39 +396,12 @@ export function SearchPage() {
       <div className="max-w-6xl mx-auto">
         <div className="mb-6">
           {products.length > 0 && (
-            <>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
-                <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-                  {t("search.foundInCategories", { 
-                    productsCount: products.length, 
-                    categoriesCount: uniqueCategoriesCount 
-                  })}
-                </h1>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-600 whitespace-nowrap">
-                    {t("search.minMatch", "Мин. совпадение")}:
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={minMatchPercent}
-                    onChange={(e) => setMinMatchPercent(Number(e.target.value))}
-                    className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
-                  />
-                  <span className="text-xs font-semibold text-slate-700 min-w-12 text-right">
-                    {minMatchPercent}%
-                  </span>
-                </div>
-              </div>
-              {minMatchPercent > 0 && hiddenCount > 0 && (
-                <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2 inline-block">
-                  {t("search.hiddenProducts", "Скрыто товаров: {count}", { 
-                    count: hiddenCount
-                  })}
-                </div>
-              )}
-            </>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+              {t("search.foundInCategories", {
+                productsCount: products.length,
+                categoriesCount: uniqueCategoriesCount,
+              })}
+            </h1>
           )}
         </div>
 
