@@ -91,6 +91,7 @@ export function Profile() {
     status?: string;
     type?: string;
     description?: string;
+    image?: string;
     created_at: string;
   }>>([]);
   const [statementsLoading, setStatementsLoading] = useState(false);
@@ -1856,6 +1857,7 @@ export function Profile() {
                   <table className="min-w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-200 text-slate-500">
+                        <th className="text-left py-3 px-2">{t("profile.payments.statements.table.image", "Фото")}</th>
                         <th className="text-left py-3 px-2">Дата</th>
                         <th className="text-left py-3 px-2">Сумма</th>
                         <th className="text-left py-3 px-2">Карта</th>
@@ -1867,7 +1869,7 @@ export function Profile() {
                     <tbody>
                       {statements.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="py-8 text-center text-slate-500">
+                          <td colSpan={7} className="py-8 text-center text-slate-500">
                             Нет поручений
                           </td>
                         </tr>
@@ -1878,12 +1880,41 @@ export function Profile() {
                             (s.description || "").trim().toLowerCase() === "string"
                               ? "----"
                               : (s.description || "----");
+                          const cardLast4 = s.card_number ? String(s.card_number).slice(-4) : "----";
+                          const statementImageBase = "https://api.ozar.uz/media";
+                          const imageUrl = s.image
+                            ? (s.image.startsWith("http")
+                              ? s.image
+                              : `${statementImageBase.replace(/\/+$/, "")}/${s.image.replace(/^\/+/, "")}`)
+                            : null;
 
                           return (
                             <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
+                              <td className="py-3 px-2 align-middle">
+                                {imageUrl ? (
+                                  <a
+                                    href={imageUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-block rounded-lg border border-slate-200 overflow-hidden bg-slate-50 hover:opacity-90 transition"
+                                    title={t("profile.payments.statements.viewImage", "Открыть изображение")}
+                                  >
+                                    <img
+                                      src={imageUrl}
+                                      alt=""
+                                      className="h-12 w-12 object-cover"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = "none";
+                                      }}
+                                    />
+                                  </a>
+                                ) : (
+                                  <span className="text-slate-400 text-xs">—</span>
+                                )}
+                              </td>
                               <td className="py-3 px-2 text-slate-600">{new Date(s.created_at).toLocaleString()}</td>
                               <td className="py-3 px-2 font-semibold text-slate-900">{formatPrice(s.amount, "UZS")}</td>
-                              <td className="py-3 px-2 text-slate-600">**** {s.card_number.slice(-4)}</td>
+                              <td className="py-3 px-2 text-slate-600">**** {cardLast4}</td>
                               <td className="py-3 px-2 text-slate-600">{s.card_holder_name}</td>
                               <td className="py-3 px-2">
                                 <span
