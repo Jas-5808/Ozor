@@ -15,6 +15,7 @@ export default function Warehouse() {
   const ordersRef = useRef<HTMLDivElement>(null);
   const addRef = useRef<HTMLDivElement>(null);
   const warehousesRef = useRef<HTMLDivElement>(null);
+  const selectAllCheckboxRef = useRef<HTMLInputElement | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
@@ -25,6 +26,8 @@ export default function Warehouse() {
   const [myOffset, setMyOffset] = useState(0);
   const [myLimit, setMyLimit] = useState(10);
   const [myActionId, setMyActionId] = useState<string | null>(null);
+  const [selectedLabelIds, setSelectedLabelIds] = useState<Set<string>>(new Set());
+  const [printSelectedLoading, setPrintSelectedLoading] = useState(false);
   const [myOrdersDeliveryFilter, setMyOrdersDeliveryFilter] = useState<string>('');
   const [orderStatsByCity, setOrderStatsByCity] = useState<Array<{ order_region: string; count: number }>>([]);
   const [orderStatsLoading, setOrderStatsLoading] = useState(false);
@@ -138,6 +141,56 @@ export default function Warehouse() {
       return tb - ta;
     });
   }, [myOrders, myOrdersDeliveryFilter]);
+
+  const packedOrderIds = useMemo(
+    () => myOrdersFiltered.filter((o) => String(o?.status || '').toLowerCase() === 'packed').map((o) => String(o.id)),
+    [myOrdersFiltered]
+  );
+
+  const toggleSelectLabel = useCallback((id: string) => {
+    setSelectedLabelIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selectAllLabels = useCallback(() => {
+    setSelectedLabelIds((prev) => {
+      const allSelected = packedOrderIds.length > 0 && packedOrderIds.every((id) => prev.has(id));
+      return allSelected ? new Set() : new Set(packedOrderIds);
+    });
+  }, [packedOrderIds]);
+
+  useEffect(() => {
+    const el = selectAllCheckboxRef.current;
+    if (!el) return;
+    const some = selectedLabelIds.size > 0;
+    const all = packedOrderIds.length > 0 && selectedLabelIds.size >= packedOrderIds.length;
+    el.indeterminate = some && !all;
+  }, [selectedLabelIds, packedOrderIds.length]);
+
+  const printSelectedLabels = useCallback(async () => {
+    const ids = Array.from(selectedLabelIds);
+    if (ids.length === 0) {
+      alert(t('admin.warehouse.printSelectNone', { defaultValue: 'Выберите хотя бы один заказ для печати этикеток.' }));
+      return;
+    }
+    setPrintSelectedLoading(true);
+    try {
+      if (ids.length === 1) {
+        await warehouseAPI.printOrderLabelPdf(ids[0]);
+      } else {
+        await warehouseAPI.printOrdersLabelsPdf(ids);
+      }
+    } catch (err: any) {
+      const msg = err?.message || err?.response?.data?.detail || 'Ошибка печати';
+      alert(msg);
+    } finally {
+      setPrintSelectedLoading(false);
+    }
+  }, [selectedLabelIds, t]);
 
   const fetchWarehouseOrders = useCallback(async () => {
     if (activeKey !== 'orders') return;
@@ -515,6 +568,21 @@ export default function Warehouse() {
                   ))}
                 </select>
               </label>
+              {packedOrderIds.length > 0 && (
+                <button
+                    type="button"
+                    disabled={selectedLabelIds.size === 0 || printSelectedLoading}
+                    onClick={printSelectedLabels}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg className="size-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    {printSelectedLoading
+                      ? (t('admin.warehouse.printing', { defaultValue: 'Печать…' }) || 'Печать…')
+                      : t('admin.warehouse.printSelected', { defaultValue: `Распечатать выбранные (${selectedLabelIds.size})` })}
+                </button>
+              )}
             </div>
             {myOrdersLoading && <p className="text-sm text-slate-500">{t('common.loading') || 'Загрузка...'}</p>}
             {myOrdersError && <p className="text-sm text-rose-600">{myOrdersError}</p>}
@@ -523,6 +591,18 @@ export default function Warehouse() {
                 <table className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white text-sm">
                   <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
+                      <th className="px-2 py-2 text-left w-10">
+                        {packedOrderIds.length > 0 ? (
+                          <input
+                            type="checkbox"
+                            ref={selectAllCheckboxRef}
+                            checked={packedOrderIds.length > 0 && packedOrderIds.every((id) => selectedLabelIds.has(id))}
+                            onChange={selectAllLabels}
+                            className="h-4 w-4 rounded border-slate-300"
+                            title={t('admin.warehouse.selectAll', { defaultValue: 'Выбрать все' })}
+                          />
+                        ) : null}
+                      </th>
                       <th className="px-3 py-2 text-left">#</th>
                       <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.order') || 'Заказ'}</th>
                       <th className="px-3 py-2 text-left">{t('admin.ordersPage.table.status') || 'Статус'}</th>
@@ -537,15 +617,29 @@ export default function Warehouse() {
                   <tbody>
                     {myOrdersFiltered.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="px-3 py-3 text-center text-slate-500">
+                        <td colSpan={10} className="px-3 py-3 text-center text-slate-500">
                           {myOrdersDeliveryFilter
                             ? (t('admin.warehouse.filterEmpty', { defaultValue: 'Нет заказов по выбранному адресу доставки' }) || 'Нет заказов по выбранному адресу доставки')
                             : (t('common.empty') || 'Нет заказов')}
                         </td>
                       </tr>
                     )}
-                    {myOrdersFiltered.map((o, idx) => (
+                    {myOrdersFiltered.map((o, idx) => {
+                      const isPacked = String(o?.status || '').toLowerCase() === 'packed';
+                      const oid = String(o.id);
+                      return (
                       <tr key={o.id || idx} className="border-t border-slate-200 hover:bg-slate-50">
+                        <td className="px-2 py-2 w-10">
+                          {isPacked ? (
+                            <input
+                              type="checkbox"
+                              checked={selectedLabelIds.has(oid)}
+                              onChange={() => toggleSelectLabel(oid)}
+                              className="h-4 w-4 rounded border-slate-300"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : null}
+                        </td>
                         <td className="px-3 py-2 text-slate-700">{idx + 1}</td>
                         <td className="px-3 py-2 text-slate-900 font-semibold">{o.order_number || o.id}</td>
                         <td className="px-3 py-2">{renderStatus(o.status)}</td>
@@ -612,7 +706,16 @@ export default function Warehouse() {
                               type="button"
                               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition"
                               title={t('admin.warehouse.actions.print', { defaultValue: 'Распечатать' })}
-                              onClick={() => window.print()}
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                try {
+                                  await warehouseAPI.printOrderLabelPdf(String(o.id));
+                                } catch (err: any) {
+                                  const msg = err?.message || err?.response?.data?.detail || 'Ошибка печати этикетки';
+                                  alert(msg);
+                                }
+                              }}
                             >
                               <svg className="size-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -643,7 +746,8 @@ export default function Warehouse() {
                           )}
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>

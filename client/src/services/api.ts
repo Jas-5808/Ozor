@@ -60,7 +60,8 @@ apiClient.get = ((url, config) => {
     const headersKey = stableStringify(safeConfig.headers ?? {});
     const authToken =
       typeof localStorage !== "undefined" ? localStorage.getItem("access_token") || "" : "";
-    const key = `${baseKey}${url}?${paramsKey}|headers:${headersKey}|token:${authToken}`;
+    const responseType = (safeConfig as { responseType?: string }).responseType ?? "json";
+    const key = `${baseKey}${url}?${paramsKey}|headers:${headersKey}|token:${authToken}|responseType:${responseType}`;
     const cached = inflightGet.get(key);
     if (cached) {
       return cached;
@@ -612,6 +613,117 @@ export const warehouseAPI = {
   getLocations: (
     params: { filter?: string } = {}
   ): Promise<TypedAxiosResponse<any>> => apiClient.get("/warehouse/locations", { params }),
+  /** Скачать PDF-этикетку заказа 10x6 см для склада */
+  downloadOrderLabelPdf: async (orderId: string): Promise<void> => {
+    const res = await apiClient.get(`/warehouse/order/${orderId}/label-pdf`, { responseType: "blob" });
+    const blob = (res as any).data as Blob;
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `order-${orderId}-label.pdf`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  },
+  /** Сразу открыть диалог печати с PDF-этикеткой заказа. Promise резолвится после закрытия диалога печати (afterprint) или по таймауту. */
+  printOrderLabelPdf: (orderId: string): Promise<void> => {
+    const baseUrl = (apiClient.defaults.baseURL || "").replace(/\/$/, "");
+    const fullUrl = `${baseUrl}/warehouse/order/${encodeURIComponent(String(orderId))}/label-pdf`;
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    return fetch(fullUrl, { method: "GET", headers })
+      .then((response) => {
+        if (!response.ok) return response.text().then((text) => { throw new Error(text || `HTTP ${response.status}`); });
+        return response.blob();
+      })
+      .then((blob) => {
+        return new Promise<void>((resolve) => {
+          const url = window.URL.createObjectURL(blob);
+          const iframe = document.createElement("iframe");
+          iframe.style.cssText = "position:fixed;width:0;height:0;border:none;";
+          const cleanup = () => {
+            try {
+              document.body.removeChild(iframe);
+            } catch {
+              // ignore
+            }
+            window.URL.revokeObjectURL(url);
+            resolve();
+          };
+          const PRINT_DONE_TIMEOUT_MS = 60000;
+          let done = false;
+          const onDone = () => {
+            if (done) return;
+            done = true;
+            cleanup();
+          };
+          iframe.onload = () => {
+            const win = iframe.contentWindow;
+            if (win) {
+              win.addEventListener("afterprint", onDone, { once: true });
+              win.print();
+            } else {
+              onDone();
+            }
+            setTimeout(onDone, PRINT_DONE_TIMEOUT_MS);
+          };
+          iframe.src = url;
+          document.body.appendChild(iframe);
+        });
+      });
+  },
+  /** Печать одного PDF с несколькими страницами (1 страница = 1 этикетка заказа). Один диалог печати. */
+  printOrdersLabelsPdf: (orderIds: string[]): Promise<void> => {
+    if (orderIds.length === 0) return Promise.resolve();
+    const baseUrl = (apiClient.defaults.baseURL || "").replace(/\/$/, "");
+    const idsParam = orderIds.map((id) => encodeURIComponent(String(id))).join(",");
+    const fullUrl = `${baseUrl}/warehouse/labels-pdf?order_ids=${idsParam}`;
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    return fetch(fullUrl, { method: "GET", headers })
+      .then((response) => {
+        if (!response.ok) return response.text().then((text) => { throw new Error(text || `HTTP ${response.status}`); });
+        return response.blob();
+      })
+      .then((blob) => {
+        return new Promise<void>((resolve) => {
+          const url = window.URL.createObjectURL(blob);
+          const iframe = document.createElement("iframe");
+          iframe.style.cssText = "position:fixed;width:0;height:0;border:none;";
+          const cleanup = () => {
+            try {
+              document.body.removeChild(iframe);
+            } catch {
+              // ignore
+            }
+            window.URL.revokeObjectURL(url);
+            resolve();
+          };
+          const PRINT_DONE_TIMEOUT_MS = 60000;
+          let done = false;
+          const onDone = () => {
+            if (done) return;
+            done = true;
+            cleanup();
+          };
+          iframe.onload = () => {
+            const win = iframe.contentWindow;
+            if (win) {
+              win.addEventListener("afterprint", onDone, { once: true });
+              win.print();
+            } else {
+              onDone();
+            }
+            setTimeout(onDone, PRINT_DONE_TIMEOUT_MS);
+          };
+          iframe.src = url;
+          document.body.appendChild(iframe);
+        });
+      });
+  },
 };
 
 // Payments
