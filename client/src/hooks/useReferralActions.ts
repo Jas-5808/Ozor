@@ -106,7 +106,8 @@ export function useReferralActions(
         without_operator: Boolean(createModal.agree),
       });
 
-      const link = res.data?.data?.link || makeReferralLink(createModal.product.product_id);
+      // short_link из ответа API — короткий формат https://domain/r/{code}
+      const link = (res.data as { short_link?: string })?.short_link || makeReferralLink(createModal.product.product_id);
       
       setCreateModal((prev) => ({
         ...prev,
