@@ -37,6 +37,7 @@ export default function Warehouse() {
   });
   const [packedPdfCity, setPackedPdfCity] = useState<string>('');
   const [packedPdfLoading, setPackedPdfLoading] = useState(false);
+  const [packedPdfError, setPackedPdfError] = useState<string | null>(null);
   const [locations, setLocations] = useState<any[]>([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [locationsError, setLocationsError] = useState<string | null>(null);
@@ -498,7 +499,7 @@ export default function Warehouse() {
                 <input
                   type="date"
                   value={packedPdfDate}
-                  onChange={(e) => setPackedPdfDate(e.target.value)}
+                  onChange={(e) => { setPackedPdfDate(e.target.value); setPackedPdfError(null); }}
                   className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 />
               </label>
@@ -506,7 +507,7 @@ export default function Warehouse() {
                 <span>{t('admin.warehouse.city', { defaultValue: 'Город:' })}</span>
                 <select
                   value={packedPdfCity}
-                  onChange={(e) => setPackedPdfCity(e.target.value)}
+                  onChange={(e) => { setPackedPdfCity(e.target.value); setPackedPdfError(null); }}
                   className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-w-[140px]"
                 >
                   <option value="">{t('admin.warehouse.selectCity', { defaultValue: 'Выберите город' })}</option>
@@ -522,12 +523,13 @@ export default function Warehouse() {
                 disabled={!packedPdfDate || !packedPdfCity || packedPdfLoading}
                 onClick={async () => {
                   if (!packedPdfDate || !packedPdfCity) return;
+                  setPackedPdfError(null);
                   setPackedPdfLoading(true);
                   try {
                     await warehouseAPI.downloadPackedOrdersPdf(packedPdfCity, packedPdfDate);
                   } catch (err: any) {
                     const msg = getPackedPdfErrorMessage(err) || t('admin.warehouse.downloadPdfError', { defaultValue: 'Ошибка загрузки PDF' });
-                    alert(msg);
+                    setPackedPdfError(msg);
                   } finally {
                     setPackedPdfLoading(false);
                   }
@@ -544,12 +546,13 @@ export default function Warehouse() {
                 disabled={!packedPdfDate || !packedPdfCity || packedPdfLoading}
                 onClick={async () => {
                   if (!packedPdfDate || !packedPdfCity) return;
+                  setPackedPdfError(null);
                   setPackedPdfLoading(true);
                   try {
                     await warehouseAPI.printPackedOrdersPdf(packedPdfCity, packedPdfDate);
                   } catch (err: any) {
                     const msg = getPackedPdfErrorMessage(err) || t('admin.warehouse.printPdfError', { defaultValue: 'Ошибка печати PDF' });
-                    alert(msg);
+                    setPackedPdfError(msg);
                   } finally {
                     setPackedPdfLoading(false);
                   }
@@ -562,6 +565,24 @@ export default function Warehouse() {
                 {packedPdfLoading ? (t('admin.warehouse.printing', { defaultValue: 'Печать…' }) || 'Печать…') : (t('admin.warehouse.printPdf', { defaultValue: 'Печать' }))}
               </button>
             </div>
+            {packedPdfError && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <svg className="size-5 shrink-0 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{packedPdfError}</span>
+                <button
+                  type="button"
+                  onClick={() => setPackedPdfError(null)}
+                  className="ml-auto rounded p-1 text-amber-600 hover:bg-amber-100 hover:text-amber-800"
+                  aria-label={t('common.close', { defaultValue: 'Закрыть' })}
+                >
+                  <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
           {ordersLoading && <p className="text-sm text-slate-500">{t('common.loading') || 'Загрузка...'}</p>}
           {ordersError && <p className="text-sm text-rose-600">{ordersError}</p>}
