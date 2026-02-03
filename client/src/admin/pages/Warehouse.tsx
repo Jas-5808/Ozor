@@ -31,6 +31,12 @@ export default function Warehouse() {
   const [myOrdersDeliveryFilter, setMyOrdersDeliveryFilter] = useState<string>('');
   const [orderStatsByCity, setOrderStatsByCity] = useState<Array<{ order_region: string; count: number }>>([]);
   const [orderStatsLoading, setOrderStatsLoading] = useState(false);
+  const [packedPdfDate, setPackedPdfDate] = useState<string>(() => {
+    const d = new Date();
+    return d.toISOString().slice(0, 10);
+  });
+  const [packedPdfCity, setPackedPdfCity] = useState<string>('');
+  const [packedPdfLoading, setPackedPdfLoading] = useState(false);
   const [locations, setLocations] = useState<any[]>([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [locationsError, setLocationsError] = useState<string | null>(null);
@@ -427,6 +433,19 @@ export default function Warehouse() {
     return city?.name || orderRegion;
   };
 
+  const getPackedPdfErrorMessage = (err: any): string => {
+    const status = err?.response?.status;
+    const detail = err?.response?.data?.detail;
+    const msg = typeof detail === 'string' ? detail : (typeof err?.message === 'string' ? err.message : '');
+    const isNotFound =
+      status === 404 ||
+      (msg && (msg.includes('Заказы не найдены') || msg.includes('не найдены') || msg.includes('не найден') || msg.toLowerCase().includes('not found')));
+    if (isNotFound) {
+      return t('admin.warehouse.packedPdfNoOrders', { defaultValue: 'По выбранной дате и городу заказов не найдено.' });
+    }
+    return msg || '';
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-6 space-y-6">
       {activeKey === 'orders' && (
@@ -464,6 +483,85 @@ export default function Warehouse() {
                 ))}
               </div>
             )}
+          </div>
+          {/* Распечатка по дате: PDF упакованных заказов по городу и дате */}
+          <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+            <div className="mb-2 text-sm font-bold text-slate-700">
+              {t('admin.warehouse.packedPdfByDate', { defaultValue: 'Распечатка по дате' })}
+            </div>
+            <p className="mb-3 text-xs text-slate-600">
+              {t('admin.warehouse.packedPdfByDateHint', { defaultValue: 'Скачать или распечатать PDF упакованных заказов по выбранной дате и городу.' })}
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <span>{t('admin.warehouse.date', { defaultValue: 'Дата:' })}</span>
+                <input
+                  type="date"
+                  value={packedPdfDate}
+                  onChange={(e) => setPackedPdfDate(e.target.value)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <span>{t('admin.warehouse.city', { defaultValue: 'Город:' })}</span>
+                <select
+                  value={packedPdfCity}
+                  onChange={(e) => setPackedPdfCity(e.target.value)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-w-[140px]"
+                >
+                  <option value="">{t('admin.warehouse.selectCity', { defaultValue: 'Выберите город' })}</option>
+                  {orderStatsByCity.map((row) => (
+                    <option key={row.order_region} value={row.order_region}>
+                      {getCityLabel(row.order_region)} ({row.count})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                disabled={!packedPdfDate || !packedPdfCity || packedPdfLoading}
+                onClick={async () => {
+                  if (!packedPdfDate || !packedPdfCity) return;
+                  setPackedPdfLoading(true);
+                  try {
+                    await warehouseAPI.downloadPackedOrdersPdf(packedPdfCity, packedPdfDate);
+                  } catch (err: any) {
+                    const msg = getPackedPdfErrorMessage(err) || t('admin.warehouse.downloadPdfError', { defaultValue: 'Ошибка загрузки PDF' });
+                    alert(msg);
+                  } finally {
+                    setPackedPdfLoading(false);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="size-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                {packedPdfLoading ? (t('common.loading') || 'Загрузка...') : (t('admin.warehouse.downloadPdf', { defaultValue: 'Скачать PDF' }))}
+              </button>
+              <button
+                type="button"
+                disabled={!packedPdfDate || !packedPdfCity || packedPdfLoading}
+                onClick={async () => {
+                  if (!packedPdfDate || !packedPdfCity) return;
+                  setPackedPdfLoading(true);
+                  try {
+                    await warehouseAPI.printPackedOrdersPdf(packedPdfCity, packedPdfDate);
+                  } catch (err: any) {
+                    const msg = getPackedPdfErrorMessage(err) || t('admin.warehouse.printPdfError', { defaultValue: 'Ошибка печати PDF' });
+                    alert(msg);
+                  } finally {
+                    setPackedPdfLoading(false);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 shadow-sm hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="size-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                {packedPdfLoading ? (t('admin.warehouse.printing', { defaultValue: 'Печать…' }) || 'Печать…') : (t('admin.warehouse.printPdf', { defaultValue: 'Печать' }))}
+              </button>
+            </div>
           </div>
           {ordersLoading && <p className="text-sm text-slate-500">{t('common.loading') || 'Загрузка...'}</p>}
           {ordersError && <p className="text-sm text-rose-600">{ordersError}</p>}

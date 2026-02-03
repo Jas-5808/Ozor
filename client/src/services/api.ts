@@ -724,6 +724,64 @@ export const warehouseAPI = {
         });
       });
   },
+  /** Скачать PDF упакованных заказов по городу и дате (GET /warehouse/packed-orders-pdf?city=...&date=...) */
+  downloadPackedOrdersPdf: async (city: string, date: string): Promise<void> => {
+    const res = await apiClient.get("/warehouse/packed-orders-pdf", {
+      params: { city, date },
+      responseType: "blob",
+    });
+    const blob = (res as any).data as Blob;
+    const disposition = (res as any).headers?.["content-disposition"];
+    let filename = `packed-orders-${city}-${date}.pdf`;
+    if (typeof disposition === "string" && disposition.includes("filename=")) {
+      const m = disposition.match(/filename="?([^";\n]+)"?/);
+      if (m?.[1]) filename = m[1].trim();
+    }
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  },
+  /** Печать PDF упакованных заказов по городу и дате */
+  printPackedOrdersPdf: (city: string, date: string): Promise<void> => {
+    const baseUrl = (apiClient.defaults.baseURL || "").replace(/\/$/, "");
+    const fullUrl = `${baseUrl}/warehouse/packed-orders-pdf?city=${encodeURIComponent(city)}&date=${encodeURIComponent(date)}`;
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    return fetch(fullUrl, { method: "GET", headers })
+      .then((response) => {
+        if (!response.ok) return response.text().then((text) => { throw new Error(text || `HTTP ${response.status}`); });
+        return response.blob();
+      })
+      .then((blob) => {
+        return new Promise<void>((resolve) => {
+          const url = window.URL.createObjectURL(blob);
+          const iframe = document.createElement("iframe");
+          iframe.style.cssText = "position:fixed;width:0;height:0;border:none;";
+          const cleanup = () => {
+            try { document.body.removeChild(iframe); } catch { /* ignore */ }
+            window.URL.revokeObjectURL(url);
+            resolve();
+          };
+          let done = false;
+          const onDone = () => { if (done) return; done = true; cleanup(); };
+          iframe.onload = () => {
+            const win = iframe.contentWindow;
+            if (win) {
+              win.addEventListener("afterprint", onDone, { once: true });
+              win.print();
+            } else onDone();
+            setTimeout(onDone, 60000);
+          };
+          iframe.src = url;
+          document.body.appendChild(iframe);
+        });
+      });
+  },
 };
 
 // Payments
