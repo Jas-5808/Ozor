@@ -156,7 +156,9 @@ export default function Orders() {
 
   const [ccPage, setCcPage] = useState(1);
   const [ccLimit, setCcLimit] = useState(20);
-  const [ccStatus, setCcStatus] = useState<string>("pending");
+  const [ccStatus, setCcStatus] = useState<string>("processing");
+  const [ccDateFrom, setCcDateFrom] = useState<string>("");
+  const [ccDateTo, setCcDateTo] = useState<string>("");
   const [ccSortColumn, setCcSortColumn] = useState<string>("time");
   const [ccSortDirection, setCcSortDirection] = useState<"asc" | "desc">("desc");
 
@@ -441,7 +443,10 @@ export default function Orders() {
   const loadCcOrders = useCallback(async () => {
     if (!isSale) return;
     try {
-      const res = await shopAPI.getCallCenterOrders();
+      const params: { date_from?: string; date_to?: string } = {};
+      if (ccDateFrom?.trim()) params.date_from = ccDateFrom.trim();
+      if (ccDateTo?.trim()) params.date_to = ccDateTo.trim();
+      const res = await shopAPI.getCallCenterOrders(params);
       const data = Array.isArray(res.data)
         ? res.data
           : (res.data as any)?.data || [];
@@ -484,7 +489,7 @@ export default function Orders() {
     } catch {
       setCcOrders([]);
     }
-  }, [isSale, loadProductByVariantId]);
+  }, [isSale, ccDateFrom, ccDateTo, loadProductByVariantId]);
 
   useEffect(() => {
     try {
@@ -1020,7 +1025,7 @@ export default function Orders() {
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <div className="font-black text-slate-900">{t("admin.ordersPage.cc.title")}</div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3">
               <select
                 className={selectBase}
                 value={ccStatus}
@@ -1032,11 +1037,10 @@ export default function Orders() {
                 <option value="">{t("admin.ordersPage.cc.statusAll")}</option>
                 {(
                   [
-                    "pending",
+                    "processing",
                     "accepted",
                     "packing",
                     "packed",
-                    "processing",
                     "shipped",
                     "delivered",
                     "cancelled",
@@ -1049,6 +1053,30 @@ export default function Orders() {
                   </option>
                 ))}
               </select>
+              <label className="flex items-center gap-1.5 text-sm text-slate-700">
+                <span>{t("admin.ordersPage.cc.dateFrom", "Дата от")}</span>
+                <input
+                  type="date"
+                  className={inputBase + " w-40"}
+                  value={ccDateFrom}
+                  onChange={(e) => {
+                    setCcPage(1);
+                    setCcDateFrom(e.target.value);
+                  }}
+                />
+              </label>
+              <label className="flex items-center gap-1.5 text-sm text-slate-700">
+                <span>{t("admin.ordersPage.cc.dateTo", "Дата до")}</span>
+                <input
+                  type="date"
+                  className={inputBase + " w-40"}
+                  value={ccDateTo}
+                  onChange={(e) => {
+                    setCcPage(1);
+                    setCcDateTo(e.target.value);
+                  }}
+                />
+              </label>
             </div>
           </div>
 

@@ -395,8 +395,8 @@ export const shopAPI = {
   // Call-center endpoints
   takeOrderCallCenter: (orderId: string): Promise<TypedAxiosResponse<OrderResponse>> =>
     apiClient.post(`/shop/order/call-center`, null, { params: { order_id: orderId } }),
-  getCallCenterOrders: (): Promise<TypedAxiosResponse<OrderResponse[]>> => 
-    apiClient.get(`/shop/orders/call-center`),
+  getCallCenterOrders: (params?: { date_from?: string; date_to?: string }): Promise<TypedAxiosResponse<OrderResponse[]>> =>
+    apiClient.get(`/shop/orders/call-center`, { params }),
   updateOrderLocation: (
     orderId: string,
     payload: {
