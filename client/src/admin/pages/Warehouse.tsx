@@ -116,10 +116,13 @@ export default function Warehouse() {
   const deliveryFilterOptions = useMemo(() => {
     const regions = getRegions();
     const tashkentCity = getLocationById('tashkent');
+    const tashkentRegion = getLocationById('tashkent_region');
+    const otherRegions = regions.filter((r) => r.id !== 'tashkent_region');
     const list = [
       { id: '', name: t('admin.warehouse.filterAll', { defaultValue: 'Все' }) },
-      ...regions,
       ...(tashkentCity ? [tashkentCity] : []),
+      ...(tashkentRegion ? [tashkentRegion] : []),
+      ...otherRegions,
     ];
     return list;
   }, [t]);
@@ -508,12 +511,12 @@ export default function Warehouse() {
                 <select
                   value={packedPdfCity}
                   onChange={(e) => { setPackedPdfCity(e.target.value); setPackedPdfError(null); }}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-w-[140px]"
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-w-[180px]"
                 >
                   <option value="">{t('admin.warehouse.selectCity', { defaultValue: 'Выберите город' })}</option>
-                  {orderStatsByCity.map((row) => (
-                    <option key={row.order_region} value={row.order_region}>
-                      {getCityLabel(row.order_region)} ({row.count})
+                  {deliveryFilterOptions.filter((o) => o.id).map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.name}
                     </option>
                   ))}
                 </select>
