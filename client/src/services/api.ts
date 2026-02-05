@@ -614,7 +614,7 @@ export const warehouseAPI = {
   submitOrder: (orderId: string): Promise<TypedAxiosResponse<any>> =>
     apiClient.post("/warehouse/submit", { order_id: orderId }),
   getMyOrders: (
-    params: { offset?: number; limit?: number } = {}
+    params: { offset?: number; limit?: number; date_from?: string; date_to?: string } = {}
   ): Promise<TypedAxiosResponse<any>> => apiClient.get("/warehouse/my-orders", { params }),
   getLocations: (
     params: { filter?: string } = {}

@@ -29,6 +29,8 @@ export default function Warehouse() {
   const [selectedLabelIds, setSelectedLabelIds] = useState<Set<string>>(new Set());
   const [printSelectedLoading, setPrintSelectedLoading] = useState(false);
   const [myOrdersDeliveryFilter, setMyOrdersDeliveryFilter] = useState<string>('');
+  const [myOrdersDateFrom, setMyOrdersDateFrom] = useState<string>('');
+  const [myOrdersDateTo, setMyOrdersDateTo] = useState<string>('');
   const [orderStatsByCity, setOrderStatsByCity] = useState<Array<{ order_region?: string; city?: string; count: number }>>([]);
   const [orderStatsLoading, setOrderStatsLoading] = useState(false);
   const [packedPdfDate, setPackedPdfDate] = useState<string>(() => {
@@ -248,7 +250,10 @@ export default function Warehouse() {
     try {
       setMyOrdersLoading(true);
       setMyOrdersError(null);
-      const res = await warehouseAPI.getMyOrders({ offset: myOffset, limit: myLimit });
+      const params: { offset: number; limit: number; date_from?: string; date_to?: string } = { offset: myOffset, limit: myLimit };
+      if (myOrdersDateFrom?.trim()) params.date_from = myOrdersDateFrom.trim();
+      if (myOrdersDateTo?.trim()) params.date_to = myOrdersDateTo.trim();
+      const res = await warehouseAPI.getMyOrders(params);
       if (ignore) return;
       const payload = res.data as any;
       const data = Array.isArray(payload) ? payload : payload?.results || payload?.items || payload?.data || [];
@@ -275,7 +280,7 @@ export default function Warehouse() {
     return () => {
       ignore = true;
     };
-  }, [activeKey, myOffset, myLimit]);
+  }, [activeKey, myOffset, myLimit, myOrdersDateFrom, myOrdersDateTo]);
 
   const loadProductByVariantId = useCallback(async (variantId: string) => {
     if (!variantId) return;
@@ -654,7 +659,10 @@ export default function Warehouse() {
                                 if (vid) loadProductByVariantId(vid);
                               });
                               // В фоне подгружаем полный список «Мои заказы», чтобы новая строка имела все поля (товар, номер заказа)
-                              warehouseAPI.getMyOrders({ offset: myOffset, limit: myLimit }).then((res) => {
+                              const myOrdersParams: { offset: number; limit: number; date_from?: string; date_to?: string } = { offset: myOffset, limit: myLimit };
+                              if (myOrdersDateFrom?.trim()) myOrdersParams.date_from = myOrdersDateFrom.trim();
+                              if (myOrdersDateTo?.trim()) myOrdersParams.date_to = myOrdersDateTo.trim();
+                              warehouseAPI.getMyOrders(myOrdersParams).then((res) => {
                                 const payload = res.data as any;
                                 const data = Array.isArray(payload) ? payload : payload?.results || payload?.items || payload?.data || [];
                                 const sorted = [...data].sort((a: any, b: any) => {
@@ -706,6 +714,24 @@ export default function Warehouse() {
                     </option>
                   ))}
                 </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <span>{t('admin.warehouse.dateFrom', { defaultValue: 'Дата от' })}</span>
+                <input
+                  type="date"
+                  value={myOrdersDateFrom}
+                  onChange={(e) => setMyOrdersDateFrom(e.target.value)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <span>{t('admin.warehouse.dateTo', { defaultValue: 'Дата до' })}</span>
+                <input
+                  type="date"
+                  value={myOrdersDateTo}
+                  onChange={(e) => setMyOrdersDateTo(e.target.value)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
               </label>
               {packedOrderIds.length > 0 && (
                 <button
