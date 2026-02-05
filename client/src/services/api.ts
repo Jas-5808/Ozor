@@ -601,9 +601,9 @@ export const warehouseAPI = {
   getOrders: (
     params: { offset?: number; limit?: number; status?: string } = {}
   ): Promise<TypedAxiosResponse<any>> => apiClient.get("/warehouse/orders", { params }),
-  getOrdersStatsByCity: (): Promise<TypedAxiosResponse<Array<{ order_region: string; count: number }>>> =>
+  getOrdersStatsByCity: (): Promise<TypedAxiosResponse<Array<{ order_region?: string; city?: string; count: number }>>> =>
     apiClient.get("/warehouse/orders-stats-by-city"),
-  getRequestsStatsByCity: (): Promise<TypedAxiosResponse<Array<{ order_region: string; count: number }>>> =>
+  getRequestsStatsByCity: (): Promise<TypedAxiosResponse<Array<{ order_region?: string; city?: string; count: number }>>> =>
     apiClient.get("/warehouse/requests-stats-by-city"),
   submitOrder: (orderId: string): Promise<TypedAxiosResponse<any>> =>
     apiClient.post("/warehouse/submit", { order_id: orderId }),

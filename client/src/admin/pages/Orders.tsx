@@ -147,9 +147,9 @@ export default function Orders() {
 
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersLimit, setOrdersLimit] = useState(20);
-  const [orderStatsByCity, setOrderStatsByCity] = useState<Array<{ order_region: string; count: number }>>([]);
+  const [orderStatsByCity, setOrderStatsByCity] = useState<Array<{ order_region?: string; city?: string; count: number }>>([]);
   const [orderStatsLoading, setOrderStatsLoading] = useState(false);
-  const [requestStatsByCity, setRequestStatsByCity] = useState<Array<{ order_region: string; count: number }>>([]);
+  const [requestStatsByCity, setRequestStatsByCity] = useState<Array<{ order_region?: string; city?: string; count: number }>>([]);
   const [requestStatsLoading, setRequestStatsLoading] = useState(false);
 
   const [ccPage, setCcPage] = useState(1);
@@ -642,11 +642,12 @@ export default function Orders() {
           ) : (
             <div className="flex flex-wrap gap-2">
               {orderStatsByCity.map((row) => {
-                const labelKey = LOCATION_OPTIONS.find((o) => o.value === row.order_region)?.labelKey;
-                const label = labelKey ? t(labelKey) : row.order_region;
+                const cityKey = row.city ?? row.order_region ?? '';
+                const labelKey = LOCATION_OPTIONS.find((o) => o.value === cityKey)?.labelKey;
+                const label = labelKey ? t(labelKey) : cityKey;
                 return (
                   <span
-                    key={row.order_region}
+                    key={cityKey}
                     className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm"
                   >
                     <span>{label}</span>
@@ -680,11 +681,12 @@ export default function Orders() {
           ) : (
             <div className="flex flex-wrap gap-2">
               {requestStatsByCity.map((row) => {
-                const labelKey = LOCATION_OPTIONS.find((o) => o.value === row.order_region)?.labelKey;
-                const label = labelKey ? t(labelKey) : row.order_region;
+                const cityKey = row.city ?? row.order_region ?? '';
+                const labelKey = LOCATION_OPTIONS.find((o) => o.value === cityKey)?.labelKey;
+                const label = labelKey ? t(labelKey) : cityKey;
                 return (
                   <span
-                    key={row.order_region}
+                    key={cityKey}
                     className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm"
                   >
                     <span>{label}</span>
@@ -1270,6 +1272,7 @@ export default function Orders() {
                               <button
                                 className={btnIcon + " h-10 w-10 " + btnGreen}
                                 title="Qabul qilish"
+                                disabled={o.status === "accepted" || o.status === "cancelled"}
                                 onClick={async () => {
                                   try {
                                     const cityVal = (o.city || "").trim() || " ";
@@ -1308,6 +1311,7 @@ export default function Orders() {
                               <button
                                 className={btnIcon + " h-10 w-10 " + btnRed}
                                 title="Rad etish"
+                                disabled={o.status === "accepted" || o.status === "cancelled"}
                                 onClick={async () => {
                                   try {
                                     const cityVal = (o.city || "").trim() || " ";

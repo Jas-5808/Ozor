@@ -29,7 +29,7 @@ export default function Warehouse() {
   const [selectedLabelIds, setSelectedLabelIds] = useState<Set<string>>(new Set());
   const [printSelectedLoading, setPrintSelectedLoading] = useState(false);
   const [myOrdersDeliveryFilter, setMyOrdersDeliveryFilter] = useState<string>('');
-  const [orderStatsByCity, setOrderStatsByCity] = useState<Array<{ order_region: string; count: number }>>([]);
+  const [orderStatsByCity, setOrderStatsByCity] = useState<Array<{ order_region?: string; city?: string; count: number }>>([]);
   const [orderStatsLoading, setOrderStatsLoading] = useState(false);
   const [packedPdfDate, setPackedPdfDate] = useState<string>(() => {
     const d = new Date();
@@ -488,17 +488,20 @@ export default function Warehouse() {
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {orderStatsByCity.map((row) => (
-                  <span
-                    key={row.order_region}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm"
-                  >
-                    <span>{getCityLabel(row.order_region)}</span>
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
-                      {row.count}
+                {orderStatsByCity.map((row) => {
+                  const cityKey = row.city ?? row.order_region ?? '';
+                  return (
+                    <span
+                      key={cityKey}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm"
+                    >
+                      <span>{getCityLabel(cityKey)}</span>
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+                        {row.count}
+                      </span>
                     </span>
-                  </span>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
