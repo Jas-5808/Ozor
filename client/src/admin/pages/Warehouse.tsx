@@ -1032,12 +1032,31 @@ export default function Warehouse() {
                     </div>
                   </div>
 
-                  {productInfo.description && (
+                  {productInfo.variants && productInfo.variants.length > 0 && (
                     <div className="mb-6">
-                      <h3 className="mb-2 text-lg font-semibold text-slate-900">Описание</h3>
-                      <p className="whitespace-pre-line text-sm text-slate-600">
-                        {productInfo.description}
-                      </p>
+                      <h3 className="mb-3 text-lg font-semibold text-slate-900">Варианты</h3>
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                        {productInfo.variants.map((variant: any) => (
+                          <div
+                            key={variant.id}
+                            className={`rounded-lg border p-3 ${
+                              variant.id === productModal.variantId
+                                ? "border-indigo-500 bg-indigo-50"
+                                : "border-slate-200 bg-slate-50"
+                            }`}
+                          >
+                            <div className="mb-2 text-sm font-semibold text-slate-900">
+                              {variant.attribute_values?.map((av: any) => av.value).join(", ") || "Вариант"}
+                            </div>
+                            <div className="text-xs text-slate-600">
+                              Цена: {variant.price?.toLocaleString() || 0} сум
+                            </div>
+                            <div className="text-xs text-slate-600">
+                              Остаток: {variant.stock || 0} шт.
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -1080,31 +1099,12 @@ export default function Warehouse() {
                     );
                   })()}
 
-                  {productInfo.variants && productInfo.variants.length > 0 && (
+                  {productInfo.description && (
                     <div className="mb-6">
-                      <h3 className="mb-3 text-lg font-semibold text-slate-900">Варианты</h3>
-                      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                        {productInfo.variants.map((variant: any) => (
-                          <div
-                            key={variant.id}
-                            className={`rounded-lg border p-3 ${
-                              variant.id === productModal.variantId
-                                ? "border-indigo-500 bg-indigo-50"
-                                : "border-slate-200 bg-slate-50"
-                            }`}
-                          >
-                            <div className="mb-2 text-sm font-semibold text-slate-900">
-                              {variant.attribute_values?.map((av: any) => av.value).join(", ") || "Вариант"}
-                            </div>
-                            <div className="text-xs text-slate-600">
-                              Цена: {variant.price?.toLocaleString() || 0} сум
-                            </div>
-                            <div className="text-xs text-slate-600">
-                              Остаток: {variant.stock || 0} шт.
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      <h3 className="mb-2 text-lg font-semibold text-slate-900">Описание</h3>
+                      <p className="whitespace-pre-line text-sm text-slate-600">
+                        {productInfo.description}
+                      </p>
                     </div>
                   )}
                 </div>

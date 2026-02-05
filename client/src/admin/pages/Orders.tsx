@@ -1626,15 +1626,6 @@ export default function Orders() {
                     </div>
                   </div>
 
-                  {productInfo.description && (
-                    <div className="mb-6">
-                      <h3 className="mb-2 text-lg font-semibold text-slate-900">Описание</h3>
-                      <p className="whitespace-pre-line text-sm text-slate-600">
-                        {productInfo.description}
-                      </p>
-                    </div>
-                  )}
-
                   {productInfo.variants && productInfo.variants.length > 0 && (
                     <div className="mb-6">
                       <h3 className="mb-3 text-lg font-semibold text-slate-900">Варианты</h3>
@@ -1660,6 +1651,15 @@ export default function Orders() {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {productInfo.description && (
+                    <div className="mb-6">
+                      <h3 className="mb-2 text-lg font-semibold text-slate-900">Описание</h3>
+                      <p className="whitespace-pre-line text-sm text-slate-600">
+                        {productInfo.description}
+                      </p>
                     </div>
                   )}
                 </div>
