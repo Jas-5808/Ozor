@@ -398,8 +398,14 @@ export const shopAPI = {
   getCallCenterOrders: (): Promise<TypedAxiosResponse<OrderResponse[]>> => 
     apiClient.get(`/shop/orders/call-center`),
   updateOrderLocation: (
-    orderId: string, 
-    payload: { city?: string; region?: string; order_comment?: string; status?: string; }
+    orderId: string,
+    payload: {
+      city?: string;
+      region?: string;
+      order_comment?: string;
+      status?: string;
+      items?: Array<{ order_item_id: string; quantity: number }>;
+    }
   ): Promise<TypedAxiosResponse<OrderResponse>> =>
     apiClient.put(`/shop/order/${orderId}/location`, payload),
   // Referral links

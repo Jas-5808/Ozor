@@ -110,6 +110,8 @@ export default function Orders() {
 
   const [ccComments, setCcComments] = useState<Record<string, string>>({});
   const [ccSchedule, setCcSchedule] = useState<Record<string, string>>({});
+  /** Количество по позициям заказа: orderId -> order_item_id -> quantity (для API location) */
+  const [ccItemQuantities, setCcItemQuantities] = useState<Record<string, Record<string, number>>>({});
   const [ccTick, setCcTick] = useState<number>(0);
   const [ccOverrides, setCcOverrides] = useState<
     Record<string, { city?: string; order_region?: string }>
@@ -462,6 +464,20 @@ export default function Orders() {
           const id = o?.id;
           const apiComment = (o?.order_comment ?? "") as string;
           if (id && next[id] === undefined && apiComment) next[id] = apiComment;
+        });
+        return next;
+      });
+
+      setCcItemQuantities((prev) => {
+        const next = { ...prev };
+        (data || []).forEach((o: any) => {
+          if (!o?.id || !Array.isArray(o.items)) return;
+          next[o.id] = { ...next[o.id] };
+          o.items.forEach((item: any) => {
+            if (item.id != null && next[o.id][item.id] === undefined) {
+              next[o.id][item.id] = Math.max(0, Number(item.quantity) || 1);
+            }
+          });
         });
         return next;
       });
@@ -1057,6 +1073,7 @@ export default function Orders() {
                         t("admin.ordersPage.cc.table.region"),
                     },
                     { key: "total", label: t("admin.ordersPage.cc.table.product") || "Продукт" },
+                    { key: "qty", label: t("admin.ordersPage.cc.table.quantity") || "Кол-во" },
                     { key: "status", label: t("admin.ordersPage.cc.table.status") },
                     { key: "time", label: t("admin.ordersPage.cc.table.time") },
                   ].map((h) => (
@@ -1224,6 +1241,35 @@ export default function Orders() {
                             })()}
                           </td>
 
+                          <td className="px-3 py-3">
+                            <div className="flex flex-col gap-1.5">
+                              {(o.items || []).map((item: any) => {
+                                const itemId = item.id;
+                                const qty = ccItemQuantities[o.id]?.[itemId] ?? item.quantity ?? 1;
+                                return (
+                                  <div key={itemId} className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      className={inputBase + " w-16 text-center"}
+                                      value={qty}
+                                      onChange={(e) => {
+                                        const v = Math.max(1, parseInt(e.target.value, 10) || 1);
+                                        setCcItemQuantities((prev) => ({
+                                          ...prev,
+                                          [o.id]: { ...prev[o.id], [itemId]: v },
+                                        }));
+                                      }}
+                                    />
+                                  </div>
+                                );
+                              })}
+                              {(!o.items || o.items.length === 0) && (
+                                <span className="text-xs text-slate-400">—</span>
+                              )}
+                            </div>
+                          </td>
+
                           <td className="px-3 py-3 text-center">
                             <StatusBadge value={o.status} />
                           </td>
@@ -1278,11 +1324,16 @@ export default function Orders() {
                                     const cityVal = (o.city || "").trim() || " ";
                                     const regionVal = (o.order_region || "").trim() || " ";
                                     const commentVal = (ccComments[o.id] || o.order_comment || "").trim() || " ";
+                                    const items = (o.items || []).map((item: any) => ({
+                                      order_item_id: item.id,
+                                      quantity: ccItemQuantities[o.id]?.[item.id] ?? item.quantity ?? 1,
+                                    }));
                                     const payload = {
                                       city: cityVal,
                                       region: regionVal,
                                       order_comment: commentVal,
                                       status: "accepted",
+                                      items,
                                     };
                                     await shopAPI.updateOrderLocation(o.id, payload);
                                     setNotice({ type: "success", message: "Qabul qilindi (accepted)" });
@@ -1317,11 +1368,16 @@ export default function Orders() {
                                     const cityVal = (o.city || "").trim() || " ";
                                     const regionVal = (o.order_region || "").trim() || " ";
                                     const commentVal = (ccComments[o.id] || o.order_comment || "").trim() || " ";
+                                    const items = (o.items || []).map((item: any) => ({
+                                      order_item_id: item.id,
+                                      quantity: ccItemQuantities[o.id]?.[item.id] ?? item.quantity ?? 1,
+                                    }));
                                     const payload = {
                                       city: cityVal,
                                       region: regionVal,
                                       order_comment: commentVal,
                                       status: "cancelled",
+                                      items,
                                     };
                                     await shopAPI.updateOrderLocation(o.id, payload);
                                     setNotice({ type: "success", message: "Rad etildi (cancelled)" });
@@ -1347,50 +1403,57 @@ export default function Orders() {
                                 </svg>
                               </button>
 
-                              <button
-                                className={btnIcon + " h-10 w-10 " + btnAmber}
-                                title="Kechiktirish"
-                                onClick={async () => {
-                                  try {
-                                    const schedule = (ccSchedule[o.id] || "").trim();
-                                    const baseComment = (ccComments[o.id] || "").trim();
-                                    const iso = schedule ? new Date(schedule).toISOString() : "";
-                                    const human = schedule ? new Date(schedule).toLocaleString() : "";
-                                    const composed = schedule
-                                      ? `${baseComment ? baseComment + " | " : ""}Reja: ${human} [reja_at:${iso}]`
-                                      : baseComment || " ";
+                              {o.status !== "accepted" && o.status !== "cancelled" && (
+                                <button
+                                  className={btnIcon + " h-10 w-10 " + btnAmber}
+                                  title="Kechiktirish"
+                                  onClick={async () => {
+                                    try {
+                                      const schedule = (ccSchedule[o.id] || "").trim();
+                                      const baseComment = (ccComments[o.id] || "").trim();
+                                      const iso = schedule ? new Date(schedule).toISOString() : "";
+                                      const human = schedule ? new Date(schedule).toLocaleString() : "";
+                                      const composed = schedule
+                                        ? `${baseComment ? baseComment + " | " : ""}Reja: ${human} [reja_at:${iso}]`
+                                        : baseComment || " ";
 
-                                    const cityVal = (o.city || "").trim() || " ";
-                                    const regionVal = (o.order_region || "").trim() || " ";
-                                    const payload = {
-                                      city: cityVal,
-                                      region: regionVal,
-                                      order_comment: composed,
-                                      status: "processing",
-                                    };
-                                    await shopAPI.updateOrderLocation(o.id, payload);
-                                    setNotice({ type: "success", message: "Kechiktirildi (processing)" });
-                                    setCcOrders((prev) =>
-                                      prev.map((x) => (x.id === o.id ? { ...x, status: "processing" } : x))
-                                    );
-                                    setTimeout(() => setNotice(null), 2000);
-                                  } catch (e: any) {
-                                    const msg = e?.response?.data?.detail || e?.message || "Xatolik";
-                                    setNotice({ type: "error", message: msg });
-                                    setTimeout(() => setNotice(null), 3000);
-                                  }
-                                }}
-                              >
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.2" />
-                                  <path
-                                    d="M12 6v6l4 2"
-                                    stroke="currentColor"
-                                    strokeWidth="2.2"
-                                    strokeLinecap="round"
-                                  />
-                                </svg>
-                              </button>
+                                      const cityVal = (o.city || "").trim() || " ";
+                                      const regionVal = (o.order_region || "").trim() || " ";
+                                      const items = (o.items || []).map((item: any) => ({
+                                        order_item_id: item.id,
+                                        quantity: ccItemQuantities[o.id]?.[item.id] ?? item.quantity ?? 1,
+                                      }));
+                                      const payload = {
+                                        city: cityVal,
+                                        region: regionVal,
+                                        order_comment: composed,
+                                        status: "processing",
+                                        items,
+                                      };
+                                      await shopAPI.updateOrderLocation(o.id, payload);
+                                      setNotice({ type: "success", message: "Kechiktirildi (processing)" });
+                                      setCcOrders((prev) =>
+                                        prev.map((x) => (x.id === o.id ? { ...x, status: "processing" } : x))
+                                      );
+                                      setTimeout(() => setNotice(null), 2000);
+                                    } catch (e: any) {
+                                      const msg = e?.response?.data?.detail || e?.message || "Xatolik";
+                                      setNotice({ type: "error", message: msg });
+                                      setTimeout(() => setNotice(null), 3000);
+                                    }
+                                  }}
+                                >
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.2" />
+                                    <path
+                                      d="M12 6v6l4 2"
+                                      stroke="currentColor"
+                                      strokeWidth="2.2"
+                                      strokeLinecap="round"
+                                    />
+                                  </svg>
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
