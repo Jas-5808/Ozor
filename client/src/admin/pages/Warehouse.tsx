@@ -107,6 +107,20 @@ export default function Warehouse() {
     );
   };
 
+  /** Формат даты и времени с двоеточиями (DD.MM.YYYY, HH:mm:ss) по локальной таймзоне */
+  const formatOrderDateTime = (iso?: string | null) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hour = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    const sec = String(d.getSeconds()).padStart(2, '0');
+    return `${day}.${month}.${year}, ${hour}:${min}:${sec}`;
+  };
+
   const activeKey: SectionKey = useMemo(() => {
     if (location.pathname.includes('/warehouse/add')) return 'add';
     if (location.pathname.includes('/warehouse/locations')) return 'warehouses';
@@ -617,7 +631,7 @@ export default function Warehouse() {
                         {[o.city, o.order_region].filter(Boolean).join(', ') || '—'}
                       </td>
                       <td className="px-3 py-2 text-slate-700">
-                        {o.created_at ? new Date(o.created_at).toLocaleString('ru-RU') : '—'}
+                        {formatOrderDateTime(o.updated_at ?? o.created_at)}
                       </td>
                       <td className="px-3 py-2">
                         <button
@@ -820,7 +834,7 @@ export default function Warehouse() {
                           {Array.isArray(o.items) ? o.items.reduce((sum: number, it: any) => sum + (it?.quantity || 0), 0) : 0}
                         </td>
                         <td className="px-3 py-2 text-slate-700">
-                          {o.created_at ? new Date(o.created_at).toLocaleString('ru-RU') : '—'}
+                          {formatOrderDateTime(o.updated_at ?? o.created_at)}
                         </td>
                         <td className="px-3 py-2">
                           {String(o.status || '').toLowerCase() === 'packed' ? (
