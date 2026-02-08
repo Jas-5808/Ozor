@@ -87,7 +87,7 @@ export const BANNER_BETWEEN_CONFIG: Record<BreakpointKey, BannerBetweenBreakpoin
     imageMaxHeightPercent: 140,
     imagePaddingPx: 0,
     imageOffsetXpx: 0,
-    imageOffsetYpx: -10,
+    imageOffsetYpx: 0,
   },
   /** 363 – 384 px */
   m363: {
@@ -97,7 +97,7 @@ export const BANNER_BETWEEN_CONFIG: Record<BreakpointKey, BannerBetweenBreakpoin
     imageMaxHeightPercent: 140,
     imagePaddingPx: 0,
     imageOffsetXpx: 0,
-    imageOffsetYpx: -20,
+    imageOffsetYpx: -10,
   },
   /** 385 – 406 px */
   m385: {
