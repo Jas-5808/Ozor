@@ -292,19 +292,21 @@ export const SimpleSliderHeavy: React.FC<Props> = ({ initialSlides }) => {
                     if (isDragging) e.preventDefault();
                   }}
                 >
-                  <div className="relative w-full h-full overflow-hidden rounded-2xl">
-                    <img
-                      src={slide.image}
-                      alt={t("slider.bannerAlt")}
-                      className="w-full h-full object-cover bg-white"
-                      loading={index === 0 ? "eager" : "lazy"}
-                      fetchPriority={index === 0 ? "high" : "low"}
-                      decoding="async"
-                      style={{
-                        opacity: loadingImages.has(slide.id) ? 0.3 : 1,
-                        transition: "opacity 0.3s ease",
-                      }}
-                    />
+                  <div className="relative w-full h-full flex items-center justify-center overflow-hidden rounded-2xl">
+                    <div className="w-[90%] h-[90%] overflow-hidden rounded-2xl">
+                      <img
+                        src={slide.image}
+                        alt={t("slider.bannerAlt")}
+                        className="w-full h-full object-cover bg-white"
+                        loading={index === 0 ? "eager" : "lazy"}
+                        fetchPriority={index === 0 ? "high" : "low"}
+                        decoding="async"
+                        style={{
+                          opacity: loadingImages.has(slide.id) ? 0.3 : 1,
+                          transition: "opacity 0.3s ease",
+                        }}
+                      />
+                    </div>
                     {loadingImages.has(slide.id) && (
                       <div className="absolute inset-0 flex items-center justify-center bg-white/50">
                         <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
@@ -328,20 +330,22 @@ export const SimpleSliderHeavy: React.FC<Props> = ({ initialSlides }) => {
               index === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0"
             }`}
           >
-            <a href={slide.link} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
-              <div className="relative w-full h-full overflow-hidden rounded-2xl">
-                <img
-                  src={slide.image}
-                  alt={t("slider.bannerAlt")}
-                  className="w-full h-full object-cover bg-white"
+            <a href={slide.link} target="_blank" rel="noopener noreferrer" className="flex w-full h-full items-center justify-center">
+              <div className="relative w-full h-full flex items-center justify-center overflow-hidden rounded-2xl">
+                <div className="w-[100%] h-[100%] overflow-hidden rounded-2xl">
+                  <img
+                    src={slide.image}
+                    alt={t("slider.bannerAlt")}
+                    className="w-full h-full object-cover bg-white"
                   loading={index === 0 ? "eager" : "lazy"}
                   fetchPriority={index === 0 ? "high" : "low"}
                   decoding="async"
-                  style={{
-                    opacity: loadingImages.has(slide.id) ? 0.3 : 1,
-                    transition: "opacity 0.3s ease",
-                  }}
-                />
+                    style={{
+                      opacity: loadingImages.has(slide.id) ? 0.3 : 1,
+                      transition: "opacity 0.3s ease",
+                    }}
+                  />
+                </div>
                 {loadingImages.has(slide.id) && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white/50">
                     <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>

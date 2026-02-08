@@ -146,23 +146,31 @@ export function MainPage() {
     return () => { cancelled = true; };
   }, []);
 
+  /** Единый шаблон: заголовок блока, размер от экрана (мобильный меньше). */
+  const sectionTitleClass =
+    "text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold text-slate-900 tracking-tight";
+  /** Единый шаблон: отступы контента блоков. */
+  const sectionPaddingClass = "px-4 sm:px-6 lg:px-8";
+  const sectionPaddingY = "pt-6 sm:pt-8 pb-4";
+  const sectionPaddingBottom = "pb-6 sm:pb-8";
+
   return (
     <div className="min-h-screen bg-[#f7f8fa]">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
-        <div className="space-y-12 sm:space-y-16 lg:space-y-20">
-          {/* 1. Hero Slider */}
+        <div className="space-y-6 sm:space-y-12 lg:space-y-20">
+          {/* 1. Hero Slider — снизу 40px (на lg вместо 80) */}
           <section className="relative rounded-2xl overflow-hidden shadow-sm">
             <SimpleSlider />
           </section>
 
-          {/* 2. Рекомендуемые товары (по галочке в админке) — сразу под слайдером */}
-          <section className="bg-white rounded-2xl shadow-sm border border-slate-100/80 overflow-hidden">
-            <div className="px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-4">
-              <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
+          {/* 2. Рекомендуемые товары (по галочке в админке) — сразу под слайдером; отступ сверху 40px на lg */}
+          <section className="bg-white rounded-2xl shadow-sm border border-slate-100/80 overflow-hidden lg:!mt-10">
+            <div className={`${sectionPaddingClass} ${sectionPaddingY}`}>
+              <h2 className={sectionTitleClass}>
                 {t("home.recommended")}
               </h2>
             </div>
-            <div className="px-4 sm:px-6 lg:px-8 pb-6 sm:pb-8">
+            <div className={`${sectionPaddingClass} ${sectionPaddingBottom}`}>
               {recommendedByFlagLoading ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-5 min-h-[220px] place-items-center">
                   <div className="col-span-full flex justify-center py-12">
@@ -189,7 +197,7 @@ export function MainPage() {
           {/* 4. Динамические блоки по категориям из API recommended-products: фото → блок категории → фото → следующая категория… */}
           {recommendedListLoading ? (
             <section className="bg-white rounded-2xl shadow-sm border border-slate-100/80 overflow-hidden">
-              <div className="px-4 sm:px-6 lg:px-8 py-12 flex justify-center">
+              <div className={`${sectionPaddingClass} py-12 flex justify-center`}>
                 <div className="h-9 w-9 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500" />
               </div>
             </section>
@@ -197,8 +205,8 @@ export function MainPage() {
             recommendedListByCategory.map((group, idx) => (
               <React.Fragment key={group.category.id}>
                 <section className="bg-white rounded-2xl shadow-sm border border-slate-100/80 overflow-hidden">
-                  <div className="px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-4 flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
+                  <div className={`${sectionPaddingClass} ${sectionPaddingY} flex flex-wrap items-center justify-between gap-3`}>
+                    <h2 className={sectionTitleClass}>
                       {group.category.name}
                     </h2>
                     <Link
@@ -208,7 +216,7 @@ export function MainPage() {
                       {t("home.moreProducts")} →
                     </Link>
                   </div>
-                  <div className="px-4 sm:px-6 lg:px-8 pb-6 sm:pb-8">
+                  <div className={`${sectionPaddingClass} ${sectionPaddingBottom}`}>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 items-stretch">
                       {group.products.map((product) => (
                         <ProductCard
@@ -227,8 +235,8 @@ export function MainPage() {
 
           {/* 5. Скидки */}
           <section className="bg-white rounded-2xl shadow-sm border border-slate-100/80 overflow-hidden">
-            <div className="px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
+            <div className={`${sectionPaddingClass} ${sectionPaddingY} flex flex-wrap items-center justify-between gap-3`}>
+              <h2 className={sectionTitleClass}>
                 {t("home.discounts")}
               </h2>
               <Link
@@ -238,7 +246,7 @@ export function MainPage() {
                 {t("home.moreProducts")} →
               </Link>
             </div>
-            <div className="px-4 sm:px-6 lg:px-8 pb-6 sm:pb-8">
+            <div className={`${sectionPaddingClass} ${sectionPaddingBottom}`}>
               {discountsLoading ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-5 min-h-[220px] place-items-center">
                   <div className="col-span-full flex justify-center py-12">
@@ -263,12 +271,12 @@ export function MainPage() {
 
           {/* 6. Все товары */}
           <section className="bg-white rounded-2xl shadow-sm border border-slate-100/80 overflow-hidden">
-            <div className="px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-4">
-              <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
+            <div className={`${sectionPaddingClass} ${sectionPaddingY}`}>
+              <h2 className={sectionTitleClass}>
                 {t("catalog.otherProducts")}
               </h2>
             </div>
-            <div className="px-4 sm:px-6 lg:px-8 pb-6 sm:pb-8">
+            <div className={`${sectionPaddingClass} ${sectionPaddingBottom}`}>
               <ProductsList />
             </div>
           </section>

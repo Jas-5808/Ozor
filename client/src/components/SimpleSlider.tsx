@@ -61,7 +61,7 @@ function preloadImage(url: string) {
 export const SimpleSlider: React.FC = () => {
   const { t } = useTranslation();
   const [slides, setSlides] = useState<Slide[]>([]);
-  const [Heavy, setHeavy] = useState<React.ComponentType<{ initialSlides?: Slide[] }> | null>(null);
+  const [Heavy, setHeavy] = useState<React.ComponentType<{ initialSlides?: Slide[] }> | null>(() => null);
 
   useEffect(() => {
     // 1) Пытаемся показать кэш сразу (ускоряет LCP)
@@ -110,7 +110,7 @@ export const SimpleSlider: React.FC = () => {
     };
 
     const idleId = idle(() => {
-      import("./SimpleSliderHeavy").then((m) => {
+      import("./SliderSwiper").then((m) => {
         setHeavy(() => m.default as any);
       });
     });

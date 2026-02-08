@@ -177,23 +177,23 @@ export interface BannerSliderBreakpointConfig {
   bannerMaxHeightPx: number;
 }
 
-/** Регулировка главной карусели в пикселях по каждому этапу адаптива. (m340–m407 для баннера не используются.) */
+/** Регулировка главной карусели в пикселях по каждому этапу адаптива. (m340–m407 для баннера не используются.) Высота +40px. */
 export const BANNER_SLIDER_CONFIG: Record<BreakpointKey, BannerSliderBreakpointConfig> = {
-  default: { bannerMinHeightPx: 190, bannerMaxHeightPx: 250 },
-  m340: { bannerMinHeightPx: 190, bannerMaxHeightPx: 250 },
-  m363: { bannerMinHeightPx: 190, bannerMaxHeightPx: 250 },
-  m385: { bannerMinHeightPx: 190, bannerMaxHeightPx: 250 },
-  m407: { bannerMinHeightPx: 190, bannerMaxHeightPx: 250 },
-  sm: { bannerMinHeightPx: 220, bannerMaxHeightPx: 300 },
-  md: { bannerMinHeightPx: 280, bannerMaxHeightPx: 360 },
-  lg: { bannerMinHeightPx: 340, bannerMaxHeightPx: 440 },
-  xl: { bannerMinHeightPx: 400, bannerMaxHeightPx: 500 },
-  "2xl": { bannerMinHeightPx: 440, bannerMaxHeightPx: 560 },
+  default: { bannerMinHeightPx: 230, bannerMaxHeightPx: 290 },
+  m340: { bannerMinHeightPx: 230, bannerMaxHeightPx: 290 },
+  m363: { bannerMinHeightPx: 230, bannerMaxHeightPx: 290 },
+  m385: { bannerMinHeightPx: 230, bannerMaxHeightPx: 290 },
+  m407: { bannerMinHeightPx: 230, bannerMaxHeightPx: 290 },
+  sm: { bannerMinHeightPx: 260, bannerMaxHeightPx: 340 },
+  md: { bannerMinHeightPx: 320, bannerMaxHeightPx: 400 },
+  lg: { bannerMinHeightPx: 380, bannerMaxHeightPx: 480 },
+  xl: { bannerMinHeightPx: 440, bannerMaxHeightPx: 540 },
+  "2xl": { bannerMinHeightPx: 480, bannerMaxHeightPx: 600 },
 };
 
-/** Главная карусель — классы из BANNER_SLIDER_CONFIG (для совместимости). default = 340–430 px. */
+/** Главная карусель — классы из BANNER_SLIDER_CONFIG (для совместимости). Высота +40px. */
 export const BANNER_SLIDER_SIZE_CLASS =
-  "aspect-[16/9] min-h-[190px] max-h-[250px] sm:min-h-[220px] sm:max-h-[300px] md:min-h-[280px] md:max-h-[360px] lg:min-h-[340px] lg:max-h-[440px] xl:min-h-[400px] xl:max-h-[500px] 2xl:min-h-[440px] 2xl:max-h-[560px]";
+  "aspect-[16/9] min-h-[230px] max-h-[290px] sm:min-h-[260px] sm:max-h-[340px] md:min-h-[320px] md:max-h-[400px] lg:min-h-[380px] lg:max-h-[480px] xl:min-h-[440px] xl:max-h-[540px] 2xl:min-h-[480px] 2xl:max-h-[600px]";
 
 /** Баннеры между блоками — классы запасные; при использовании useBreakpoint берутся из BANNER_BETWEEN_CONFIG. */
 export const BANNER_BETWEEN_SIZE_CLASS =
