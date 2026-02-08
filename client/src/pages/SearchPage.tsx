@@ -50,7 +50,7 @@ const searchInFlight = new Map<string, Promise<any[]>>();
 export function SearchPage() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [products, setProducts] = useState<Product[]>([]);
   const [rawItems, setRawItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -373,7 +373,7 @@ export function SearchPage() {
                     const key = product.variant_id
                       ? `${product.product_id}-${product.variant_id}`
                       : `${product.product_id}`;
-                    return <ProductCard key={key} product={product} />;
+                    return <ProductCard key={key} product={product} locale={i18n.language} />;
                   })}
                 </div>
               ) : null}
@@ -392,6 +392,7 @@ export function SearchPage() {
                   <ProductCard
                     key={key}
                     product={product}
+                    locale={i18n.language}
                   />
                 );
               })}

@@ -247,6 +247,64 @@ export const shopAPI = {
     limit: number = 12
   ): Promise<TypedAxiosResponse<ProductResponse[]>> =>
     apiClient.get("/shop/products/similar", { params: q ? { q, limit } : { limit } }),
+  /** Товары со скидкой. Кеш 5 мин. */
+  getDiscountProducts: (() => {
+    const cache = new Map<string, { time: number; response: TypedAxiosResponse<ProductResponse[]>; promise: Promise<TypedAxiosResponse<ProductResponse[]>> | null }>();
+    const TTL = 300_000; // 5 min
+    return (params: { offset?: number; limit?: number } = {}): Promise<TypedAxiosResponse<ProductResponse[]>> => {
+      const key = `discounts:${params.offset ?? 0}:${params.limit ?? 12}`;
+      const now = Date.now();
+      const entry = cache.get(key);
+      if (entry?.response && now - entry.time < TTL) return Promise.resolve(entry.response);
+      if (entry?.promise) return entry.promise;
+      const promise = apiClient.get("/shop/products/discounts", { params: { offset: 0, limit: 12, ...params } })
+        .then((res) => {
+          cache.set(key, { time: Date.now(), response: res as TypedAxiosResponse<ProductResponse[]>, promise: null });
+          return res as TypedAxiosResponse<ProductResponse[]>;
+        })
+        .catch((e) => { cache.delete(key); throw e; });
+      cache.set(key, { time: 0, response: null as unknown as TypedAxiosResponse<ProductResponse[]>, promise });
+      return promise;
+    };
+  })(),
+  /** Рекомендуемые по флагу is_recommended. Кеш 5 мин. */
+  getRecommendedProducts: (() => {
+    const cache = new Map<string, { time: number; response: TypedAxiosResponse<ProductResponse[]>; promise: Promise<TypedAxiosResponse<ProductResponse[]>> | null }>();
+    const TTL = 300_000; // 5 min
+    return (params: { offset?: number; limit?: number } = {}): Promise<TypedAxiosResponse<ProductResponse[]>> => {
+      const key = `recommended:${params.offset ?? 0}:${params.limit ?? 12}`;
+      const now = Date.now();
+      const entry = cache.get(key);
+      if (entry?.response && now - entry.time < TTL) return Promise.resolve(entry.response);
+      if (entry?.promise) return entry.promise;
+      const promise = apiClient.get("/shop/products/recommended", { params: { offset: 0, limit: 12, ...params } })
+        .then((res) => {
+          cache.set(key, { time: Date.now(), response: res as TypedAxiosResponse<ProductResponse[]>, promise: null });
+          return res as TypedAxiosResponse<ProductResponse[]>;
+        })
+        .catch((e) => { cache.delete(key); throw e; });
+      cache.set(key, { time: 0, response: null as unknown as TypedAxiosResponse<ProductResponse[]>, promise });
+      return promise;
+    };
+  })(),
+  /** Рекомендуемые по категории (курируемый список). Кеш 5 мин. */
+  getRecommendedProductsList: (() => {
+    let cached: { time: number; response: TypedAxiosResponse<{ items: Array<{ product?: ProductResponse }> }>; promise: Promise<TypedAxiosResponse<{ items: Array<{ product?: ProductResponse }> }>> | null } | null = null;
+    const TTL = 300_000; // 5 min
+    return (): Promise<TypedAxiosResponse<{ items: Array<{ product?: ProductResponse }> }>> => {
+      const now = Date.now();
+      if (cached?.response && now - cached.time < TTL) return Promise.resolve(cached.response);
+      if (cached?.promise) return cached.promise;
+      const promise = apiClient.get("/shop/recommended-products")
+        .then((res) => {
+          cached = { time: Date.now(), response: res as TypedAxiosResponse<{ items: Array<{ product?: ProductResponse }> }>, promise: null };
+          return cached.response;
+        })
+        .catch((e) => { cached = null; throw e; });
+      cached = { time: 0, response: null as unknown as TypedAxiosResponse<{ items: Array<{ product?: ProductResponse }> }>, promise };
+      return promise;
+    };
+  })(),
   getProductById: (id: string): Promise<TypedAxiosResponse<ProductDetailResponse>> => 
     apiClient.get(`/shop/product/${id}`),
   getProductsByIds: (ids: string[]): Promise<TypedAxiosResponse<ProductDetailResponse[]>> =>

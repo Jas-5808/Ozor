@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import apiClient from "../services/api";
+import { BANNER_SLIDER_SIZE_CLASS } from "./sliderBannerSizes";
 
 export interface Slide {
   id: string;
@@ -247,10 +248,7 @@ export const SimpleSliderHeavy: React.FC<Props> = ({ initialSlides }) => {
   }
 
   return (
-    <div
-      className="relative w-full aspect-[16/9] rounded-2xl shadow-2xl overflow-hidden"
-      style={{ minHeight: "192px", maxHeight: "500px" }}
-    >
+    <div className={`relative w-full rounded-2xl shadow-2xl overflow-hidden ${BANNER_SLIDER_SIZE_CLASS}`}>
       {!allImagesLoaded && (
         <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10">
           <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
@@ -298,7 +296,7 @@ export const SimpleSliderHeavy: React.FC<Props> = ({ initialSlides }) => {
                     <img
                       src={slide.image}
                       alt={t("slider.bannerAlt")}
-                      className="w-full h-full object-contain bg-white"
+                      className="w-full h-full object-cover bg-white"
                       loading={index === 0 ? "eager" : "lazy"}
                       fetchPriority={index === 0 ? "high" : "low"}
                       decoding="async"
@@ -335,7 +333,7 @@ export const SimpleSliderHeavy: React.FC<Props> = ({ initialSlides }) => {
                 <img
                   src={slide.image}
                   alt={t("slider.bannerAlt")}
-                  className="w-full h-full object-contain bg-white"
+                  className="w-full h-full object-cover bg-white"
                   loading={index === 0 ? "eager" : "lazy"}
                   fetchPriority={index === 0 ? "high" : "low"}
                   decoding="async"

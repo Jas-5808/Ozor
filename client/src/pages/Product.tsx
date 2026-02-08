@@ -1681,7 +1681,7 @@ export function Product() {
                   const uniqueKey = p.variant_id ? `${p.product_id}_${p.variant_id}` : p.product_id;
                   return (
                     <div key={uniqueKey} className="min-w-0">
-                      <ProductCard product={p} size="compact" />
+                      <ProductCard product={p} size="compact" locale={i18n.language} />
                     </div>
                   );
                 })
@@ -1734,7 +1734,7 @@ export function Product() {
                       const uniqueKey = p.variant_id ? `${p.product_id}_${p.variant_id}` : p.product_id;
                       return (
                         <div key={uniqueKey} className="w-[160px] flex-shrink-0">
-                          <ProductCard product={p} size="compact" />
+                          <ProductCard product={p} size="compact" locale={i18n.language} />
                         </div>
                       );
                     })}
@@ -1747,7 +1747,7 @@ export function Product() {
                     const uniqueKey = p.variant_id ? `${p.product_id}_${p.variant_id}` : p.product_id;
                     return (
                       <div key={uniqueKey} className="min-w-0">
-                        <ProductCard product={p} size="compact" />
+                        <ProductCard product={p} size="compact" locale={i18n.language} />
                       </div>
                     );
                   })}

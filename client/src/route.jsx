@@ -19,6 +19,7 @@ const Cart = lazy(() => import('./pages/Cart'));
 const CatalogPage = lazy(() => import('./pages/CatalogPage').then(m => ({ default: m.CatalogPage })));
 const CategoryPage = lazy(() => import('./pages/CategoryPage').then(m => ({ default: m.CategoryPage })));
 const SearchPage = lazy(() => import('./pages/SearchPage').then(m => ({ default: m.SearchPage })));
+const DiscountsPage = lazy(() => import('./pages/DiscountsPage').then(m => ({ default: m.DiscountsPage })));
 const TestAuth = lazy(() => import('./pages/TestAuth').then(m => ({ default: m.TestAuth })));
 const OrderRequestSent = lazy(() => import('./pages/OrderRequestSent').then(m => ({ default: m.OrderRequestSent })));
 
@@ -274,6 +275,14 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageSkeleton />}>
             <SearchPage />
+          </Suspense>
+        ) 
+      },
+      { 
+        path: "discounts", 
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <DiscountsPage />
           </Suspense>
         ) 
       },

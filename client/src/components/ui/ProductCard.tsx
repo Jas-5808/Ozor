@@ -14,6 +14,8 @@ interface ProductCardProps {
   isLiked?: boolean;
   size?: "default" | "compact";
   matchPercent?: number;
+  /** Текущий язык — передавать, чтобы карточка перерисовывалась при смене языка (описание/название) */
+  locale?: string;
 }
 
 const ProductCardComponent: React.FC<ProductCardProps> = ({
@@ -22,6 +24,7 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
   isLiked = false,
   size = "default",
   matchPercent,
+  locale: _localeProp,
 }) => {
   const { toggleLike, isLiked: isProductLiked } = useApp();
   const { t, i18n } = useTranslation();
@@ -254,15 +257,15 @@ export const ProductCard = memo(ProductCardComponent, (prevProps, nextProps) => 
     prevProps.product.base_price === nextProps.product.base_price &&
     prevProps.product.stock === nextProps.product.stock;
   
+  // При смене языка нужно перерисовывать карточку (локализованные название/описание)
+  if (prevProps.locale !== nextProps.locale) return false;
+
   // Сравниваем остальные props
   const sameProps =
     prevProps.isLiked === nextProps.isLiked &&
     prevProps.size === nextProps.size &&
     prevProps.matchPercent === nextProps.matchPercent;
-  
-  // Компонент не нужно перерисовывать, если все совпадает
-  // useMemo внутри компонента с зависимостью от i18n.language обеспечит
-  // правильное отображение локализованных названий при смене языка
+
   return sameDisplayData && sameProps;
 });
 

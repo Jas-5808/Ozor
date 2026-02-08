@@ -602,6 +602,11 @@ export const resources = {
       home: {
         seoTitle: 'OZAR — онлайн-магазин',
         seoDescription: 'Смартфоны, электроника и техника с доставкой по Узбекистану.',
+        discounts: 'Скидки',
+        recommended: 'Рекомендуемые товары',
+        recommendedSelection: 'Подборка для вас',
+        moreProducts: 'Больше товаров',
+        discountsOnlySubtitle: 'Только товары со скидкой',
       },
       slider: {
         bannerAlt: 'Баннер',
@@ -1655,6 +1660,11 @@ export const resources = {
       home: {
         seoTitle: "OZAR — onlayn do'kon",
         seoDescription: "Smartfonlar, elektronika va maishiy texnika. O'zbekiston bo'ylab tez yetkazib berish.",
+        discounts: 'Chegirmalar',
+        recommended: "Tavsiya etiladigan mahsulotlar",
+        recommendedSelection: "Siz uchun tanlanganlar",
+        moreProducts: "Ko'proq mahsulotlar",
+        discountsOnlySubtitle: "Faqat chegirmadagi mahsulotlar",
       },
       slider: {
         bannerAlt: 'Banner',

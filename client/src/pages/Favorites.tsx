@@ -8,7 +8,7 @@ import { useProductsPaged } from "../hooks/useProducts";
 import useSEO from "../hooks/useSEO";
 
 export function Favorites() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   useSEO({
     title: t("favorites.seoTitle"),
     robots: "noindex,nofollow",
@@ -123,6 +123,7 @@ export function Favorites() {
                       key={uniqueKey}
                       product={product}
                       isLiked={true}
+                      locale={i18n.language}
                     />
                   );
                 })}
@@ -160,7 +161,7 @@ export function Favorites() {
                         : product.product_id;
                       return (
                         <div key={uniqueKey} className="min-w-0">
-                          <ProductCard product={product} size="compact" />
+                          <ProductCard product={product} size="compact" locale={i18n.language} />
                         </div>
                       );
                     })}

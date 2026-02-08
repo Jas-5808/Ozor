@@ -142,7 +142,7 @@ export const SimpleSlider: React.FC = () => {
         <img
           src={first.image}
           alt={t("slider.bannerAlt")}
-          className="w-full h-full object-contain bg-white rounded-2xl"
+          className="w-full h-full object-cover bg-white rounded-2xl"
           loading="eager"
           fetchPriority="high"
           decoding="async"

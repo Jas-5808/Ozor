@@ -739,7 +739,7 @@ export function CategoryPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 items-stretch">
               {displayedProducts.map((product) => (
                 <div key={`${product.product_id}_${product.variant_id || ''}`} className="min-w-0">
-                  <ProductCard product={product} size="compact" />
+                  <ProductCard product={product} size="compact" locale={i18n.language} />
                 </div>
               ))}
             </div>
@@ -759,7 +759,7 @@ export function CategoryPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 items-stretch">
                 {otherDisplayedProducts.map((product) => (
                   <div key={`other_${product.product_id}_${product.variant_id || ''}`} className="min-w-0">
-                    <ProductCard product={product} size="compact" />
+                    <ProductCard product={product} size="compact" locale={i18n.language} />
                   </div>
                 ))}
               </div>

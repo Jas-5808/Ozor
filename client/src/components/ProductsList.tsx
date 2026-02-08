@@ -26,7 +26,7 @@ const ESTIMATED_ROW_HEIGHT = 460;
 const OVERSCAN_ROWS = 4;
 
 const ProductsListComponent: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { products, loading, error, refetch, hasMore, loadMore } = useProductsPaged();
   const listRef = useRef<HTMLDivElement | null>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
@@ -133,11 +133,11 @@ const ProductsListComponent: React.FC = () => {
         : product?.product_id || `product-${absoluteIndex}`;
       return (
         <div key={uniqueKey} ref={absoluteIndex === 0 ? measureRef : undefined}>
-          <ProductCard product={product} onToggleLike={handleToggleLike} />
+          <ProductCard product={product} onToggleLike={handleToggleLike} locale={i18n.language} />
         </div>
       );
     });
-  }, [products, windowed.endIndex, windowed.startIndex, handleToggleLike]);
+  }, [products, windowed.endIndex, windowed.startIndex, handleToggleLike, i18n.language]);
   
   if (loading && products.length === 0) {
     return <SkeletonGrid count={8} columns={4} />;
