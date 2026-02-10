@@ -711,6 +711,7 @@ export const resources = {
         nav: {
           dashboard: 'Dashboard',
           orders: 'Orders',
+          stats: 'Статистика',
           users: 'Users',
           products: 'Products',
           warehouse: 'Warehouse',
@@ -1749,6 +1750,7 @@ export const resources = {
         nav: {
           dashboard: 'Boshqaruv',
           orders: 'Buyurtmalar',
+          stats: 'Statistika',
           users: 'Foydalanuvchilar',
           products: 'Mahsulotlar',
           warehouse: 'Ombor',

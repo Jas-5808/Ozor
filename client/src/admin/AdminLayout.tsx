@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
+import { userAPI } from '../services/api';
 import AdminLanguageSwitcher from './components/AdminLanguageSwitcher';
 import useSEO from '../hooks/useSEO';
 
@@ -83,6 +84,12 @@ const NAV_ICON_MAP = {
       <path d="M8 14h3" />
     </svg>
   ),
+  stats: () => (
+    <svg {...iconProps}>
+      <path d="M3 3v18h18" />
+      <path d="M7 16 12 11l4 4 5-7" />
+    </svg>
+  ),
 } as const;
 
 const ACTION_ICON_MAP = {
@@ -137,9 +144,10 @@ const WAREHOUSE_SUB_ITEMS = [
 const NAV_ITEMS: Array<{ to: string; labelKey: string; icon: NavIconKey; roles: string[]; subItems?: { to: string; labelKey: string }[] }> = [
   { to: '/admin', labelKey: 'admin.nav.dashboard', icon: 'dashboard', roles: ['admin', 'manager', 'seo', 'ceo'] },
   { to: '/admin/orders', labelKey: 'admin.nav.orders', icon: 'orders', roles: ['admin', 'manager', 'seo', 'ceo'] },
+  { to: '/admin/stats', labelKey: 'admin.nav.stats', icon: 'stats', roles: ['ceo'] },
   { to: '/admin/users', labelKey: 'admin.nav.users', icon: 'users', roles: ['admin', 'seo', 'ceo'] },
   { to: '/admin/products', labelKey: 'admin.nav.products', icon: 'products', roles: ['admin', 'manager', 'seo', 'ceo'] },
-  { to: '/admin/warehouse', labelKey: 'admin.nav.warehouse', icon: 'warehouse', roles: ['admin', 'manager', 'seo', 'ceo'], subItems: WAREHOUSE_SUB_ITEMS },
+  { to: '/admin/warehouse', labelKey: 'admin.nav.warehouse', icon: 'warehouse', roles: ['admin', 'manager', 'seo', 'ceo', 'warehouse_manager'], subItems: WAREHOUSE_SUB_ITEMS },
   { to: '/admin/categories', labelKey: 'admin.nav.categories', icon: 'categories', roles: ['admin', 'seo', 'ceo'] },
   { to: '/admin/banners', labelKey: 'admin.nav.banners', icon: 'banners', roles: ['admin', 'seo', 'ceo'] },
   { to: '/admin/audit', labelKey: 'admin.nav.audit', icon: 'audit', roles: ['admin', 'seo', 'ceo'] },
@@ -166,11 +174,45 @@ export default function AdminLayout() {
     return (localStorage.getItem('admin_theme') as 'light' | 'dark') === 'dark' ? 'dark' : 'light';
   });
 
-  const roleSource = profile as any;
-  const roleRaw = String(roleSource?.role || roleSource?.user_role || roleSource?.data?.role || '').toLowerCase();
-  const normalizedRole = roleRaw === 'sale_operator' ? 'sale' : roleRaw || 'admin';
+  const [roleFromApi, setRoleFromApi] = useState<string | null>(null);
+  useEffect(() => {
+    let ignore = false;
+    const resolve = async () => {
+      const fromProfile = (profile as any)?.role ?? (profile as any)?.user_role ?? (profile as any)?.data?.role;
+      if (fromProfile) {
+        if (!ignore) setRoleFromApi(String(fromProfile).toLowerCase().trim());
+        return;
+      }
+      try {
+        const res = await userAPI.getUsersInfo();
+        const data = (res as any)?.data;
+        const payload = data?.data ?? data;
+        const r = payload?.role ?? payload?.user_role;
+        if (!ignore && r) setRoleFromApi(String(r).toLowerCase().trim());
+      } catch {
+        if (!ignore) setRoleFromApi(null);
+      }
+    };
+    resolve();
+    return () => { ignore = true; };
+  }, [profile]);
+
+  const roleRaw = roleFromApi ?? String((profile as any)?.role ?? (profile as any)?.user_role ?? (profile as any)?.data?.role ?? '').toLowerCase().trim();
+  const normalizedRole = (() => {
+    if (!roleRaw) return 'admin';
+    if (roleRaw === 'sale_operator') return 'sale';
+    if (roleRaw === 'warehouse_manager' || roleRaw.replace(/\s+/g, '_') === 'warehouse_manager') return 'warehouse_manager';
+    if (roleRaw === 'ceo') return 'ceo';
+    return roleRaw;
+  })();
 
   const navigation = useMemo(() => {
+    if (normalizedRole === 'warehouse_manager') {
+      return NAV_ITEMS.filter((item) => item.to === '/admin/warehouse');
+    }
+    if (normalizedRole === 'sale') {
+      return NAV_ITEMS.filter((item) => item.to === '/admin/orders');
+    }
     return NAV_ITEMS.filter((item) => item.roles.includes(normalizedRole));
   }, [normalizedRole]);
 
@@ -240,6 +282,13 @@ export default function AdminLayout() {
   ]
     .filter(Boolean)
     .join(' ');
+
+  if (pathname === '/admin' && normalizedRole === 'sale') {
+    return <Navigate to="/admin/orders" replace />;
+  }
+  if (pathname === '/admin' && normalizedRole === 'warehouse_manager') {
+    return <Navigate to="/admin/warehouse" replace />;
+  }
 
   const sidebarClasses = [
     'bg-gradient-to-b from-emerald-900 via-emerald-800 to-teal-700 text-emerald-50 p-6 flex flex-col gap-6 transition-all duration-300 overflow-hidden relative z-20',
@@ -361,14 +410,18 @@ export default function AdminLayout() {
 
         {(isSidebarExpanded || isMobile) && (
           <div className="space-y-3 rounded-2xl bg-white/10 px-3 py-3 text-sm">
-            <div className="flex items-center justify-between">
-              <p>{t('admin.sidebar.processing')}</p>
-              <strong className="text-white">{t('admin.sidebar.processingCount', { count: 12 })}</strong>
-            </div>
-            <div className="flex items-center justify-between">
-              <p>{t('admin.sidebar.newProducts')}</p>
-              <strong className="text-white">{t('admin.sidebar.newProductsCount', { count: 8 })}</strong>
-            </div>
+            {normalizedRole !== 'warehouse_manager' && normalizedRole !== 'sale' && (
+              <>
+                <div className="flex items-center justify-between">
+                  <p>{t('admin.sidebar.processing')}</p>
+                  <strong className="text-white">{t('admin.sidebar.processingCount', { count: 12 })}</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p>{t('admin.sidebar.newProducts')}</p>
+                  <strong className="text-white">{t('admin.sidebar.newProductsCount', { count: 8 })}</strong>
+                </div>
+              </>
+            )}
             <button
               className="w-full rounded-xl bg-white/15 px-3 py-2 text-left font-semibold text-white transition hover:bg-white/25"
               onClick={logout}

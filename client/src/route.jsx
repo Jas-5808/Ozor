@@ -33,6 +33,7 @@ const AdminCategories = lazy(()=> import('./admin/pages/Categories'));
 const AdminBanners = lazy(()=> import('./admin/pages/Banners'));
 const AdminAudit = lazy(()=> import('./admin/pages/Audit'));
 const AdminPayments = lazy(()=> import('./admin/pages/Payments'));
+const AdminStats = lazy(()=> import('./admin/pages/Stats'));
 const AdminLayout = lazy(()=> import('./admin/AdminLayout'));
 const SaleLayout = lazy(()=> import('./admin/SaleLayout'));
 // other admin pages enabled
@@ -330,6 +331,14 @@ export const router = createBrowserRouter([
         element: (
           <RequireRole roles={["sale_operator"]}>
             <Suspense fallback={<AdminSkeleton rows={10} />}><AdminOrders /></Suspense>
+          </RequireRole>
+        )
+      },
+      {
+        path: "/admin/stats",
+        element: (
+          <RequireRole roles={["ceo"]}>
+            <Suspense fallback={<AdminSkeleton rows={10} />}><AdminStats /></Suspense>
           </RequireRole>
         )
       },

@@ -416,6 +416,56 @@ export const shopAPI = {
       amount: number;
     }>
   > => apiClient.get("/admin/dashboard/warehouse-stats"),
+  // Admin stats: operators and warehouse users
+  getOperatorsStats: (params?: { date_from?: string; date_to?: string }): Promise<
+    TypedAxiosResponse<Array<{
+      operator_id: string;
+      first_name: string;
+      last_name: string;
+      total_orders: number;
+      period_orders: number;
+      accepted_count: number;
+      cancelled_count: number;
+      accepted_in_period?: number;
+      cancelled_in_period?: number;
+    }>>
+  > => apiClient.get("/admin/stats/operators", { params }),
+  getWarehouseUsersStats: (params?: { date_from?: string; date_to?: string }): Promise<
+    TypedAxiosResponse<Array<{
+      warehouse_user_id: string;
+      first_name: string;
+      last_name: string;
+      total_orders: number;
+      period_orders: number;
+    }>>
+  > => apiClient.get("/admin/stats/warehouse-users", { params }),
+  getOrdersByOperator: (params: {
+    operator_id: string;
+    date_from?: string;
+    date_to?: string;
+    offset?: number;
+    limit?: number;
+  }): Promise<TypedAxiosResponse<Array<{
+    id: string;
+    order_number: string;
+    total_price: number;
+    status: string;
+    city?: string;
+    order_region?: string;
+    full_name: string;
+    client_phone: string;
+    created_at: string | null;
+    modified_at?: string | null;
+  }>>> =>
+    apiClient.get("/admin/orders/by-operator", { params }),
+  getOrdersByWarehouseUser: (params: {
+    warehouse_user_id: string;
+    date_from?: string;
+    date_to?: string;
+    offset?: number;
+    limit?: number;
+  }): Promise<TypedAxiosResponse<any[]>> =>
+    apiClient.get("/admin/orders/by-warehouse-user", { params }),
   // Extended method for fetching product variants
   getAllProductVariants: (() => {
     const cache = new Map<string, { 
