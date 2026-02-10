@@ -240,7 +240,7 @@ export const uzbekistanLocations: Location[] = [
     coordinates: { lat: 37.6667, lng: 67.7833 }
   },
   {
-    id: 'syrdarya',
+    id: 'sirdarya',
     name: 'Сырдарьинская область',
     type: 'region',
     coordinates: { lat: 40.3833, lng: 68.6667 }
@@ -249,21 +249,21 @@ export const uzbekistanLocations: Location[] = [
     id: 'gulistan',
     name: 'Гулистан',
     type: 'city',
-    parentId: 'syrdarya',
+    parentId: 'sirdarya',
     coordinates: { lat: 40.3833, lng: 68.6667 }
   },
   {
     id: 'yangiyer',
     name: 'Янгиер',
     type: 'city',
-    parentId: 'syrdarya',
+    parentId: 'sirdarya',
     coordinates: { lat: 40.2833, lng: 68.8167 }
   },
   {
     id: 'shirin',
     name: 'Ширин',
     type: 'city',
-    parentId: 'syrdarya',
+    parentId: 'sirdarya',
     coordinates: { lat: 40.2000, lng: 68.7000 }
   },
   {
@@ -398,4 +398,4 @@ export const searchLocations = (query: string): Location[] => {
 };
 export const getLocationById = (id: string): Location | undefined => {
   return uzbekistanLocations.find(location => location.id === id);
-};
+};

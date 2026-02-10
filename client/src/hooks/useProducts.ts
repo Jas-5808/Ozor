@@ -4,7 +4,7 @@ import { shopAPI } from "../services/api";
 import { Product } from "../types";
 import { logger } from "../utils/logger";
 import { handleApiError, getUserFriendlyMessage } from "../utils/errorHandler";
-import { buildDisplayProducts, resolveProductDescription, resolveProductName, splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
+import { buildDisplayProductsFromRawOrder, resolveProductDescription, resolveProductName, splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
 import {
   MAIN_PRODUCTS_API_LIMIT,
   MAIN_PRODUCTS_FIRST_PAGE_LIMIT,
@@ -74,20 +74,11 @@ let pagedLoadMoreInFlight: Promise<void> | null = null;
  */
 export const useProductsPaged = () => {
   const [raw, setRaw] = useState<any[]>([]);
-  const [primaryProducts, setPrimaryProducts] = useState<Product[]>([]);
-  const [variantProducts, setVariantProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState<number>(0);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const locale = getLocaleKey();
-
-  const hydrateFromRaw = useCallback((items: any[]) => {
-    const { primaryProducts: primary, variantProducts: variants } =
-      splitProductsIntoPrimaryAndVariants(items);
-    setPrimaryProducts(primary);
-    setVariantProducts(variants);
-  }, []);
 
   const fetchFirstPage = useCallback(async () => {
     try {
@@ -97,7 +88,6 @@ export const useProductsPaged = () => {
       const now = Date.now();
       if (pagedCache && (now - pagedCache.timestamp) < CACHE_TTL) {
         setRaw(pagedCache.raw);
-        hydrateFromRaw(pagedCache.raw);
         setOffset(pagedCache.offset);
         setHasMore(pagedCache.hasMore);
         setLoading(false);
@@ -112,7 +102,6 @@ export const useProductsPaged = () => {
           timestamp: Number(persisted.timestamp || Date.now()),
         };
         setRaw(pagedCache.raw);
-        hydrateFromRaw(pagedCache.raw);
         setOffset(pagedCache.offset);
         setHasMore(pagedCache.hasMore);
         setLoading(false);
@@ -123,7 +112,6 @@ export const useProductsPaged = () => {
         await pagedInFlight;
         if (pagedCache) {
           setRaw(pagedCache.raw);
-          hydrateFromRaw(pagedCache.raw);
           setOffset(pagedCache.offset);
           setHasMore(pagedCache.hasMore);
         }
@@ -148,7 +136,6 @@ export const useProductsPaged = () => {
         writeMainCache({ raw: data, offset: nextOffset, hasMore: nextHasMore });
 
         setRaw(data);
-        hydrateFromRaw(data);
         setOffset(nextOffset);
         setHasMore(nextHasMore);
       };
@@ -166,7 +153,7 @@ export const useProductsPaged = () => {
     } finally {
       setLoading(false);
     }
-  }, [hydrateFromRaw]);
+  }, []);
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return;
@@ -213,7 +200,6 @@ export const useProductsPaged = () => {
         writeMainCache({ raw: merged, offset: nextOffset, hasMore: nextHasMore });
 
         setRaw(merged);
-        hydrateFromRaw(merged);
         setOffset(nextOffset);
         setHasMore(nextHasMore);
       };
@@ -231,7 +217,7 @@ export const useProductsPaged = () => {
     } finally {
       setLoading(false);
     }
-  }, [hasMore, hydrateFromRaw, loading, offset, raw]);
+  }, [hasMore, loading, offset, raw]);
 
   const refetch = useCallback(() => {
     pagedCache = null;
@@ -260,15 +246,8 @@ export const useProductsPaged = () => {
     };
   }, [fetchFirstPage]);
 
-  useEffect(() => {
-    if (!raw.length) return;
-    hydrateFromRaw(raw);
-  }, [raw, hydrateFromRaw, locale]);
-
-  const products = useMemo(() => {
-    const total = primaryProducts.length + variantProducts.length;
-    return buildDisplayProducts(primaryProducts, variantProducts, total);
-  }, [primaryProducts, variantProducts]);
+  // Порядок товаров = порядок API (raw), без переупорядочивания при подгрузке
+  const products = useMemo(() => buildDisplayProductsFromRawOrder(raw), [raw]);
 
   return {
     products,

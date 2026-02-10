@@ -187,3 +187,51 @@ export const buildDisplayProducts = (
   return result;
 };
 
+/**
+ * Для бесконечной ленты: список в том же порядке, что и ответ API (raw).
+ * Не переупорядочивает товары — новые подгруженные всегда в конце, без "вставки" между старыми.
+ */
+export const buildDisplayProductsFromRawOrder = (rawProducts: any[]): Product[] => {
+  if (!Array.isArray(rawProducts) || rawProducts.length === 0) return [];
+  const result: Product[] = [];
+  for (const item of rawProducts) {
+    if (!item) continue;
+    const price = typeof item?.price === "number" ? item.price : null;
+    const basePrice = typeof item?.base_price === "number" ? item.base_price : null;
+    const effectivePrice = price ?? basePrice;
+    if (effectivePrice === null || Number(effectivePrice) <= 0) continue;
+    result.push(transformProductFromApi(item));
+  }
+  return result;
+};
+
+/**
+ * Размешивает варианты одного товара (одинаковый product_id), чтобы они не шли подряд.
+ * Round-robin по группам product_id: сначала по одному из каждой группы, затем вторые и т.д.
+ * Так на маркетплейсе в сетке не будет трёх браслетов подряд (серебро, золото, чёрный).
+ */
+export const spreadProductVariants = (products: Product[]): Product[] => {
+  if (!Array.isArray(products) || products.length <= 1) return products;
+  const byProductId = new Map<string, Product[]>();
+  for (const p of products) {
+    const id = String(p?.product_id ?? "");
+    if (!byProductId.has(id)) byProductId.set(id, []);
+    byProductId.get(id)!.push(p);
+  }
+  const groups = Array.from(byProductId.values());
+  if (groups.length <= 1) return products;
+  const result: Product[] = [];
+  let index = 0;
+  let hasMore = true;
+  while (hasMore) {
+    hasMore = false;
+    for (const group of groups) {
+      if (index < group.length) {
+        result.push(group[index]);
+        hasMore = true;
+      }
+    }
+    index += 1;
+  }
+  return result;
+};
