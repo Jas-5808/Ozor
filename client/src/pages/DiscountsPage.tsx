@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import useSEO from "../hooks/useSEO";
 import ProductCard from "../components/ui/ProductCard";
+import WindowedGrid from "../components/WindowedGrid";
 import { shopAPI } from "../services/api";
 import { transformProductFromApi } from "../utils/productUtils";
 
@@ -15,6 +16,8 @@ export function DiscountsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const isMobile = typeof window !== "undefined" ? window.innerWidth < 768 : false;
+  const pageSize = isMobile ? 8 : PAGE_SIZE;
 
   useSEO({
     title: t("home.discounts") + " — OZAR",
@@ -26,7 +29,7 @@ export function DiscountsPage() {
     if (append) setLoadingMore(true);
     else setLoading(true);
     try {
-      const res = await shopAPI.getDiscountProducts({ offset: off, limit: PAGE_SIZE });
+      const res = await shopAPI.getDiscountProducts({ offset: off, limit: pageSize });
       const list = Array.isArray(res?.data) ? res.data : [];
       const transformed = list.map(transformProductFromApi);
       if (append) {
@@ -34,7 +37,7 @@ export function DiscountsPage() {
       } else {
         setProducts(transformed);
       }
-      setHasMore(list.length >= PAGE_SIZE);
+      setHasMore(list.length >= pageSize);
       setOffset(off + list.length);
     } catch {
       setHasMore(false);
@@ -42,7 +45,7 @@ export function DiscountsPage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [pageSize]);
 
   useEffect(() => {
     loadPage(0, false);
@@ -89,19 +92,18 @@ export function DiscountsPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 items-stretch">
-              {products.map((product) => (
-                <ProductCard
-                  key={
-                    product.variant_id
-                      ? `${product.product_id}_${product.variant_id}`
-                      : product.product_id
-                  }
-                  product={product}
-                  locale={i18n.language}
-                />
-              ))}
-            </div>
+            <WindowedGrid
+              items={products}
+              gridClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 items-stretch"
+              getItemKey={(product) =>
+                product.variant_id
+                  ? `${product.product_id}_${product.variant_id}`
+                  : product.product_id
+              }
+              renderItem={(product) => (
+                <ProductCard product={product} locale={i18n.language} />
+              )}
+            />
             {hasMore && (
               <div className="flex justify-center mt-8">
                 <button

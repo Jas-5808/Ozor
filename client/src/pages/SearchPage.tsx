@@ -8,6 +8,8 @@ import useSEO from "../hooks/useSEO";
 import SkeletonGrid from "../components/SkeletonGrid";
 import { splitProductsIntoPrimaryAndVariants } from "../utils/productUtils";
 import { SEARCH_PAGE_LIMIT } from "../config/pagination";
+import WindowedGrid from "../components/WindowedGrid";
+import { useInView } from "../hooks/useInView";
 const SEARCH_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
 const NGRAM_SIZE = 3;
 /** Показывать все совпадения с оценкой от 1%; выше процент — выше в выдаче. */
@@ -302,9 +304,12 @@ export function SearchPage() {
 
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   const [similarLoading, setSimilarLoading] = useState(false);
+  const { ref: similarRef, inView: similarInView } = useInView({
+    rootMargin: "400px 0px",
+  });
 
   useEffect(() => {
-    if (!normalizedQuery || loading || products.length > 0) {
+    if (!normalizedQuery || loading || products.length > 0 || !similarInView) {
       setSimilarProducts([]);
       return;
     }
@@ -328,7 +333,7 @@ export function SearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [normalizedQuery, loading, products.length]);
+  }, [normalizedQuery, loading, products.length, similarInView]);
 
   if (!normalizedQuery) {
     return (
@@ -361,46 +366,47 @@ export function SearchPage() {
             <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center mb-8">
               <p className="text-lg text-slate-600">{t("search.noProductsMessage")}</p>
             </div>
-            <div>
+            <div ref={similarRef}>
               <h2 className="text-xl font-semibold text-slate-900 mb-4">{t("search.similarProductsTitle")}</h2>
-              {similarLoading ? (
+              {!similarInView ? (
+                <div className="rounded-2xl border border-gray-200 p-6">
+                  <SkeletonGrid count={8} columns={4} />
+                </div>
+              ) : similarLoading ? (
                 <div className="rounded-2xl border border-gray-200 p-6">
                   <SkeletonGrid count={8} columns={4} />
                 </div>
               ) : similarProducts.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {similarProducts.map((product) => {
-                    const key = product.variant_id
+                <WindowedGrid
+                  items={similarProducts}
+                  gridClassName="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+                  getItemKey={(product) =>
+                    product.variant_id
                       ? `${product.product_id}-${product.variant_id}`
-                      : `${product.product_id}`;
-                    return <ProductCard key={key} product={product} locale={i18n.language} />;
-                  })}
-                </div>
+                      : `${product.product_id}`
+                  }
+                  renderItem={(product) => <ProductCard product={product} locale={i18n.language} />}
+                />
               ) : null}
             </div>
           </>
         )}
 
         {products.length > 0 && (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-              {products.map((product) => {
-                const key = product.variant_id
+          <div className="mb-6">
+            <WindowedGrid
+              items={products}
+              gridClassName="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+              getItemKey={(product) =>
+                product.variant_id
                   ? `${product.product_id}-${product.variant_id}`
-                  : `${product.product_id}`;
-                return (
-                  <ProductCard
-                    key={key}
-                    product={product}
-                    locale={i18n.language}
-                  />
-                );
-              })}
-            </div>
-          </>
+                  : `${product.product_id}`
+              }
+              renderItem={(product) => <ProductCard product={product} locale={i18n.language} />}
+            />
+          </div>
         )}
       </div>
     </div>
   );
 }
-

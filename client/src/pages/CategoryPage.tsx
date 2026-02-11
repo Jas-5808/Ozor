@@ -5,14 +5,19 @@ import { shopAPI } from "../services/api";
 import { useCategoryById, useCategories, getAllSubcategories } from "../hooks/useCategories";
 import { Product } from "../types";
 import ProductCard from "../components/ui/ProductCard";
+import WindowedGrid from "../components/WindowedGrid";
 import useSEO from "../hooks/useSEO";
 import SkeletonGrid from "../components/SkeletonGrid";
 import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
+import { useInView } from "../hooks/useInView";
 import { buildDisplayProducts, splitProductsIntoPrimaryAndVariants, transformProductFromApi } from "../utils/productUtils";
 import { CATEGORY_PAGE_LIMIT } from "../config/pagination";
 import { logger } from "../utils/logger";
 
 const PAGE_SIZE = 20;
+const MOBILE_PAGE_SIZE = 12;
+const MOBILE_INITIAL_TARGET_ITEMS = 30;
+const MOBILE_CATEGORY_PAGE_LIMIT = 40;
 const INITIAL_TARGET_ITEMS = 60; // сколько "сырых" items хотим быстро собрать до первого уверенного UX
 const MAX_CONCURRENT = 3; // чтобы не спамить API
 const CATEGORY_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -40,13 +45,17 @@ export function CategoryPage() {
   const { t, i18n } = useTranslation();
   const { category, loading: categoryLoading, error: categoryError } = useCategoryById(id);
   const { categories } = useCategories();
+  const isMobile = typeof window !== "undefined" ? window.innerWidth < 768 : false;
+  const pageSize = isMobile ? MOBILE_PAGE_SIZE : PAGE_SIZE;
+  const initialTargetItems = isMobile ? MOBILE_INITIAL_TARGET_ITEMS : INITIAL_TARGET_ITEMS;
+  const categoryPageLimit = isMobile ? MOBILE_CATEGORY_PAGE_LIMIT : CATEGORY_PAGE_LIMIT;
   const [rawItems, setRawItems] = useState<any[]>([]);
   const [primaryProducts, setPrimaryProducts] = useState<Product[]>([]);
   const [variantProducts, setVariantProducts] = useState<Product[]>([]);
   const [otherPrimaryProducts, setOtherPrimaryProducts] = useState<Product[]>([]);
   const [otherVariantProducts, setOtherVariantProducts] = useState<Product[]>([]);
-  const [displayedCount, setDisplayedCount] = useState<number>(PAGE_SIZE);
-  const [otherDisplayedCount, setOtherDisplayedCount] = useState<number>(PAGE_SIZE);
+  const [displayedCount, setDisplayedCount] = useState<number>(pageSize);
+  const [otherDisplayedCount, setOtherDisplayedCount] = useState<number>(pageSize);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +64,9 @@ export function CategoryPage() {
   const categoryOffsetsRef = useRef<Record<string, number>>({});
   const categoryHasMoreRef = useRef<Record<string, boolean>>({});
   const categoryQueueRef = useRef<string[]>([]);
+  const { ref: otherProductsRef, inView: otherProductsInView } = useInView({
+    rootMargin: isMobile ? "700px 0px" : "500px 0px",
+  });
   const cacheKey = useMemo(
     () => (id ? `category_products_cache:${id}` : ""),
     [id]
@@ -410,7 +422,7 @@ export function CategoryPage() {
             const offset = Number(categoryOffsetsRef.current[categoryId] || 0);
             try {
               const r = await shopAPI.getProductsByCategory(categoryId, {
-                limit: CATEGORY_PAGE_LIMIT,
+                limit: categoryPageLimit,
                 offset,
               });
               const data = (r as any)?.data ?? r;
@@ -418,7 +430,7 @@ export function CategoryPage() {
               const mapped = items.map((item: any) => ({ ...item, __categoryId: categoryId }));
               const nextOffset = offset + items.length;
               categoryOffsetsRef.current[categoryId] = nextOffset;
-              if (items.length < CATEGORY_PAGE_LIMIT) {
+              if (items.length < categoryPageLimit) {
                 categoryHasMoreRef.current[categoryId] = false;
               }
               return { categoryId, items: mapped, skipped: false, error: false };
@@ -460,7 +472,7 @@ export function CategoryPage() {
       loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [id, mergeRawItems, syncDerivedProducts]); // Убрали categoryIds из зависимостей, используем ref
+  }, [categoryPageLimit, id, mergeRawItems, syncDerivedProducts]); // Убрали categoryIds из зависимостей, используем ref
 
   useEffect(() => {
     let cancelled = false;
@@ -487,8 +499,8 @@ export function CategoryPage() {
         categoryQueueRef.current =
           restored.queue && restored.queue.length ? restored.queue : categoryIds.slice();
         setCategoriesHasMore(categoryQueueRef.current.length > 0);
-        setDisplayedCount(Math.min(PAGE_SIZE, restored.items.length));
-        setOtherDisplayedCount(PAGE_SIZE);
+        setDisplayedCount(Math.min(pageSize, restored.items.length));
+        setOtherDisplayedCount(pageSize);
         loadingMoreRef.current = false;
         setLoading(false);
       } else {
@@ -498,8 +510,8 @@ export function CategoryPage() {
         setVariantProducts([]);
         setOtherPrimaryProducts([]);
         setOtherVariantProducts([]);
-        setDisplayedCount(PAGE_SIZE);
-        setOtherDisplayedCount(PAGE_SIZE);
+        setDisplayedCount(pageSize);
+        setOtherDisplayedCount(pageSize);
         // sync refs too
         rawItemsRef.current = [];
         cursorRef.current = 0;
@@ -523,7 +535,7 @@ export function CategoryPage() {
           setRawItems(merged);
           rawItemsRef.current = merged;
           syncDerivedProducts(merged);
-          setDisplayedCount(Math.min(PAGE_SIZE, merged.length));
+          setDisplayedCount(Math.min(pageSize, merged.length));
           setCursor(Math.max(cursorRef.current || 0, 1));
           cursorRef.current = Math.max(cursorRef.current || 0, 1);
           setLoading(false);
@@ -534,9 +546,9 @@ export function CategoryPage() {
       // 2) Фоллбек: прогрессивно собираем товары по текущей категории и подкатегориям
       try {
         setError(null);
-        // быстро подгружаем первые категории до INITIAL_TARGET_ITEMS
+        // быстро подгружаем первые категории до initialTargetItems
         await fetchNextCategories({
-          minTotalRaw: restored?.items?.length ? Math.max(INITIAL_TARGET_ITEMS, restored.items.length + 1) : INITIAL_TARGET_ITEMS,
+          minTotalRaw: restored?.items?.length ? Math.max(initialTargetItems, restored.items.length + 1) : initialTargetItems,
         });
       } catch (err) {
         if (!cancelled) {
@@ -553,7 +565,7 @@ export function CategoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, category?.id, category?.parent_id, categoryLoading, subcategoriesKey, t, fetchNextCategories, syncDerivedProducts]);
+  }, [id, category?.id, category?.parent_id, categoryLoading, subcategoriesKey, t, fetchNextCategories, syncDerivedProducts, initialTargetItems, pageSize]);
 
   const totalProductsCount = useMemo(() => primaryProducts.length + variantProducts.length, [primaryProducts.length, variantProducts.length]);
   const otherProductsCount = useMemo(
@@ -571,7 +583,7 @@ export function CategoryPage() {
 
     // Если у нас уже есть достаточно товаров — просто увеличиваем окно отображения
     if (displayedCount < totalProductsCount) {
-      setDisplayedCount((prev) => Math.min(prev + PAGE_SIZE, totalProductsCount));
+      setDisplayedCount((prev) => Math.min(prev + pageSize, totalProductsCount));
       return;
     }
 
@@ -579,7 +591,7 @@ export function CategoryPage() {
     if (categoriesHasMore && !loadingMore) {
       void fetchNextCategories();
     }
-  }, [categoriesHasMore, displayedCount, fetchNextCategories, hasMore, loading, loadingMore, totalProductsCount]);
+  }, [categoriesHasMore, displayedCount, fetchNextCategories, hasMore, loading, loadingMore, totalProductsCount, pageSize]);
 
   const { ref: sentinelRef } = useInfiniteScroll({
     hasMore,
@@ -587,6 +599,13 @@ export function CategoryPage() {
     onLoadMore: loadMore,
     threshold: 200,
   });
+
+  useEffect(() => {
+    if (!isMobile) return;
+    if (!otherProductsInView) return;
+    if (!categoriesHasMore || loadingMore) return;
+    void fetchNextCategories();
+  }, [categoriesHasMore, fetchNextCategories, isMobile, loadingMore, otherProductsInView]);
 
   // Infinite scroll для "Boshqa mahsulotlar" (товары из подкатегорий / других подгруженных категорий)
   const hasMoreOther = useMemo(() => {
@@ -599,7 +618,7 @@ export function CategoryPage() {
 
     // 1) сначала просто раскрываем уже загруженные товары
     if (otherDisplayedCount < otherProductsCount) {
-      setOtherDisplayedCount((prev) => Math.min(prev + PAGE_SIZE, otherProductsCount));
+      setOtherDisplayedCount((prev) => Math.min(prev + pageSize, otherProductsCount));
       return;
     }
 
@@ -607,7 +626,7 @@ export function CategoryPage() {
     if (categoriesHasMore && !loadingMore) {
       void fetchNextCategories();
     }
-  }, [categoriesHasMore, fetchNextCategories, hasMoreOther, loading, loadingMore, otherDisplayedCount, otherProductsCount]);
+  }, [categoriesHasMore, fetchNextCategories, hasMoreOther, loading, loadingMore, otherDisplayedCount, otherProductsCount, pageSize]);
 
   const { ref: otherSentinelRef } = useInfiniteScroll({
     hasMore: hasMoreOther,
@@ -736,13 +755,14 @@ export function CategoryPage() {
       ) : (
         <>
           {totalProductsCount > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 items-stretch">
-              {displayedProducts.map((product) => (
-                <div key={`${product.product_id}_${product.variant_id || ''}`} className="min-w-0">
-                  <ProductCard product={product} size="compact" locale={i18n.language} />
-                </div>
-              ))}
-            </div>
+            <WindowedGrid
+              items={displayedProducts}
+              gridClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 items-stretch"
+              getItemKey={(product) => `${product.product_id}_${product.variant_id || ""}`}
+              renderItem={(product) => (
+                <ProductCard product={product} size="compact" locale={i18n.language} />
+              )}
+            />
           )}
           <div ref={sentinelRef} className="h-4 w-full" />
           {hasMore && (
@@ -751,21 +771,40 @@ export function CategoryPage() {
             </div>
           )}
 
-          {otherProductsCount > 0 && (
-            <div className="mt-10">
+          {(otherProductsCount > 0 || categoriesHasMore) && (
+            <div ref={otherProductsRef} className="mt-10">
               <div className="mb-4 text-lg font-semibold text-slate-900">
                 {t("catalog.otherProducts")}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 items-stretch">
-                {otherDisplayedProducts.map((product) => (
-                  <div key={`other_${product.product_id}_${product.variant_id || ''}`} className="min-w-0">
-                    <ProductCard product={product} size="compact" locale={i18n.language} />
-                  </div>
-                ))}
-              </div>
-              <div ref={otherSentinelRef} className="h-4 w-full" />
-              {hasMoreOther && (
-                <div className="flex justify-center items-center py-8">
+              {!otherProductsInView ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 items-stretch">
+                  {Array.from({ length: 6 }).map((_, idx) => (
+                    <div key={idx} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                      <div className="h-28 rounded-xl bg-slate-200/60" />
+                      <div className="mt-3 h-3 w-2/3 rounded bg-slate-200/70" />
+                      <div className="mt-2 h-3 w-1/3 rounded bg-slate-200/70" />
+                    </div>
+                  ))}
+                </div>
+              ) : otherProductsCount > 0 ? (
+                <>
+                  <WindowedGrid
+                    items={otherDisplayedProducts}
+                    gridClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 items-stretch"
+                    getItemKey={(product) => `other_${product.product_id}_${product.variant_id || ""}`}
+                    renderItem={(product) => (
+                      <ProductCard product={product} size="compact" locale={i18n.language} />
+                    )}
+                  />
+                  <div ref={otherSentinelRef} className="h-4 w-full" />
+                  {hasMoreOther && (
+                    <div className="flex justify-center items-center py-8">
+                      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#04734b]"></div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex justify-center items-center py-6">
                   <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#04734b]"></div>
                 </div>
               )}
@@ -778,4 +817,3 @@ export function CategoryPage() {
 }
 
 export default CategoryPage;
-

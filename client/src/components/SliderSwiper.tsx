@@ -1,86 +1,24 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination, Navigation } from "swiper/modules";
-import apiClient from "../services/api";
 import type { Slide } from "./SimpleSliderHeavy";
 import { BANNER_SLIDER_SIZE_CLASS } from "./sliderBannerSizes";
+import { useBanners } from "../hooks/useBanners";
 
 import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/navigation";
 
-const BANNERS_CACHE_KEY = "ozar:banners:v1";
-const BANNERS_CACHE_TTL = 10 * 60 * 1000;
-
-const getBannerBase = () => "https://lab.ozar.uz/media/banners/";
-
-const normalizeBannerUrl = (url: string): string => {
-  if (!url) return "";
-  const base = getBannerBase();
-  const match = url.match(/\/media\/banners\/(.+)$/);
-  const path = match ? match[1] : url;
-  if (url.startsWith(base)) return url;
-  if (/https?:\/\/(ozar\.uz|lab\.ozar\.uz)\/media\/banners\//.test(url)) return `${base}${path}`;
-  return `${base}${path}`;
-};
-
-function readCachedSlides(): Slide[] {
-  try {
-    const raw = localStorage.getItem(BANNERS_CACHE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!parsed?.slides || !Array.isArray(parsed.slides)) return [];
-    if (typeof parsed.time === "number" && Date.now() - parsed.time > BANNERS_CACHE_TTL) return [];
-    return parsed.slides as Slide[];
-  } catch {
-    return [];
-  }
-}
-
-function writeCachedSlides(slides: Slide[]) {
-  try {
-    localStorage.setItem(BANNERS_CACHE_KEY, JSON.stringify({ time: Date.now(), slides }));
-  } catch {
-    // ignore
-  }
-}
-
 type Props = { initialSlides?: Slide[] };
 
 export const SliderSwiper: React.FC<Props> = ({ initialSlides }) => {
   const { t } = useTranslation();
-  const [slides, setSlides] = useState<Slide[]>(() => initialSlides || readCachedSlides());
-
-  useEffect(() => {
-    if (initialSlides?.length) setSlides(initialSlides);
-  }, [initialSlides]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    apiClient
-      .get("/marketing/banners", { signal: controller.signal })
-      .then((res: any) => {
-        const results = res?.data?.results;
-        if (!Array.isArray(results) || results.length === 0) return;
-        const mapped: Slide[] = results
-          .sort((a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0))
-          .map((b: any) => ({
-            id: b?.id || crypto.randomUUID(),
-            title: b?.title || "",
-            subtitle: "",
-            image: normalizeBannerUrl(b?.image || ""),
-            link: b?.link || "#",
-          }))
-          .filter((s) => s.image);
-        if (mapped.length > 0) {
-          setSlides(mapped);
-          writeCachedSlides(mapped);
-        }
-      })
-      .catch(() => {});
-    return () => controller.abort();
-  }, []);
+  const { slides: cachedSlides } = useBanners({ refresh: "idle" });
+  const slides = useMemo(
+    () => (initialSlides && initialSlides.length ? initialSlides : cachedSlides),
+    [initialSlides, cachedSlides]
+  );
 
   if (!slides.length) return null;
 
