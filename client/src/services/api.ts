@@ -416,6 +416,25 @@ export const shopAPI = {
       amount: number;
     }>
   > => apiClient.get("/admin/dashboard/warehouse-stats"),
+  /** Заказы в статусе Упакован, фильтрация по дате обновления (update_at) */
+  getPackedOrdersByUpdatedAt: (params: {
+    date_from: string;
+    date_to: string;
+  }): Promise<
+    TypedAxiosResponse<
+      Array<{
+        id: string;
+        order_number: string;
+        status: string;
+        updated_at: string | null;
+        created_at: string | null;
+        client: string;
+        total_price: number;
+        city?: string | null;
+        order_region?: string | null;
+      }>
+    >
+  > => apiClient.get("/admin/dashboard/packed-orders-by-updated", { params }),
   // Admin stats: operators and warehouse users
   getOperatorsStats: (params?: { date_from?: string; date_to?: string }): Promise<
     TypedAxiosResponse<Array<{

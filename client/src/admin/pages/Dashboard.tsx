@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { shopAPI } from '../../services/api';
+import { shopAPI, orderAPI } from '../../services/api';
 
 export default function Dashboard() {
   const { t } = useTranslation();
@@ -20,6 +20,54 @@ export default function Dashboard() {
   const [recent, setRecent] = useState<
     Array<{ id: string | number; name: string; client: string; status: string; sum: number; date: string }>
   >([]);
+  const getToday = () => {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  };
+  const [packedDateFrom, setPackedDateFrom] = useState(getToday);
+  const [packedDateTo, setPackedDateTo] = useState(getToday);
+  const [packedList, setPackedList] = useState<Array<{
+    id: string;
+    order_number: string;
+    status: string;
+    updated_at: string | null;
+    client: string;
+    total_price: number;
+  }>>([]);
+  const [packedLoading, setPackedLoading] = useState(false);
+  const [packedError, setPackedError] = useState<string | null>(null);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+
+  /** Все статусы заказа (то же API, что у операторов) */
+  const orderStatuses = useMemo(
+    () =>
+      [
+        'pending',
+        'accepted',
+        'packing',
+        'packed',
+        'processing',
+        'shipped',
+        'delivered',
+        'cancelled',
+        'refunded',
+      ] as const,
+    []
+  );
+
+  const handlePackedStatusChange = useCallback(async (orderId: string, newStatus: string) => {
+    if (newStatus === 'packed') return;
+    try {
+      setUpdatingOrderId(orderId);
+      setPackedError(null);
+      await orderAPI.updateStatus(orderId, newStatus);
+      setPackedList((prev) => prev.filter((r) => r.id !== orderId));
+    } catch (e: any) {
+      setPackedError(e?.response?.data?.detail || e?.message || 'Ошибка смены статуса');
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  }, []);
 
   // helper: normalize orders like in Orders.tsx
   const normalizeOrders = (data: any[]) => data.map((o:any)=> {
@@ -143,6 +191,33 @@ export default function Dashboard() {
     return ()=>{ ignore = true; };
   }, []);
 
+  useEffect(() => {
+    let ignore = false;
+    const loadPacked = async () => {
+      if (!packedDateFrom || !packedDateTo) return;
+      try {
+        setPackedLoading(true);
+        setPackedError(null);
+        const res = await shopAPI.getPackedOrdersByUpdatedAt({
+          date_from: packedDateFrom,
+          date_to: packedDateTo,
+        });
+        if (ignore) return;
+        const data = Array.isArray(res.data) ? res.data : (res.data as any)?.results ?? [];
+        setPackedList(data);
+      } catch (e: any) {
+        if (!ignore) {
+          setPackedError(e?.response?.data?.detail || e?.message || t('admin.dashboard.packedByUpdated.error'));
+          setPackedList([]);
+        }
+      } finally {
+        if (!ignore) setPackedLoading(false);
+      }
+    };
+    loadPacked();
+    return () => { ignore = true; };
+  }, [packedDateFrom, packedDateTo, t]);
+
   const badgeClass = useMemo(() => {
     const base = 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold';
     return {
@@ -151,6 +226,7 @@ export default function Dashboard() {
       delivered: `${base} bg-emerald-100 text-emerald-700`,
       confirmed: `${base} bg-blue-100 text-blue-700`,
       packing: `${base} bg-indigo-100 text-indigo-700`,
+      packed: `${base} bg-violet-100 text-violet-700`,
       default: `${base} bg-slate-100 text-slate-700`,
     } as Record<string, string>;
   }, []);
@@ -264,6 +340,114 @@ export default function Dashboard() {
                   </td>
                   <td className="px-3 py-2">{r.sum.toLocaleString()}</td>
                   <td className="px-3 py-2">{r.date}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <span className="block text-sm font-semibold text-slate-900">{t('admin.dashboard.packedByUpdated.title')}</span>
+            <small className="text-slate-500">{t('admin.dashboard.packedByUpdated.subtitle')}</small>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1 text-sm">
+              <span className="text-slate-600">{t('admin.dashboard.packedByUpdated.dateFrom')}</span>
+              <input
+                type="date"
+                value={packedDateFrom}
+                onChange={(e) => setPackedDateFrom(e.target.value)}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+              />
+            </label>
+            <label className="flex items-center gap-1 text-sm">
+              <span className="text-slate-600">{t('admin.dashboard.packedByUpdated.dateTo')}</span>
+              <input
+                type="date"
+                value={packedDateTo}
+                onChange={(e) => setPackedDateTo(e.target.value)}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+              />
+            </label>
+          </div>
+        </div>
+        {packedError && (
+          <p className="mb-2 text-sm text-rose-600">{packedError}</p>
+        )}
+        {packedLoading && (
+          <p className="mb-2 text-sm text-slate-500">{t('admin.dashboard.packedByUpdated.loading')}</p>
+        )}
+        <div className="overflow-hidden rounded-xl border border-slate-200">
+          <table className="w-full border-collapse text-left text-sm">
+            <thead className="bg-slate-100 text-slate-600">
+              <tr>
+                <th className="px-3 py-2">{t('admin.dashboard.packedByUpdated.table.order')}</th>
+                <th className="px-3 py-2">{t('admin.dashboard.packedByUpdated.table.client')}</th>
+                <th className="px-3 py-2">{t('admin.dashboard.packedByUpdated.table.status')}</th>
+                <th className="px-3 py-2">{t('admin.dashboard.packedByUpdated.table.amount')}</th>
+                <th className="px-3 py-2">{t('admin.dashboard.packedByUpdated.table.updatedAt')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {packedList.length === 0 && !packedLoading && (
+                <tr>
+                  <td colSpan={5} className="px-3 py-4 text-center text-slate-500">
+                    {t('admin.dashboard.packedByUpdated.empty')}
+                  </td>
+                </tr>
+              )}
+              {packedList.map((row) => (
+                <tr key={row.id} className="border-t border-slate-200">
+                  <td className="px-3 py-2">
+                    <div className="font-semibold text-slate-900">#{row.id}</div>
+                    <div className="text-[12px] text-slate-500">{row.order_number}</div>
+                  </td>
+                  <td className="px-3 py-2">{row.client}</td>
+                  <td className="px-3 py-2">
+                    <select
+                      value={row.status}
+                      onChange={(e) => handlePackedStatusChange(row.id, e.target.value)}
+                      disabled={updatingOrderId === row.id}
+                      className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm font-medium disabled:opacity-50"
+                    >
+                      {orderStatuses.map((st) => (
+                        <option key={st} value={st}>
+                          {t(`admin.ordersPage.statuses.${st}`, {
+                            defaultValue:
+                              st === 'pending'
+                                ? 'В ожидании'
+                                : st === 'accepted'
+                                  ? 'Принят'
+                                  : st === 'packing'
+                                    ? 'Упаковывается'
+                                    : st === 'packed'
+                                      ? 'Упакован'
+                                      : st === 'processing'
+                                        ? 'В обработке'
+                                        : st === 'shipped'
+                                          ? 'Отправлен'
+                                          : st === 'delivered'
+                                            ? 'Доставлен'
+                                            : st === 'cancelled'
+                                              ? 'Отменён'
+                                              : st === 'refunded'
+                                                ? 'Возврат средств'
+                                                : st,
+                          })}
+                        </option>
+                      ))}
+                    </select>
+                    {updatingOrderId === row.id && (
+                      <span className="ml-1 text-xs text-slate-500">...</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">{row.total_price.toLocaleString()}</td>
+                  <td className="px-3 py-2">
+                    {row.updated_at ? new Date(row.updated_at).toLocaleString('ru-RU') : '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>
