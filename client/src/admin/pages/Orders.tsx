@@ -124,6 +124,8 @@ export default function Orders() {
   });
   const [regions, setRegions] = useState<Array<{ id: string; name: string; postal_code: string }>>([]);
   const [citiesByRegion, setCitiesByRegion] = useState<Record<string, Array<{ id: string; name: string; postal_code: string }>>>({});
+  const [ccValidationErrors, setCcValidationErrors] = useState<Record<string, { region: boolean; city: boolean }>>({});
+  const [ccValidationShakeTick, setCcValidationShakeTick] = useState(0);
 
   // Кэш для информации о продуктах по variant_id
   const [productCache, setProductCache] = useState<
@@ -684,6 +686,16 @@ export default function Orders() {
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <style>{`
+        @keyframes cc-shake {
+          0%, 100% { transform: translateX(0); }
+          20%, 60% { transform: translateX(-6px); }
+          40%, 80% { transform: translateX(6px); }
+        }
+        .cc-shake-run {
+          animation: cc-shake 0.45s ease-in-out;
+        }
+      `}</style>
       {/* Статистика по городам (актуальные заказы) */}
       {hasAccess && (
         <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
@@ -1227,9 +1239,21 @@ export default function Orders() {
                           <td className="px-3 py-3">
                             <div className="flex flex-col gap-2 min-w-[180px]">
                               <select
-                                className={selectBase}
+                                key={ccValidationErrors[o.id]?.region ? `region-shake-${o.id}-${ccValidationShakeTick}` : `region-${o.id}`}
+                                className={
+                                  selectBase +
+                                  (ccValidationErrors[o.id]?.region ? " border-red-500 ring-2 ring-red-200 cc-shake-run" : "")
+                                }
                                 value={ccOverrides[o.id]?.region_id ?? o.region_id ?? ""}
                                 onChange={(e) => {
+                                  setCcValidationErrors((prev) => {
+                                    const next = { ...prev };
+                                    if (next[o.id]) {
+                                      next[o.id] = { ...next[o.id], region: false };
+                                      if (!next[o.id].region && !next[o.id].city) delete next[o.id];
+                                    }
+                                    return next;
+                                  });
                                   const regionId = e.target.value;
                                   if (regionId) loadCitiesForRegion(regionId);
                                   setCcOrders((prev) =>
@@ -1247,9 +1271,21 @@ export default function Orders() {
                                 ))}
                               </select>
                               <select
-                                className={selectBase}
+                                key={ccValidationErrors[o.id]?.city ? `city-shake-${o.id}-${ccValidationShakeTick}` : `city-${o.id}`}
+                                className={
+                                  selectBase +
+                                  (ccValidationErrors[o.id]?.city ? " border-red-500 ring-2 ring-red-200 cc-shake-run" : "")
+                                }
                                 value={ccOverrides[o.id]?.order_city_id ?? o.order_city_id ?? ""}
                                 onChange={(e) => {
+                                  setCcValidationErrors((prev) => {
+                                    const next = { ...prev };
+                                    if (next[o.id]) {
+                                      next[o.id] = { ...next[o.id], city: false };
+                                      if (!next[o.id].region && !next[o.id].city) delete next[o.id];
+                                    }
+                                    return next;
+                                  });
                                   const orderCityId = e.target.value;
                                   setCcOrders((prev) =>
                                     prev.map((x) => (x.id !== o.id ? x : { ...x, order_city_id: orderCityId }))
@@ -1418,6 +1454,26 @@ export default function Orders() {
                                     const ov = ccOverrides[o.id] || {};
                                     const regionId = ov.region_id ?? o.region_id;
                                     const orderCityId = ov.order_city_id ?? o.order_city_id;
+                                    if (!regionId || !orderCityId) {
+                                      setCcValidationErrors((prev) => ({
+                                        ...prev,
+                                        [o.id]: { region: !regionId, city: !orderCityId },
+                                      }));
+                                      setCcValidationShakeTick((t) => t + 1);
+                                      setTimeout(() => {
+                                        setCcValidationErrors((prev) => {
+                                          const next = { ...prev };
+                                          delete next[o.id];
+                                          return next;
+                                        });
+                                      }, 3000);
+                                      return;
+                                    }
+                                    setCcValidationErrors((prev) => {
+                                      const next = { ...prev };
+                                      delete next[o.id];
+                                      return next;
+                                    });
                                     const commentVal = (ccComments[o.id] || o.order_comment || "").trim() || " ";
                                     const items = (o.items || []).map((item: any) => ({
                                       order_item_id: item.id,

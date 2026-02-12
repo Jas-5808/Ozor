@@ -890,6 +890,7 @@ export const resources = {
             commentPlaceholder: 'Комментарий',
             takeSuccess: 'Заказ принят (call-center).',
             regionPlaceholder: 'Регион',
+            requiredRegionAndCity: 'Регион и город обязательны',
           },
         },
         dashboard: {
@@ -1946,6 +1947,7 @@ export const resources = {
             commentPlaceholder: 'Kommentariya',
             takeSuccess: 'Buyurtma tanlandi (call-center).',
             regionPlaceholder: 'Hudud',
+            requiredRegionAndCity: 'Hudud va Shahar majburiy',
           },
         },
         dashboard: {
