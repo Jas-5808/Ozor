@@ -470,9 +470,39 @@ export default function Warehouse() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-6 space-y-6">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900 p-3 sm:p-4 md:p-6 space-y-6">
+      <style>{`
+        @media (max-width: 767px) {
+          .wh-my-orders-table-mobile thead { display: none; }
+          .wh-my-orders-table-mobile tbody tr {
+            display: block;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+          }
+          .wh-my-orders-table-mobile tbody td {
+            display: block;
+            border: none;
+            padding: 0.5rem 0;
+            width: 100%;
+          }
+          .wh-my-orders-table-mobile tbody td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            font-size: 0.7rem;
+            color: #64748b;
+            display: block;
+            margin-bottom: 0.25rem;
+          }
+          .wh-my-orders-table-mobile tbody td:first-child { padding-top: 0; }
+          .wh-my-orders-table-mobile tbody td[data-label=""]::before { display: none; }
+        }
+      `}</style>
       {activeKey === 'orders' && (
-        <section ref={ordersRef} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <section ref={ordersRef} className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm">
           <h2 className="mb-2 text-lg font-bold">
             {t('admin.warehouse.nav.orders', { defaultValue: 'Заказы' })}
           </h2>
@@ -699,14 +729,14 @@ export default function Warehouse() {
             </div>
           )}
           <div className="mt-6">
-            <div className="mb-3 flex flex-wrap items-center gap-3">
+            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <h3 className="text-base font-bold text-slate-900">{t('admin.warehouse.nav.orders', { defaultValue: 'Мои заказы' })}</h3>
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <span>{t('admin.warehouse.filterByDelivery', { defaultValue: 'Адрес доставки:' })}</span>
+              <label className="flex flex-col gap-1 text-sm text-slate-600 sm:flex-row sm:items-center sm:gap-2">
+                <span className="font-medium">{t('admin.warehouse.filterByDelivery', { defaultValue: 'Адрес доставки:' })}</span>
                 <select
                   value={myOrdersDeliveryFilter}
                   onChange={(e) => setMyOrdersDeliveryFilter(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:w-auto sm:py-1.5 sm:text-sm"
                 >
                   {deliveryFilterOptions.map((opt) => (
                     <option key={opt.id || 'all'} value={opt.id}>
@@ -715,22 +745,22 @@ export default function Warehouse() {
                   ))}
                 </select>
               </label>
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <span>{t('admin.warehouse.dateFrom', { defaultValue: 'Дата от' })}</span>
+              <label className="flex flex-col gap-1 text-sm text-slate-600 sm:flex-row sm:items-center sm:gap-2">
+                <span className="font-medium">{t('admin.warehouse.dateFrom', { defaultValue: 'Дата от' })}</span>
                 <input
                   type="date"
                   value={myOrdersDateFrom}
                   onChange={(e) => setMyOrdersDateFrom(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:w-auto sm:py-1.5 sm:text-sm"
                 />
               </label>
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <span>{t('admin.warehouse.dateTo', { defaultValue: 'Дата до' })}</span>
+              <label className="flex flex-col gap-1 text-sm text-slate-600 sm:flex-row sm:items-center sm:gap-2">
+                <span className="font-medium">{t('admin.warehouse.dateTo', { defaultValue: 'Дата до' })}</span>
                 <input
                   type="date"
                   value={myOrdersDateTo}
                   onChange={(e) => setMyOrdersDateTo(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:w-auto sm:py-1.5 sm:text-sm"
                 />
               </label>
               {packedOrderIds.length > 0 && (
@@ -738,7 +768,7 @@ export default function Warehouse() {
                     type="button"
                     disabled={selectedLabelIds.size === 0 || printSelectedLoading}
                     onClick={printSelectedLabels}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto sm:py-1.5"
                   >
                     <svg className="size-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -752,8 +782,8 @@ export default function Warehouse() {
             {myOrdersLoading && <p className="text-sm text-slate-500">{t('common.loading') || 'Загрузка...'}</p>}
             {myOrdersError && <p className="text-sm text-rose-600">{myOrdersError}</p>}
             {!myOrdersLoading && !myOrdersError && (
-              <div className="overflow-x-auto mt-2">
-                <table className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white text-sm">
+              <div className="overflow-x-auto -mx-1 mt-2 sm:mx-0">
+                <table className="wh-my-orders-table-mobile w-full overflow-hidden rounded-xl border border-slate-200 bg-white text-sm">
                   <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
                       <th className="px-2 py-2 text-left w-10">
@@ -782,7 +812,7 @@ export default function Warehouse() {
                   <tbody>
                     {myOrdersFiltered.length === 0 && (
                       <tr>
-                        <td colSpan={10} className="px-3 py-3 text-center text-slate-500">
+                        <td colSpan={10} data-label="" className="px-3 py-3 text-center text-slate-500">
                           {myOrdersDeliveryFilter
                             ? (t('admin.warehouse.filterEmpty', { defaultValue: 'Нет заказов по выбранному адресу доставки' }) || 'Нет заказов по выбранному адресу доставки')
                             : (t('common.empty') || 'Нет заказов')}
@@ -794,21 +824,21 @@ export default function Warehouse() {
                       const oid = String(o.id);
                       return (
                       <tr key={o.id || idx} className="border-t border-slate-200 hover:bg-slate-50">
-                        <td className="px-2 py-2 w-10">
+                        <td data-label="" className="px-2 py-2 w-10">
                           {isPacked ? (
                             <input
                               type="checkbox"
                               checked={selectedLabelIds.has(oid)}
                               onChange={() => toggleSelectLabel(oid)}
-                              className="h-4 w-4 rounded border-slate-300"
+                              className="h-5 w-5 rounded border-slate-300 sm:h-4 sm:w-4"
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : null}
                         </td>
-                        <td className="px-3 py-2 text-slate-700">{idx + 1}</td>
-                        <td className="px-3 py-2 text-slate-900 font-semibold">{o.order_number || o.id}</td>
-                        <td className="px-3 py-2">{renderStatus(o.status)}</td>
-                        <td className="px-3 py-2 text-slate-700">
+                        <td data-label="#" className="px-3 py-2 text-slate-700">{idx + 1}</td>
+                        <td data-label={t('admin.ordersPage.table.order') || 'Заказ'} className="px-3 py-2 text-slate-900 font-semibold">{o.order_number || o.id}</td>
+                        <td data-label={t('admin.ordersPage.table.status') || 'Статус'} className="px-3 py-2">{renderStatus(o.status)}</td>
+                        <td data-label={t('admin.ordersPage.table.product', { defaultValue: 'Товар' }) || 'Товар'} className="px-3 py-2 text-slate-700">
                           {Array.isArray(o.items) && o.items.length > 0 ? (
                             <div className="flex flex-col gap-2">
                               {o.items.map((item: any) => {
@@ -853,23 +883,23 @@ export default function Warehouse() {
                             '—'
                           )}
                         </td>
-                        <td className="px-3 py-2 text-slate-700">
+                        <td data-label={t('admin.ordersPage.table.location', { defaultValue: 'Адрес доставки' }) || 'Адрес'} className="px-3 py-2 text-slate-700">
                           {[o.city, o.order_region].filter(Boolean).join(', ') || '—'}
                         </td>
-                        <td className="px-3 py-2 text-slate-700">
+                        <td data-label={t('admin.ordersPage.table.comment', { defaultValue: 'Комментарий' }) || 'Комментарий'} className="px-3 py-2 text-slate-700">
                           {o.order_comment || '—'}
                         </td>
-                        <td className="px-3 py-2 text-slate-700">
+                        <td data-label={t('admin.ordersPage.table.total', { defaultValue: 'Кол-во' }) || 'Кол-во'} className="px-3 py-2 text-slate-700">
                           {Array.isArray(o.items) ? o.items.reduce((sum: number, it: any) => sum + (it?.quantity || 0), 0) : 0}
                         </td>
-                        <td className="px-3 py-2 text-slate-700">
+                        <td data-label={t('admin.ordersPage.table.date', { defaultValue: 'Дата' }) || 'Дата'} className="px-3 py-2 text-slate-700">
                           {formatOrderDateTime(o.updated_at ?? o.created_at)}
                         </td>
-                        <td className="px-3 py-2">
+                        <td data-label={t('admin.ordersPage.table.action') || 'Действие'} className="px-3 py-2">
                           {String(o.status || '').toLowerCase() === 'packed' ? (
                             <button
                               type="button"
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition"
+                              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition sm:min-h-0"
                               title={t('admin.warehouse.actions.print', { defaultValue: 'Распечатать' })}
                               onClick={async (e) => {
                                 e.preventDefault();
@@ -889,7 +919,7 @@ export default function Warehouse() {
                             </button>
                           ) : (
                             <button
-                              className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed sm:h-10 sm:w-10 sm:min-h-0 sm:min-w-0"
                               title={t('admin.ordersPage.statuses.packed', { defaultValue: 'Упакован' })}
                               disabled={myActionId === o.id}
                               onClick={async () => {
@@ -917,23 +947,25 @@ export default function Warehouse() {
                 </table>
               </div>
             )}
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <button
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm disabled:opacity-50"
-                disabled={myOffset <= 0 || myOrdersLoading}
-                onClick={() => setMyOffset((p) => Math.max(0, p - myLimit))}
-              >
-                {t('admin.ordersPage.pagination.prev') || 'Prev'}
-              </button>
-              <button
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm disabled:opacity-50"
-                disabled={myOrders.length < myLimit || myOrdersLoading}
-                onClick={() => setMyOffset((p) => p + myLimit)}
-              >
-                {t('admin.ordersPage.pagination.next') || 'Next'}
-              </button>
+            <div className="mt-3 flex flex-col gap-2 sm:mt-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+              <div className="flex gap-2">
+                <button
+                  className="min-h-[44px] flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm disabled:opacity-50 sm:flex-none sm:py-1"
+                  disabled={myOffset <= 0 || myOrdersLoading}
+                  onClick={() => setMyOffset((p) => Math.max(0, p - myLimit))}
+                >
+                  {t('admin.ordersPage.pagination.prev') || 'Prev'}
+                </button>
+                <button
+                  className="min-h-[44px] flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm disabled:opacity-50 sm:flex-none sm:py-1"
+                  disabled={myOrders.length < myLimit || myOrdersLoading}
+                  onClick={() => setMyOffset((p) => p + myLimit)}
+                >
+                  {t('admin.ordersPage.pagination.next') || 'Next'}
+                </button>
+              </div>
               <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 shadow-sm outline-none focus:border-emerald-500"
+                className="min-h-[44px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-base text-slate-700 shadow-sm outline-none focus:border-emerald-500 sm:w-auto sm:py-1 sm:text-sm"
                 value={myLimit}
                 onChange={(e) => {
                   setMyOffset(0);

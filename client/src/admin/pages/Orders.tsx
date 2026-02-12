@@ -685,7 +685,7 @@ export default function Orders() {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="overflow-x-hidden rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
       <style>{`
         @keyframes cc-shake {
           0%, 100% { transform: translateX(0); }
@@ -694,6 +694,40 @@ export default function Orders() {
         }
         .cc-shake-run {
           animation: cc-shake 0.45s ease-in-out;
+        }
+        @media (max-width: 767px) {
+          .cc-table-mobile thead { display: none; }
+          .cc-table-mobile tbody tr {
+            display: block;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+          }
+          .cc-table-mobile tbody td {
+            display: block;
+            border: none;
+            padding: 0.5rem 0;
+            width: 100%;
+          }
+          .cc-table-mobile tbody td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            font-size: 0.7rem;
+            color: #64748b;
+            display: block;
+            margin-bottom: 0.25rem;
+          }
+          .cc-table-mobile tbody td:first-child { padding-top: 0; }
+          .cc-table-mobile tbody td[data-label=""]::before { display: none; }
+          .cc-table-mobile .cc-mobile-actions { justify-content: flex-start; flex-wrap: wrap; }
+          .cc-table-mobile thead th:first-child,
+          .cc-table-mobile tbody td:first-child { display: none !important; }
+          .cc-table-mobile tbody tr { display: flex; flex-wrap: wrap; }
+          .cc-table-mobile tbody td { flex: 1 1 100%; }
+          .cc-table-mobile tbody td.cc-mobile-pair { flex: 1 1 50%; min-width: 0; }
         }
       `}</style>
       {/* Статистика по городам (актуальные заказы) */}
@@ -1074,12 +1108,12 @@ export default function Orders() {
       {/* CALL-CENTER BLOCK (SALE ONLY) */}
       {isSale && (
         <div className="mt-5">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-3 flex flex-col gap-3 sm:mb-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="font-black text-slate-900">{t("admin.ordersPage.cc.title")}</div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
               <select
-                className={selectBase}
+                className={selectBase + " w-full min-h-[44px] sm:w-auto"}
                 value={ccStatus}
                 onChange={(e) => {
                   setCcPage(1);
@@ -1105,11 +1139,11 @@ export default function Orders() {
                   </option>
                 ))}
               </select>
-              <label className="flex items-center gap-1.5 text-sm text-slate-700">
-                <span>{t("admin.ordersPage.cc.dateFrom", "Дата от")}</span>
+              <label className="flex flex-col gap-1 text-sm text-slate-700 sm:flex-row sm:items-center sm:gap-1.5">
+                <span className="font-medium">{t("admin.ordersPage.cc.dateFrom", "Дата от")}</span>
                 <input
                   type="date"
-                  className={inputBase + " w-40"}
+                  className={inputBase + " w-full min-h-[44px] sm:w-40"}
                   value={ccDateFrom}
                   onChange={(e) => {
                     setCcPage(1);
@@ -1117,11 +1151,11 @@ export default function Orders() {
                   }}
                 />
               </label>
-              <label className="flex items-center gap-1.5 text-sm text-slate-700">
-                <span>{t("admin.ordersPage.cc.dateTo", "Дата до")}</span>
+              <label className="flex flex-col gap-1 text-sm text-slate-700 sm:flex-row sm:items-center sm:gap-1.5">
+                <span className="font-medium">{t("admin.ordersPage.cc.dateTo", "Дата до")}</span>
                 <input
                   type="date"
-                  className={inputBase + " w-40"}
+                  className={inputBase + " w-full min-h-[44px] sm:w-40"}
                   value={ccDateTo}
                   onChange={(e) => {
                     setCcPage(1);
@@ -1132,8 +1166,8 @@ export default function Orders() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="overflow-x-auto -mx-1 sm:mx-0">
+            <table className="cc-table-mobile w-full overflow-hidden rounded-2xl border border-slate-200 bg-white">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   {[
@@ -1210,16 +1244,25 @@ export default function Orders() {
                             "hover:bg-slate-50",
                           ].join(" ")}
                         >
-                          <td className="px-3 py-3 text-center">{o.order_number || "—"}</td>
+                          <td data-label={t("admin.ordersPage.cc.table.order")} className="px-3 py-3 text-center">{o.order_number || "—"}</td>
 
-                          <td className="px-3 py-3">
-                            <div className="flex flex-col gap-1.5">
-                              <div className="text-sm font-semibold text-slate-900">
+                          <td data-label={t("admin.ordersPage.cc.table.fullName") + " / " + t("admin.ordersPage.cc.table.phone")} className="px-3 py-3">
+                            <div className="flex flex-col gap-1.5 text-center sm:text-left">
+                              <div className="text-lg font-semibold text-slate-900 sm:text-sm">
                                 {o.full_name || "—"}
                               </div>
-                              <div className="text-xs text-slate-500">{o.client_phone || "—"}</div>
+                              {o.client_phone ? (
+                                <a
+                                  href={`tel:${String(o.client_phone).replace(/\D/g, "")}`}
+                                  className="text-base font-medium text-emerald-600 underline underline-offset-2 active:opacity-80 sm:text-xs sm:font-normal sm:text-slate-500 sm:no-underline"
+                                >
+                                  {o.client_phone}
+                                </a>
+                              ) : (
+                                <span className="text-base text-slate-500 sm:text-xs">—</span>
+                              )}
                               <input
-                                className={inputBase + " text-xs"}
+                                className={inputBase + " min-h-[44px] text-base sm:text-sm"}
                                 placeholder={t("admin.ordersPage.cc.additionalPhonePlaceholder", { defaultValue: "Доп. телефон" })}
                                 value={ccOverrides[o.id]?.guest_additional_phone ?? o.guest_additional_phone ?? ""}
                                 onChange={(e) => {
@@ -1236,12 +1279,13 @@ export default function Orders() {
                             </div>
                           </td>
 
-                          <td className="px-3 py-3">
-                            <div className="flex flex-col gap-2 min-w-[180px]">
+                          <td data-label={t("admin.ordersPage.cc.table.region") + " / " + t("admin.ordersPage.cc.table.city")} className="px-3 py-3">
+                            <div className="flex min-w-0 flex-col gap-2 sm:min-w-[180px]">
+                              <div className="grid grid-cols-2 gap-2">
                               <select
                                 key={ccValidationErrors[o.id]?.region ? `region-shake-${o.id}-${ccValidationShakeTick}` : `region-${o.id}`}
                                 className={
-                                  selectBase +
+                                  selectBase + " min-h-[44px] w-full " +
                                   (ccValidationErrors[o.id]?.region ? " border-red-500 ring-2 ring-red-200 cc-shake-run" : "")
                                 }
                                 value={ccOverrides[o.id]?.region_id ?? o.region_id ?? ""}
@@ -1273,7 +1317,7 @@ export default function Orders() {
                               <select
                                 key={ccValidationErrors[o.id]?.city ? `city-shake-${o.id}-${ccValidationShakeTick}` : `city-${o.id}`}
                                 className={
-                                  selectBase +
+                                  selectBase + " min-h-[44px] w-full " +
                                   (ccValidationErrors[o.id]?.city ? " border-red-500 ring-2 ring-red-200 cc-shake-run" : "")
                                 }
                                 value={ccOverrides[o.id]?.order_city_id ?? o.order_city_id ?? ""}
@@ -1301,8 +1345,9 @@ export default function Orders() {
                                   <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                               </select>
+                              </div>
                               <input
-                                className={inputBase}
+                                className={inputBase + " min-h-[44px]"}
                                 placeholder={t("admin.ordersPage.cc.addressPlaceholder", { defaultValue: "Адрес доставки" })}
                                 value={ccOverrides[o.id]?.delivery_address ?? o.delivery_address ?? ""}
                                 onChange={(e) => {
@@ -1319,7 +1364,7 @@ export default function Orders() {
                             </div>
                           </td>
 
-                          <td className="px-3 py-3 text-center">
+                          <td data-label={t("admin.ordersPage.cc.table.product")} className="cc-mobile-pair px-3 py-3 text-center">
                             {(() => {
                               const firstItem = o.items && o.items.length > 0 ? o.items[0] : null;
                               const variantId = firstItem?.variant_id;
@@ -1371,7 +1416,7 @@ export default function Orders() {
                             })()}
                           </td>
 
-                          <td className="px-3 py-3">
+                          <td data-label={t("admin.ordersPage.cc.table.quantity")} className="cc-mobile-pair px-3 py-3">
                             <div className="flex flex-col gap-1.5">
                               {(o.items || []).map((item: any) => {
                                 const itemId = item.id;
@@ -1381,7 +1426,7 @@ export default function Orders() {
                                     <input
                                       type="number"
                                       min={1}
-                                      className={inputBase + " w-16 text-center"}
+                                      className={inputBase + " w-16 min-h-[44px] text-center"}
                                       value={qty}
                                       onChange={(e) => {
                                         const v = Math.max(1, parseInt(e.target.value, 10) || 1);
@@ -1400,28 +1445,27 @@ export default function Orders() {
                             </div>
                           </td>
 
-                          <td className="px-3 py-3 text-center">
+                          <td data-label={t("admin.ordersPage.cc.table.status")} className="cc-mobile-pair px-3 py-3 text-center">
                             <StatusBadge value={o.status} />
                           </td>
 
-                          <td className="px-3 py-3 text-center text-xs text-slate-600">
+                          <td data-label={t("admin.ordersPage.cc.table.time")} className="cc-mobile-pair px-3 py-3 text-center text-xs text-slate-600">
                             {o.created_at ? new Date(o.created_at).toLocaleString() : "—"}
                           </td>
 
-                          <td className="px-3 py-3">
+                          <td data-label={t("admin.ordersPage.cc.table.comment")} className="px-3 py-3">
                             <div className="flex flex-col gap-2">
                               <input
-                                className={inputBase}
+                                className={inputBase + " min-h-[44px]"}
                                 placeholder={t("admin.ordersPage.cc.commentPlaceholder")}
                                 value={ccComments[o.id] ?? (o.order_comment || "")}
                                 onChange={(e) =>
                                   setCcComments((prev) => ({ ...prev, [o.id]: e.target.value }))
                                 }
                               />
-
-                              <div className="flex flex-col gap-1">
+                              <div className="hidden flex-col gap-1 sm:flex">
                                 <input
-                                  className={inputBase}
+                                  className={inputBase + " min-h-[44px]"}
                                   type="datetime-local"
                                   value={ccSchedule[o.id] || ""}
                                   onChange={(e) =>
@@ -1443,10 +1487,10 @@ export default function Orders() {
                             </div>
                           </td>
 
-                          <td className="px-3 py-3">
+                          <td data-label={t("admin.ordersPage.cc.table.actions")} className="px-3 py-3 cc-mobile-actions">
                             <div className="flex items-center justify-center gap-2">
                               <button
-                                className={btnIcon + " h-10 w-10 " + btnGreen}
+                                className={btnIcon + " order-2 min-h-[44px] min-w-[44px] rounded-2xl px-4 sm:order-1 sm:h-10 sm:w-10 sm:min-h-0 sm:min-w-0 sm:px-0 sm:rounded-xl " + btnGreen}
                                 title="Qabul qilish"
                                 disabled={o.status === "accepted" || o.status === "cancelled"}
                                 onClick={async () => {
@@ -1515,7 +1559,7 @@ export default function Orders() {
                               </button>
 
                               <button
-                                className={btnIcon + " h-10 w-10 " + btnRed}
+                                className={btnIcon + " order-1 min-h-[44px] min-w-[44px] rounded-2xl px-4 sm:order-2 sm:h-10 sm:w-10 sm:min-h-0 sm:min-w-0 sm:px-0 sm:rounded-xl " + btnRed}
                                 title="Rad etish"
                                 disabled={o.status === "accepted" || o.status === "cancelled"}
                                 onClick={async () => {
@@ -1565,7 +1609,7 @@ export default function Orders() {
 
                               {o.status !== "accepted" && o.status !== "cancelled" && (
                                 <button
-                                  className={btnIcon + " h-10 w-10 " + btnAmber}
+                                  className={btnIcon + " order-3 min-h-[44px] min-w-[44px] rounded-2xl px-4 sm:px-0 sm:rounded-xl sm:h-10 sm:w-10 " + btnAmber}
                                   title="Kechiktirish"
                                   onClick={async () => {
                                     try {
@@ -1627,7 +1671,7 @@ export default function Orders() {
 
                 {(!filteredCc || filteredCc.length === 0) && (
                   <tr className="border-t border-slate-200">
-                    <td colSpan={8} className="px-3 py-6 text-center text-sm text-slate-500">
+                    <td colSpan={8} data-label="" className="px-3 py-6 text-center text-sm text-slate-500">
                       Hali buyurtmalar yo&apos;q
                     </td>
                   </tr>
@@ -1637,14 +1681,14 @@ export default function Orders() {
           </div>
 
           {filteredCc && filteredCc.length > 0 && (
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="mt-3 flex flex-col gap-3 sm:mt-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
               <div className="text-xs text-slate-500">
                 Page {ccPage} of {Math.max(1, Math.ceil(filteredCc.length / ccLimit))}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
                 <select
-                  className={selectBase}
+                  className={selectBase + " min-h-[44px] w-full sm:w-auto"}
                   value={ccLimit}
                   onChange={(e) => {
                     setCcPage(1);
@@ -1659,14 +1703,14 @@ export default function Orders() {
 
                 <div className="flex gap-2">
                   <button
-                    className={btnBase + " h-10 " + btnMuted}
+                    className={btnBase + " min-h-[44px] flex-1 px-4 sm:h-10 sm:flex-none " + btnMuted}
                     disabled={ccPage <= 1}
                     onClick={() => setCcPage((p) => Math.max(1, p - 1))}
                   >
                     Prev
                   </button>
                   <button
-                    className={btnBase + " h-10 " + btnMuted}
+                    className={btnBase + " min-h-[44px] flex-1 px-4 sm:h-10 sm:flex-none " + btnMuted}
                     disabled={ccPage >= Math.ceil((filteredCc.length || 0) / ccLimit)}
                     onClick={() =>
                       setCcPage((p) =>
