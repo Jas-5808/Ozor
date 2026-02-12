@@ -209,13 +209,35 @@ export interface OrderItem {
 
 export interface CreateOrderRequest {
   items: Array<{
-    product_id: string;
+    product_id?: string;
     variant_id: string;
     quantity: number;
+    referral_code?: string;
   }>;
-  delivery_method: 'pickup' | 'courier';
+  delivery_method?: 'pickup' | 'courier';
   delivery_address?: string;
   comment?: string;
+  /** Гостевой заказ */
+  guest_user_number?: string;
+  full_name?: string;
+  city?: string;
+  order_region?: string;
+  region_id?: string;
+  order_city_id?: string;
+  order_comment?: string;
+}
+
+export interface RegionResponse {
+  id: string;
+  name: string;
+  postal_code: string;
+}
+
+export interface CityResponse {
+  id: string;
+  region_id: string | null;
+  name: string;
+  postal_code: string;
 }
 
 /**

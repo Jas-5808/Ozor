@@ -524,11 +524,19 @@ export const shopAPI = {
     apiClient.post(`/shop/order/call-center`, null, { params: { order_id: orderId } }),
   getCallCenterOrders: (params?: { date_from?: string; date_to?: string }): Promise<TypedAxiosResponse<OrderResponse[]>> =>
     apiClient.get(`/shop/orders/call-center`, { params }),
+  getRegions: (): Promise<TypedAxiosResponse<import("../types/api").RegionResponse[]>> =>
+    apiClient.get(`/shop/regions`),
+  getCities: (regionId: string): Promise<TypedAxiosResponse<import("../types/api").CityResponse[]>> =>
+    apiClient.get(`/shop/cities`, { params: { region_id: regionId } }),
   updateOrderLocation: (
     orderId: string,
     payload: {
       city?: string;
       region?: string;
+      region_id?: string;
+      order_city_id?: string;
+      delivery_address?: string;
+      guest_additional_phone?: string;
       order_comment?: string;
       status?: string;
       items?: Array<{ order_item_id: string; quantity: number }>;

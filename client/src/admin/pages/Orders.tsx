@@ -114,7 +114,7 @@ export default function Orders() {
   const [ccItemQuantities, setCcItemQuantities] = useState<Record<string, Record<string, number>>>({});
   const [ccTick, setCcTick] = useState<number>(0);
   const [ccOverrides, setCcOverrides] = useState<
-    Record<string, { city?: string; order_region?: string }>
+    Record<string, { city?: string; order_region?: string; region_id?: string; order_city_id?: string; delivery_address?: string; guest_additional_phone?: string }>
   >(() => {
     try {
       return JSON.parse(localStorage.getItem("admin_cc_overrides") || "{}");
@@ -122,6 +122,8 @@ export default function Orders() {
       return {};
     }
   });
+  const [regions, setRegions] = useState<Array<{ id: string; name: string; postal_code: string }>>([]);
+  const [citiesByRegion, setCitiesByRegion] = useState<Record<string, Array<{ id: string; name: string; postal_code: string }>>>({});
 
   // Кэш для информации о продуктах по variant_id
   const [productCache, setProductCache] = useState<
@@ -456,9 +458,12 @@ export default function Orders() {
           const ov = ccOverrides[o.id] || {};
           return {
             ...o,
-            // сохраняем выбранные значения города/региона, если пользователь менял их вручную
             city: ov.city ?? existing?.city ?? o.city,
             order_region: ov.order_region ?? existing?.order_region ?? o.order_region,
+            region_id: ov.region_id ?? existing?.region_id ?? o.region_id,
+            order_city_id: ov.order_city_id ?? existing?.order_city_id ?? o.order_city_id,
+            delivery_address: ov.delivery_address ?? existing?.delivery_address ?? o.delivery_address,
+            guest_additional_phone: ov.guest_additional_phone ?? existing?.guest_additional_phone ?? o.guest_additional_phone,
           };
         })
       );
@@ -503,6 +508,41 @@ export default function Orders() {
     if (!isSale) return;
     loadCcOrders();
   }, [isSale, loadCcOrders]);
+
+  useEffect(() => {
+    let ignore = false;
+    const loadRegions = async () => {
+      if (!hasAccess) return;
+      try {
+        const res = await shopAPI.getRegions();
+        const data = Array.isArray(res.data) ? res.data : (res.data as any)?.data ?? [];
+        if (!ignore) setRegions(data);
+      } catch {
+        if (!ignore) setRegions([]);
+      }
+    };
+    loadRegions();
+    return () => { ignore = true; };
+  }, [hasAccess]);
+
+  const loadCitiesForRegion = useCallback(async (regionId: string) => {
+    if (!regionId) return;
+    if (citiesByRegion[regionId]) return;
+    try {
+      const res = await shopAPI.getCities(regionId);
+      const data = Array.isArray(res.data) ? res.data : (res.data as any)?.data ?? [];
+      setCitiesByRegion((prev) => ({ ...prev, [regionId]: data }));
+    } catch {
+      setCitiesByRegion((prev) => ({ ...prev, [regionId]: [] }));
+    }
+  }, [citiesByRegion]);
+
+  useEffect(() => {
+    (ccOrders || []).forEach((o: any) => {
+      const regionId = ccOverrides[o.id]?.region_id ?? o.region_id;
+      if (regionId) loadCitiesForRegion(regionId);
+    });
+  }, [ccOrders, ccOverrides, loadCitiesForRegion]);
 
   // Загружаем информацию о продуктах для отображаемых заказов
   useEffect(() => {
@@ -1161,58 +1201,84 @@ export default function Orders() {
                           <td className="px-3 py-3 text-center">{o.order_number || "—"}</td>
 
                           <td className="px-3 py-3">
-                            <div className="flex flex-col gap-1 text-center">
+                            <div className="flex flex-col gap-1.5">
                               <div className="text-sm font-semibold text-slate-900">
                                 {o.full_name || "—"}
                               </div>
                               <div className="text-xs text-slate-500">{o.client_phone || "—"}</div>
+                              <input
+                                className={inputBase + " text-xs"}
+                                placeholder={t("admin.ordersPage.cc.additionalPhonePlaceholder", { defaultValue: "Доп. телефон" })}
+                                value={ccOverrides[o.id]?.guest_additional_phone ?? o.guest_additional_phone ?? ""}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setCcOrders((prev) =>
+                                    prev.map((x) => (x.id !== o.id ? x : { ...x, guest_additional_phone: v }))
+                                  );
+                                  setCcOverrides((p) => ({
+                                    ...p,
+                                    [o.id]: { ...(p[o.id] || {}), guest_additional_phone: v },
+                                  }));
+                                }}
+                              />
                             </div>
                           </td>
 
                           <td className="px-3 py-3">
-                            <div className="flex flex-col gap-2">
+                            <div className="flex flex-col gap-2 min-w-[180px]">
                               <select
                                 className={selectBase}
-                                value={(o.city || "").toLowerCase()}
-                                onChange={(e) =>
-                              setCcOrders((prev) =>
-                                prev.map((x) => {
-                                  if (x.id !== o.id) return x;
-                                  const updated = { ...x, city: e.target.value };
+                                value={ccOverrides[o.id]?.region_id ?? o.region_id ?? ""}
+                                onChange={(e) => {
+                                  const regionId = e.target.value;
+                                  if (regionId) loadCitiesForRegion(regionId);
+                                  setCcOrders((prev) =>
+                                    prev.map((x) => (x.id !== o.id ? x : { ...x, region_id: regionId, order_city_id: "" }))
+                                  );
                                   setCcOverrides((p) => ({
                                     ...p,
-                                    [o.id]: { ...(p[o.id] || {}), city: e.target.value },
+                                    [o.id]: { ...(p[o.id] || {}), region_id: regionId, order_city_id: "" },
                                   }));
-                                  return updated;
-                                })
-                              )
-                                }
+                                }}
                               >
-                                <option value="">—</option>
-                                {LOCATION_OPTIONS.map((opt) => (
-                                  <option key={opt.value} value={opt.value}>
-                                    {t(opt.labelKey)}
-                                  </option>
+                                <option value="">— {t("admin.ordersPage.cc.regionPlaceholder", { defaultValue: "Регион" })} —</option>
+                                {regions.map((r) => (
+                                  <option key={r.id} value={r.id}>{r.name}</option>
                                 ))}
                               </select>
-
-                              <input
-                                className={inputBase}
-                                placeholder={t("admin.ordersPage.cc.regionPlaceholder")}
-                                value={o.order_region || ""}
-                                onChange={(e) =>
-                              setCcOrders((prev) =>
-                                prev.map((x) => {
-                                  if (x.id !== o.id) return x;
-                                  const updated = { ...x, order_region: e.target.value };
+                              <select
+                                className={selectBase}
+                                value={ccOverrides[o.id]?.order_city_id ?? o.order_city_id ?? ""}
+                                onChange={(e) => {
+                                  const orderCityId = e.target.value;
+                                  setCcOrders((prev) =>
+                                    prev.map((x) => (x.id !== o.id ? x : { ...x, order_city_id: orderCityId }))
+                                  );
                                   setCcOverrides((p) => ({
                                     ...p,
-                                    [o.id]: { ...(p[o.id] || {}), order_region: e.target.value },
+                                    [o.id]: { ...(p[o.id] || {}), order_city_id: orderCityId },
                                   }));
-                                  return updated;
-                                })
-                              )
-                                }
+                                }}
+                              >
+                                <option value="">— {t("admin.ordersPage.cc.table.city", { defaultValue: "Город" })} —</option>
+                                {(citiesByRegion[ccOverrides[o.id]?.region_id ?? o.region_id ?? ""] || []).map((c) => (
+                                  <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                              </select>
+                              <input
+                                className={inputBase}
+                                placeholder={t("admin.ordersPage.cc.addressPlaceholder", { defaultValue: "Адрес доставки" })}
+                                value={ccOverrides[o.id]?.delivery_address ?? o.delivery_address ?? ""}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setCcOrders((prev) =>
+                                    prev.map((x) => (x.id !== o.id ? x : { ...x, delivery_address: v }))
+                                  );
+                                  setCcOverrides((p) => ({
+                                    ...p,
+                                    [o.id]: { ...(p[o.id] || {}), delivery_address: v },
+                                  }));
+                                }}
                               />
                             </div>
                           </td>
@@ -1349,20 +1415,25 @@ export default function Orders() {
                                 disabled={o.status === "accepted" || o.status === "cancelled"}
                                 onClick={async () => {
                                   try {
-                                    const cityVal = (o.city || "").trim() || " ";
-                                    const regionVal = (o.order_region || "").trim() || " ";
+                                    const ov = ccOverrides[o.id] || {};
+                                    const regionId = ov.region_id ?? o.region_id;
+                                    const orderCityId = ov.order_city_id ?? o.order_city_id;
                                     const commentVal = (ccComments[o.id] || o.order_comment || "").trim() || " ";
                                     const items = (o.items || []).map((item: any) => ({
                                       order_item_id: item.id,
                                       quantity: ccItemQuantities[o.id]?.[item.id] ?? item.quantity ?? 1,
                                     }));
-                                    const payload = {
-                                      city: cityVal,
-                                      region: regionVal,
+                                    const payload: any = {
                                       order_comment: commentVal,
                                       status: "accepted",
                                       items,
                                     };
+                                    if (orderCityId) payload.order_city_id = orderCityId;
+                                    if (regionId) payload.region_id = regionId;
+                                    payload.delivery_address = (ov.delivery_address ?? o.delivery_address ?? "").trim() || undefined;
+                                    payload.guest_additional_phone = (ov.guest_additional_phone ?? o.guest_additional_phone ?? "").trim() || undefined;
+                                    if (!payload.order_city_id && (o.city || "").trim()) payload.city = (o.city || "").trim();
+                                    if (!payload.region_id && (o.order_region || "").trim()) payload.region = (o.order_region || "").trim();
                                     await shopAPI.updateOrderLocation(o.id, payload);
                                     setNotice({ type: "success", message: "Qabul qilindi (accepted)" });
                                     setCcOrders((prev) =>
@@ -1393,20 +1464,25 @@ export default function Orders() {
                                 disabled={o.status === "accepted" || o.status === "cancelled"}
                                 onClick={async () => {
                                   try {
-                                    const cityVal = (o.city || "").trim() || " ";
-                                    const regionVal = (o.order_region || "").trim() || " ";
+                                    const ov = ccOverrides[o.id] || {};
+                                    const regionId = ov.region_id ?? o.region_id;
+                                    const orderCityId = ov.order_city_id ?? o.order_city_id;
                                     const commentVal = (ccComments[o.id] || o.order_comment || "").trim() || " ";
                                     const items = (o.items || []).map((item: any) => ({
                                       order_item_id: item.id,
                                       quantity: ccItemQuantities[o.id]?.[item.id] ?? item.quantity ?? 1,
                                     }));
-                                    const payload = {
-                                      city: cityVal,
-                                      region: regionVal,
+                                    const payload: any = {
                                       order_comment: commentVal,
                                       status: "cancelled",
                                       items,
                                     };
+                                    if (orderCityId) payload.order_city_id = orderCityId;
+                                    if (regionId) payload.region_id = regionId;
+                                    payload.delivery_address = (ov.delivery_address ?? o.delivery_address ?? "").trim() || undefined;
+                                    payload.guest_additional_phone = (ov.guest_additional_phone ?? o.guest_additional_phone ?? "").trim() || undefined;
+                                    if (!payload.order_city_id && (o.city || "").trim()) payload.city = (o.city || "").trim();
+                                    if (!payload.region_id && (o.order_region || "").trim()) payload.region = (o.order_region || "").trim();
                                     await shopAPI.updateOrderLocation(o.id, payload);
                                     setNotice({ type: "success", message: "Rad etildi (cancelled)" });
                                     setCcOrders((prev) =>
@@ -1445,19 +1521,24 @@ export default function Orders() {
                                         ? `${baseComment ? baseComment + " | " : ""}Reja: ${human} [reja_at:${iso}]`
                                         : baseComment || " ";
 
-                                      const cityVal = (o.city || "").trim() || " ";
-                                      const regionVal = (o.order_region || "").trim() || " ";
+                                      const ov = ccOverrides[o.id] || {};
+                                      const regionId = ov.region_id ?? o.region_id;
+                                      const orderCityId = ov.order_city_id ?? o.order_city_id;
                                       const items = (o.items || []).map((item: any) => ({
                                         order_item_id: item.id,
                                         quantity: ccItemQuantities[o.id]?.[item.id] ?? item.quantity ?? 1,
                                       }));
-                                      const payload = {
-                                        city: cityVal,
-                                        region: regionVal,
+                                      const payload: any = {
                                         order_comment: composed,
                                         status: "processing",
                                         items,
                                       };
+                                      if (orderCityId) payload.order_city_id = orderCityId;
+                                      if (regionId) payload.region_id = regionId;
+                                      payload.delivery_address = (ov.delivery_address ?? o.delivery_address ?? "").trim() || undefined;
+                                      payload.guest_additional_phone = (ov.guest_additional_phone ?? o.guest_additional_phone ?? "").trim() || undefined;
+                                      if (!payload.order_city_id && (o.city || "").trim()) payload.city = (o.city || "").trim();
+                                      if (!payload.region_id && (o.order_region || "").trim()) payload.region = (o.order_region || "").trim();
                                       await shopAPI.updateOrderLocation(o.id, payload);
                                       setNotice({ type: "success", message: "Kechiktirildi (processing)" });
                                       setCcOrders((prev) =>

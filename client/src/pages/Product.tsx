@@ -133,6 +133,14 @@ type QuickOrderSheetProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   locationLabel: string;
   locationHint?: string;
+  regions?: Array<{ id: string; name: string; postal_code: string }>;
+  cities?: Array<{ id: string; name: string; postal_code: string }>;
+  selectedRegionId?: string;
+  selectedCityId?: string;
+  deliveryAddress?: string;
+  onRegionChange?: (regionId: string) => void;
+  onCityChange?: (cityId: string) => void;
+  onAddressChange?: (value: string) => void;
 };
 
 const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
@@ -151,6 +159,14 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
   onSubmit,
   locationLabel,
   locationHint,
+  regions = [],
+  cities = [],
+  selectedRegionId = "",
+  selectedCityId = "",
+  deliveryAddress = "",
+  onRegionChange,
+  onCityChange,
+  onAddressChange,
 }) => {
   if (!open) return null;
   const { t } = useTranslation();
@@ -216,16 +232,57 @@ const QuickOrderSheet: React.FC<QuickOrderSheetProps> = ({
             </div>
           </div>
 
-          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3">
-            <div className="rounded-2xl bg-emerald-50 p-2">
-              <img src="/icons/location.svg" alt="" className="h-5 w-5" />
+          {regions.length > 0 ? (
+            <div className="mt-4 flex flex-col gap-3">
+              <div>
+                <label className="text-sm font-medium text-gray-700">{t("product.quickOrder.regionLabel", { defaultValue: "Регион" })}</label>
+                <select
+                  value={selectedRegionId}
+                  onChange={(e) => onRegionChange?.(e.target.value)}
+                  className="mt-1 h-12 w-full rounded-2xl border border-gray-200 px-4 text-base outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                >
+                  <option value="">— {t("product.quickOrder.regionPlaceholder", { defaultValue: "Выберите регион" })} —</option>
+                  {regions.map((r) => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">{t("product.quickOrder.cityLabel", { defaultValue: "Город" })}</label>
+                <select
+                  value={selectedCityId}
+                  onChange={(e) => onCityChange?.(e.target.value)}
+                  className="mt-1 h-12 w-full rounded-2xl border border-gray-200 px-4 text-base outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                >
+                  <option value="">— {t("product.quickOrder.cityPlaceholder", { defaultValue: "Выберите город" })} —</option>
+                  {cities.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">{t("product.quickOrder.addressLabel", { defaultValue: "Адрес доставки" })}</label>
+                <input
+                  type="text"
+                  value={deliveryAddress}
+                  onChange={(e) => onAddressChange?.(e.target.value)}
+                  placeholder={t("product.quickOrder.addressPlaceholder", { defaultValue: "Улица, дом, квартира" })}
+                  className="mt-1 h-12 w-full rounded-2xl border border-gray-200 px-4 text-base outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                />
+              </div>
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-400">{t("product.deliveryLabel")}</p>
-              <p className="text-sm font-medium text-gray-900">{locationLabel}</p>
-              {locationHint && <p className="text-xs text-gray-500">{locationHint}</p>}
+          ) : (
+            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3">
+              <div className="rounded-2xl bg-emerald-50 p-2">
+                <img src="/icons/location.svg" alt="" className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-400">{t("product.deliveryLabel")}</p>
+                <p className="text-sm font-medium text-gray-900">{locationLabel}</p>
+                {locationHint && <p className="text-xs text-gray-500">{locationHint}</p>}
+              </div>
             </div>
-          </div>
+          )}
 
           <form className="mt-5 flex flex-col gap-4" onSubmit={onSubmit}>
             <div>
@@ -340,6 +397,11 @@ export function Product() {
   const [quickOrderError, setQuickOrderError] = useState<string | null>(null);
 
   const [quickOrderRegion, setQuickOrderRegion] = useState<string>("");
+  const [regions, setRegions] = useState<Array<{ id: string; name: string; postal_code: string }>>([]);
+  const [cities, setCities] = useState<Array<{ id: string; name: string; postal_code: string }>>([]);
+  const [selectedRegionId, setSelectedRegionId] = useState<string>("");
+  const [selectedCityId, setSelectedCityId] = useState<string>("");
+  const [deliveryAddress, setDeliveryAddress] = useState<string>("");
 
   const productRef = useRef<HTMLDivElement>(null);
 
@@ -455,6 +517,32 @@ export function Product() {
       };
     }, [product, selectedVariant, primaryImage])
   );
+
+  useEffect(() => {
+    let ignore = false;
+    shopAPI.getRegions().then((res) => {
+      const data = Array.isArray(res.data) ? res.data : (res.data as any)?.data ?? [];
+      if (!ignore) setRegions(data);
+    }).catch(() => { if (!ignore) setRegions([]); });
+    return () => { ignore = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedRegionId) {
+      setCities([]);
+      setSelectedCityId("");
+      return;
+    }
+    let ignore = false;
+    shopAPI.getCities(selectedRegionId).then((res) => {
+      const data = Array.isArray(res.data) ? res.data : (res.data as any)?.data ?? [];
+      if (!ignore) {
+        setCities(data);
+        setSelectedCityId("");
+      }
+    }).catch(() => { if (!ignore) setCities([]); });
+    return () => { ignore = true; };
+  }, [selectedRegionId]);
 
   // FIX (п.3): безопасный toCityCode без ломания case у id
   const toCityCode = (value?: string): string => {
@@ -943,23 +1031,36 @@ export function Product() {
       setQuickOrderError(t("product.quickOrder.errors.consentRequired"));
       return;
     }
+    if (regions.length > 0 && (!selectedRegionId || !selectedCityId)) {
+      setQuickOrderError(t("product.quickOrder.errors.regionRequired", { defaultValue: "Выберите регион и город" }));
+      return;
+    }
+    if (regions.length === 0 && !appState.location.data?.city && !quickOrderRegion) {
+      setQuickOrderError(t("product.quickOrder.errors.regionRequired", { defaultValue: "Выберите регион" }));
+      return;
+    }
 
     try {
       setQuickOrderLoading(true);
       setQuickOrderError(null);
 
       const variantId = selectedVariant?.id || product.variant_id;
-      const citySource = appState.location.data?.city || "tashkent";
-      const cityCode = toCityCode(citySource) || citySource;
-
-      const payload = {
+      const payload: any = {
         items: [{ variant_id: variantId, quantity: 1, referral_code: referralCode || undefined }],
         guest_user_number: phone,
         full_name: name.trim(),
-        city: cityCode,
-        order_region: getRegionForCityOrRegion(cityCode), // FIX
         order_comment: "",
-      } as any;
+      };
+      if (regions.length > 0 && selectedRegionId && selectedCityId) {
+        payload.region_id = selectedRegionId;
+        payload.order_city_id = selectedCityId;
+        payload.delivery_address = deliveryAddress.trim() || undefined;
+      } else {
+        const citySource = appState.location.data?.city || quickOrderRegion || "tashkent";
+        const cityCode = toCityCode(citySource) || citySource;
+        payload.city = cityCode;
+        payload.order_region = getRegionForCityOrRegion(cityCode);
+      }
 
       await shopAPI.guestOrder(payload);
 
@@ -982,6 +1083,10 @@ export function Product() {
 
       setName("");
       setPhone("");
+      setQuickOrderRegion("");
+      setSelectedRegionId("");
+      setSelectedCityId("");
+      setDeliveryAddress("");
       setIsQuickOrderOpen(false);
     } catch (err) {
       logger.errorWithContext(err, { context: "quickOrder" });
@@ -1425,34 +1530,72 @@ export function Product() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Область</label>
-                  <select
-                    value={quickOrderRegion}
-                    onChange={(e) => {
-                      const selectedValue = e.target.value;
-                      setQuickOrderRegion(selectedValue);
-                    }}
-                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
-                  >
-                    <option value="">Выберите область</option>
-                    <option value="tashkent">Toshkent</option>
-                    <option value="tashkent_region">Toshkent viloyati</option>
-                    <option value="samarkand">Samarqand</option>
-                    <option value="bukhara">Buxoro</option>
-                    <option value="andijan">Andijon</option>
-                    <option value="fergana">Farg'ona</option>
-                    <option value="namangan">Namangan</option>
-                    <option value="navoiy">Navoiy</option>
-                    <option value="kashkadarya">Qashqadaryo</option>
-                    <option value="surkhandarya">Surxondaryo</option>
-                    <option value="sirdarya">Sirdaryo</option>
-                    <option value="jizzakh">Jizzax</option>
-                    <option value="kokand">Qo'qon</option>
-                    <option value="khorezm">Xorazm</option>
-                    <option value="karakalpakstan">Qoraqalpog'iston Respublikasi</option>
-                  </select>
-                </div>
+                {regions.length > 0 ? (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">{t("product.quickOrder.regionLabel", { defaultValue: "Регион" })}</label>
+                      <select
+                        value={selectedRegionId}
+                        onChange={(e) => setSelectedRegionId(e.target.value)}
+                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                      >
+                        <option value="">— {t("product.quickOrder.regionPlaceholder", { defaultValue: "Выберите регион" })} —</option>
+                        {regions.map((r) => (
+                          <option key={r.id} value={r.id}>{r.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">{t("product.quickOrder.cityLabel", { defaultValue: "Город" })}</label>
+                      <select
+                        value={selectedCityId}
+                        onChange={(e) => setSelectedCityId(e.target.value)}
+                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                      >
+                        <option value="">— {t("product.quickOrder.cityPlaceholder", { defaultValue: "Выберите город" })} —</option>
+                        {cities.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">{t("product.quickOrder.addressLabel", { defaultValue: "Адрес доставки" })}</label>
+                      <input
+                        type="text"
+                        value={deliveryAddress}
+                        onChange={(e) => setDeliveryAddress(e.target.value)}
+                        placeholder={t("product.quickOrder.addressPlaceholder", { defaultValue: "Улица, дом, квартира" })}
+                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1.5">Область</label>
+                    <select
+                      value={quickOrderRegion}
+                      onChange={(e) => setQuickOrderRegion(e.target.value)}
+                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#04734b] focus:border-transparent transition"
+                    >
+                      <option value="">Выберите область</option>
+                      <option value="tashkent">Toshkent</option>
+                      <option value="tashkent_region">Toshkent viloyati</option>
+                      <option value="samarkand">Samarqand</option>
+                      <option value="bukhara">Buxoro</option>
+                      <option value="andijan">Andijon</option>
+                      <option value="fergana">Farg'ona</option>
+                      <option value="namangan">Namangan</option>
+                      <option value="navoiy">Navoiy</option>
+                      <option value="kashkadarya">Qashqadaryo</option>
+                      <option value="surkhandarya">Surxondaryo</option>
+                      <option value="sirdarya">Sirdaryo</option>
+                      <option value="jizzakh">Jizzax</option>
+                      <option value="kokand">Qo'qon</option>
+                      <option value="khorezm">Xorazm</option>
+                      <option value="karakalpakstan">Qoraqalpog'iston Respublikasi</option>
+                    </select>
+                  </div>
+                )}
 
                 {/* Пользовательское соглашение — тот же текст и PDF, что и в корзине */}
                 <label className="flex items-start gap-3 text-sm text-slate-600 cursor-pointer">
@@ -1502,7 +1645,13 @@ export function Product() {
                       return;
                     }
 
-                    if (!quickOrderRegion) {
+                    if (regions.length > 0) {
+                      if (!selectedRegionId || !selectedCityId) {
+                        setQuickOrderError(t("product.quickOrder.errors.regionRequired", { defaultValue: "Выберите регион и город" }));
+                        setTimeout(() => setQuickOrderError(null), 3000);
+                        return;
+                      }
+                    } else if (!quickOrderRegion) {
                       setQuickOrderError("Выберите область");
                       setTimeout(() => setQuickOrderError(null), 3000);
                       return;
@@ -1513,17 +1662,20 @@ export function Product() {
                       setQuickOrderError(null);
 
                       const variantId = selectedVariant?.id || fetchedProduct.variant_id;
-                      const cityCode = toCityCode(quickOrderRegion) || quickOrderRegion;
-                      const regionId = quickOrderRegion;
-
-                      const payload = {
+                      const payload: any = {
                         items: [{ variant_id: variantId, quantity: 1, referral_code: referralCode || undefined }],
                         guest_user_number: phone,
                         full_name: name.trim(),
-                        city: cityCode,
-                        order_region: regionId,
                         order_comment: "",
-                      } as any;
+                      };
+                      if (regions.length > 0 && selectedRegionId && selectedCityId) {
+                        payload.region_id = selectedRegionId;
+                        payload.order_city_id = selectedCityId;
+                        payload.delivery_address = deliveryAddress.trim() || undefined;
+                      } else {
+                        payload.city = toCityCode(quickOrderRegion) || quickOrderRegion;
+                        payload.order_region = quickOrderRegion;
+                      }
 
                       await shopAPI.guestOrder(payload);
 
@@ -1546,6 +1698,9 @@ export function Product() {
                       setName("");
                       setPhone("");
                       setQuickOrderRegion("");
+                      setSelectedRegionId("");
+                      setSelectedCityId("");
+                      setDeliveryAddress("");
                     setIsQuickOrderOpen(false);
                     } catch (err: any) {
                       logger.errorWithContext(err, { context: "quickOrder" });
@@ -1557,9 +1712,10 @@ export function Product() {
                     }
                   }}
                   disabled={(() => {
-                    if (!name || !phone || !quickOrderRegion) return true;
-                    return false;
-                  })() || quickOrderLoading}
+                    if (!name || !phone) return true;
+                    if (regions.length > 0) return !selectedRegionId || !selectedCityId || quickOrderLoading;
+                    return !quickOrderRegion || quickOrderLoading;
+                  })()}
                   className="w-full h-11 rounded-[18px] text-white font-semibold transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ background: "linear-gradient(92.41deg, #003d32, #04734b)" }}
                 >
@@ -1777,6 +1933,14 @@ export function Product() {
             onSubmit={handleQuickOrderSubmit}
             locationLabel={locationLabel}
             locationHint={locationHint}
+            regions={regions}
+            cities={cities}
+            selectedRegionId={selectedRegionId}
+            selectedCityId={selectedCityId}
+            deliveryAddress={deliveryAddress}
+            onRegionChange={setSelectedRegionId}
+            onCityChange={setSelectedCityId}
+            onAddressChange={setDeliveryAddress}
           />
         </div>
       )}
