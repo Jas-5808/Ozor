@@ -509,10 +509,10 @@ export default function Orders() {
     loadCcOrders();
   }, [isSale, loadCcOrders]);
 
+  // Регионы загружаем при монтировании (без привязки к hasAccess), чтобы у оператора список не зависел от момента подгрузки роли
   useEffect(() => {
     let ignore = false;
     const loadRegions = async () => {
-      if (!hasAccess) return;
       try {
         const res = await shopAPI.getRegions();
         const data = Array.isArray(res.data) ? res.data : (res.data as any)?.data ?? [];
@@ -523,7 +523,7 @@ export default function Orders() {
     };
     loadRegions();
     return () => { ignore = true; };
-  }, [hasAccess]);
+  }, []);
 
   const loadCitiesForRegion = useCallback(async (regionId: string) => {
     if (!regionId) return;
