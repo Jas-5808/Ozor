@@ -164,6 +164,15 @@ export default function AdminLayout() {
     title: 'Admin — OZAR',
     robots: 'noindex,nofollow',
   });
+
+  // Убираем пустое место над хидером: сбрасываем отступ от основного сайта и не даём добавлять сверху
+  useEffect(() => {
+    document.documentElement.style.setProperty('--app-header-offset', '0px');
+    return () => {
+      document.documentElement.style.removeProperty('--app-header-offset');
+    };
+  }, []);
+
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -275,7 +284,7 @@ export default function AdminLayout() {
   };
 
   const rootClasses = [
-    'min-h-screen grid grid-cols-1 transition-[grid-template-columns] duration-300 relative',
+    'min-h-screen grid grid-cols-1 transition-[grid-template-columns] duration-300 relative pt-0',
     isSidebarExpanded ? 'md:grid-cols-[260px_1fr]' : 'md:grid-cols-[80px_1fr]',
     isDarkTheme ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900',
     isMobileMenuOpen && 'overflow-hidden',
@@ -294,7 +303,7 @@ export default function AdminLayout() {
     'bg-gradient-to-b from-emerald-900 via-emerald-800 to-teal-700 text-emerald-50 p-6 flex flex-col gap-6 transition-all duration-300 overflow-hidden relative z-20',
     isSidebarExpanded ? 'md:w-[260px]' : 'md:w-[90px]',
     isMobile
-      ? `fixed left-0 top-0 h-full w-[260px] transform ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`
+      ? `fixed left-0 top-0 h-full w-[260px] transform ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} order-2`
       : '',
   ]
     .filter(Boolean)
@@ -432,11 +441,12 @@ export default function AdminLayout() {
         )}
       </aside>
 
-      <div className="flex min-h-screen flex-col bg-white/70 backdrop-blur">
+      <div className="order-1 flex min-h-screen flex-col bg-white/70 backdrop-blur pt-0 md:order-none">
         <header
           className={`sticky top-0 z-10 flex items-center gap-3 border-b px-4 py-3 ${
             isDarkTheme ? 'bg-slate-800 border-slate-700' : 'bg-slate-600 border-slate-500'
           }`}
+          style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
         >
           <div className="flex items-center flex-1 min-w-0 justify-start">
             {isMobile && (

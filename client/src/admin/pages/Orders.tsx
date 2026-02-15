@@ -699,12 +699,12 @@ export default function Orders() {
           .cc-table-mobile thead { display: none; }
           .cc-table-mobile tbody tr {
             display: block;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #cbd5e1;
             border-radius: 1rem;
             margin-bottom: 1rem;
             padding: 1rem;
             background: #fff;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
           }
           .cc-table-mobile tbody td {
             display: block;
@@ -722,7 +722,8 @@ export default function Orders() {
           }
           .cc-table-mobile tbody td:first-child { padding-top: 0; }
           .cc-table-mobile tbody td[data-label=""]::before { display: none; }
-          .cc-table-mobile .cc-mobile-actions { justify-content: flex-start; flex-wrap: wrap; }
+          .cc-table-mobile .cc-mobile-actions { justify-content: stretch; align-items: stretch; min-height: 52px; }
+          .cc-table-mobile .cc-mobile-actions > div { width: 100%; }
           .cc-table-mobile thead th:first-child,
           .cc-table-mobile tbody td:first-child { display: none !important; }
           .cc-table-mobile tbody tr { display: flex; flex-wrap: wrap; }
@@ -730,12 +731,13 @@ export default function Orders() {
           .cc-table-mobile tbody td.cc-mobile-pair { flex: 1 1 50%; min-width: 0; }
         }
       `}</style>
-      {/* Статистика по городам (актуальные заказы) */}
+      {/* Секция: Актуальные заказы по городам + Заявки по городам */}
       {hasAccess && (
-        <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-          <div className="mb-2 text-sm font-bold text-slate-700">
-            {t("admin.ordersPage.statsByCity", { defaultValue: "Актуальные заказы по городам" })}
-          </div>
+        <section className="mb-6 rounded-2xl border border-slate-200 bg-slate-100/80 px-4 py-4 shadow-sm">
+          <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/90 px-4 py-3">
+            <div className="mb-2 text-sm font-bold text-slate-700">
+              {t("admin.ordersPage.statsByCity", { defaultValue: "Актуальные заказы по городам" })}
+            </div>
           {orderStatsLoading ? (
             <div className="flex flex-wrap gap-2">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -766,16 +768,12 @@ export default function Orders() {
               })}
             </div>
           )}
-        </div>
-      )}
-
-      {/* Заявки по городам */}
-      {hasAccess && (
-        <div className="mb-4 rounded-2xl border border-slate-200 bg-amber-50/70 px-4 py-3">
-          <div className="mb-2 text-sm font-bold text-slate-700">
-            {t("admin.ordersPage.statsRequestsByCity", { defaultValue: "Заявки по городам" })}
           </div>
-          {requestStatsLoading ? (
+          <div className="rounded-xl border border-slate-200 bg-amber-50/90 px-4 py-3">
+            <div className="mb-2 text-sm font-bold text-slate-700">
+              {t("admin.ordersPage.statsRequestsByCity", { defaultValue: "Заявки по городам" })}
+            </div>
+            {requestStatsLoading ? (
             <div className="flex flex-wrap gap-2">
               {Array.from({ length: 5 }).map((_, i) => (
                 <span key={i} className="h-8 w-24 animate-pulse rounded-xl bg-slate-200" />
@@ -805,10 +803,12 @@ export default function Orders() {
               })}
             </div>
           )}
-        </div>
+          </div>
+        </section>
       )}
 
-      {/* FILTERS */}
+      {/* Секция: Orders (все заказы для админа/менеджера) */}
+      <section className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="font-bold text-slate-900">{t("admin.ordersPage.title")}</div>
         <div className="flex flex-wrap items-center gap-2">
@@ -1104,10 +1104,12 @@ export default function Orders() {
           </div>
         </div>
       )}
+      </section>
 
-      {/* CALL-CENTER BLOCK (SALE ONLY) */}
+      {/* Секция: Мои заказы (Call-center) */}
       {isSale && (
-        <div className="mt-5">
+        <section className="rounded-2xl border border-emerald-200 bg-emerald-50/60 px-4 py-4 shadow-sm">
+        <div>
           <div className="mb-3 flex flex-col gap-3 sm:mb-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="font-black text-slate-900">{t("admin.ordersPage.cc.title")}</div>
 
@@ -1246,7 +1248,7 @@ export default function Orders() {
                         >
                           <td data-label={t("admin.ordersPage.cc.table.order")} className="px-3 py-3 text-center">{o.order_number || "—"}</td>
 
-                          <td data-label={t("admin.ordersPage.cc.table.fullName") + " / " + t("admin.ordersPage.cc.table.phone")} className="px-3 py-3">
+                          <td data-label="" className="px-3 py-3">
                             <div className="flex flex-col gap-1.5 text-center sm:text-left">
                               <div className="text-lg font-semibold text-slate-900 sm:text-sm">
                                 {o.full_name || "—"}
@@ -1488,9 +1490,9 @@ export default function Orders() {
                           </td>
 
                           <td data-label={t("admin.ordersPage.cc.table.actions")} className="px-3 py-3 cc-mobile-actions">
-                            <div className="flex items-center justify-center gap-2">
+                            <div className="flex h-full w-full min-h-[52px] items-stretch justify-center gap-2 sm:min-h-0">
                               <button
-                                className={btnIcon + " order-2 min-h-[44px] min-w-[44px] rounded-2xl px-4 sm:order-1 sm:h-10 sm:w-10 sm:min-h-0 sm:min-w-0 sm:px-0 sm:rounded-xl " + btnGreen}
+                                className={btnIcon + " order-2 min-h-[48px] flex-1 rounded-2xl px-4 sm:order-1 sm:min-h-0 sm:flex-none sm:h-10 sm:w-10 sm:px-0 sm:rounded-xl " + btnGreen}
                                 title="Qabul qilish"
                                 disabled={o.status === "accepted" || o.status === "cancelled"}
                                 onClick={async () => {
@@ -1559,7 +1561,7 @@ export default function Orders() {
                               </button>
 
                               <button
-                                className={btnIcon + " order-1 min-h-[44px] min-w-[44px] rounded-2xl px-4 sm:order-2 sm:h-10 sm:w-10 sm:min-h-0 sm:min-w-0 sm:px-0 sm:rounded-xl " + btnRed}
+                                className={btnIcon + " order-1 min-h-[48px] flex-1 rounded-2xl px-4 sm:order-2 sm:min-h-0 sm:flex-none sm:h-10 sm:w-10 sm:px-0 sm:rounded-xl " + btnRed}
                                 title="Rad etish"
                                 disabled={o.status === "accepted" || o.status === "cancelled"}
                                 onClick={async () => {
@@ -1609,7 +1611,7 @@ export default function Orders() {
 
                               {o.status !== "accepted" && o.status !== "cancelled" && (
                                 <button
-                                  className={btnIcon + " order-3 min-h-[44px] min-w-[44px] rounded-2xl px-4 sm:px-0 sm:rounded-xl sm:h-10 sm:w-10 " + btnAmber}
+                                  className={btnIcon + " order-3 min-h-[48px] flex-1 rounded-2xl px-4 sm:flex-none sm:px-0 sm:rounded-xl sm:h-10 sm:w-10 " + btnAmber}
                                   title="Kechiktirish"
                                   onClick={async () => {
                                     try {
@@ -1725,6 +1727,7 @@ export default function Orders() {
             </div>
           )}
         </div>
+        </section>
       )}
 
       {/* Модальное окно продукта — фиксировано по центру экрана при любом скролле (портал в body) */}
