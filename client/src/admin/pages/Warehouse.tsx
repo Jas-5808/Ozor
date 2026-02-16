@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import apiClient, { warehouseAPI, orderAPI } from '../../services/api';
+import apiClient, { warehouseAPI, orderAPI, shopAPI } from '../../services/api';
 import { getProductImageUrl, truncateText } from '../../utils/helpers';
 import { resolveProductDescription, resolveProductName } from '../../utils/productUtils';
 import { getRegions, getLocationById } from '../../data/uzbekistanLocations';
@@ -37,7 +37,9 @@ export default function Warehouse() {
     const d = new Date();
     return d.toISOString().slice(0, 10);
   });
-  const [packedPdfCity, setPackedPdfCity] = useState<string>('');
+  const [packedPdfRegionId, setPackedPdfRegionId] = useState<string>('');
+  const [pdfRegions, setPdfRegions] = useState<Array<{ id: string; name: string }>>([]);
+  const [pdfRegionsLoading, setPdfRegionsLoading] = useState(false);
   const [packedPdfLoading, setPackedPdfLoading] = useState(false);
   const [packedPdfError, setPackedPdfError] = useState<string | null>(null);
   const [locations, setLocations] = useState<any[]>([]);
@@ -449,6 +451,28 @@ export default function Warehouse() {
     };
   }, [activeKey]);
 
+  useEffect(() => {
+    if (activeKey !== 'orders') return;
+    let ignore = false;
+    setPdfRegionsLoading(true);
+    shopAPI
+      .getRegions()
+      .then((res) => {
+        if (ignore) return;
+        const list = Array.isArray(res.data) ? res.data : [];
+        setPdfRegions(list.map((r: { id: string; name: string }) => ({ id: String(r.id), name: r.name || String(r.id) })));
+      })
+      .catch(() => {
+        if (!ignore) setPdfRegions([]);
+      })
+      .finally(() => {
+        if (!ignore) setPdfRegionsLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [activeKey]);
+
   const getCityLabel = (orderRegion: string) => {
     const region = getRegions().find((r) => r.id === orderRegion);
     if (region) return region.name;
@@ -464,7 +488,7 @@ export default function Warehouse() {
       status === 404 ||
       (msg && (msg.includes('Заказы не найдены') || msg.includes('не найдены') || msg.includes('не найден') || msg.toLowerCase().includes('not found')));
     if (isNotFound) {
-      return t('admin.warehouse.packedPdfNoOrders', { defaultValue: 'По выбранной дате и городу заказов не найдено.' });
+      return t('admin.warehouse.packedPdfNoOrders', { defaultValue: 'По выбранной дате и области заказов не найдено.' });
     }
     return msg || '';
   };
@@ -540,13 +564,13 @@ export default function Warehouse() {
               </div>
             )}
           </div>
-          {/* Распечатка по дате: PDF упакованных заказов по городу и дате */}
+          {/* Распечатка по дате: PDF упакованных заказов по области и дате */}
           <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
             <div className="mb-2 text-sm font-bold text-slate-700">
               {t('admin.warehouse.packedPdfByDate', { defaultValue: 'Распечатка по дате' })}
             </div>
             <p className="mb-3 text-xs text-slate-600">
-              {t('admin.warehouse.packedPdfByDateHint', { defaultValue: 'Скачать или распечатать PDF упакованных заказов по выбранной дате и городу.' })}
+              {t('admin.warehouse.packedPdfByDateHint', { defaultValue: 'Скачать или распечатать PDF по дате. Область опциональна — без выбора выдаются все заказы за дату.' })}
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2 text-sm text-slate-700">
@@ -559,29 +583,30 @@ export default function Warehouse() {
                 />
               </label>
               <label className="flex items-center gap-2 text-sm text-slate-700">
-                <span>{t('admin.warehouse.city', { defaultValue: 'Город:' })}</span>
+                <span>{t('admin.warehouse.region', { defaultValue: 'Область:' })}</span>
                 <select
-                  value={packedPdfCity}
-                  onChange={(e) => { setPackedPdfCity(e.target.value); setPackedPdfError(null); }}
+                  value={packedPdfRegionId}
+                  onChange={(e) => { setPackedPdfRegionId(e.target.value); setPackedPdfError(null); }}
+                  disabled={pdfRegionsLoading}
                   className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-w-[180px]"
                 >
-                  <option value="">{t('admin.warehouse.selectCity', { defaultValue: 'Выберите город' })}</option>
-                  {deliveryFilterOptions.filter((o) => o.id).map((opt) => (
-                    <option key={opt.id} value={opt.id}>
-                      {opt.name}
+                  <option value="">{t('admin.warehouse.allRegions', { defaultValue: 'Все области' })}</option>
+                  {pdfRegions.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
                     </option>
                   ))}
                 </select>
               </label>
               <button
                 type="button"
-                disabled={!packedPdfDate || !packedPdfCity || packedPdfLoading}
+                disabled={!packedPdfDate || packedPdfLoading}
                 onClick={async () => {
-                  if (!packedPdfDate || !packedPdfCity) return;
+                  if (!packedPdfDate) return;
                   setPackedPdfError(null);
                   setPackedPdfLoading(true);
                   try {
-                    await warehouseAPI.downloadPackedOrdersPdf(packedPdfCity, packedPdfDate);
+                    await warehouseAPI.downloadPackedOrdersPdf(packedPdfDate, packedPdfRegionId || undefined);
                   } catch (err: any) {
                     const msg = getPackedPdfErrorMessage(err) || t('admin.warehouse.downloadPdfError', { defaultValue: 'Ошибка загрузки PDF' });
                     setPackedPdfError(msg);
@@ -598,13 +623,13 @@ export default function Warehouse() {
               </button>
               <button
                 type="button"
-                disabled={!packedPdfDate || !packedPdfCity || packedPdfLoading}
+                disabled={!packedPdfDate || packedPdfLoading}
                 onClick={async () => {
-                  if (!packedPdfDate || !packedPdfCity) return;
+                  if (!packedPdfDate) return;
                   setPackedPdfError(null);
                   setPackedPdfLoading(true);
                   try {
-                    await warehouseAPI.printPackedOrdersPdf(packedPdfCity, packedPdfDate);
+                    await warehouseAPI.printPackedOrdersPdf(packedPdfDate, packedPdfRegionId || undefined);
                   } catch (err: any) {
                     const msg = getPackedPdfErrorMessage(err) || t('admin.warehouse.printPdfError', { defaultValue: 'Ошибка печати PDF' });
                     setPackedPdfError(msg);

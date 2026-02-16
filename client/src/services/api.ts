@@ -865,15 +865,17 @@ export const warehouseAPI = {
         });
       });
   },
-  /** Скачать PDF упакованных заказов по городу и дате (GET /warehouse/packed-orders-pdf?city=...&date=...) */
-  downloadPackedOrdersPdf: async (city: string, date: string): Promise<void> => {
+  /** Скачать PDF упакованных заказов по дате и опционально по области (GET /warehouse/packed-orders-pdf?date=...&region=...) */
+  downloadPackedOrdersPdf: async (date: string, regionId?: string): Promise<void> => {
+    const params: { date: string; region?: string } = { date };
+    if (regionId) params.region = regionId;
     const res = await apiClient.get("/warehouse/packed-orders-pdf", {
-      params: { city, date },
+      params,
       responseType: "blob",
     });
     const blob = (res as any).data as Blob;
     const disposition = (res as any).headers?.["content-disposition"];
-    let filename = `packed-orders-${city}-${date}.pdf`;
+    let filename = regionId ? `packed-orders-${regionId}-${date}.pdf` : `packed-orders-${date}.pdf`;
     if (typeof disposition === "string" && disposition.includes("filename=")) {
       const m = disposition.match(/filename="?([^";\n]+)"?/);
       if (m?.[1]) filename = m[1].trim();
@@ -885,10 +887,12 @@ export const warehouseAPI = {
     a.click();
     window.URL.revokeObjectURL(url);
   },
-  /** Печать PDF упакованных заказов по городу и дате */
-  printPackedOrdersPdf: (city: string, date: string): Promise<void> => {
+  /** Печать PDF упакованных заказов по дате и опционально по области */
+  printPackedOrdersPdf: (date: string, regionId?: string): Promise<void> => {
     const baseUrl = (apiClient.defaults.baseURL || "").replace(/\/$/, "");
-    const fullUrl = `${baseUrl}/warehouse/packed-orders-pdf?city=${encodeURIComponent(city)}&date=${encodeURIComponent(date)}`;
+    const search = new URLSearchParams({ date });
+    if (regionId) search.set("region", regionId);
+    const fullUrl = `${baseUrl}/warehouse/packed-orders-pdf?${search.toString()}`;
     const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
     const headers: Record<string, string> = {};
     if (token) headers.Authorization = `Bearer ${token}`;
