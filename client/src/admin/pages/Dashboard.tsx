@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { shopAPI, orderAPI } from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function Dashboard() {
   const { t } = useTranslation();
+  const { profile } = useAuth() as any;
   const [loading, setLoading] = useState(false);
   const [warehouseStats, setWarehouseStats] = useState(() => ({
     total: 0,
@@ -18,11 +20,15 @@ export default function Dashboard() {
     pending: 0,
   }));
   const [recent, setRecent] = useState<
-    Array<{ id: string | number; name: string; client: string; status: string; sum: number; date: string }>
+    Array<{ id: string | number; name: string; client: string; status: string; statusCode?: string; sum: number; date: string }>
   >([]);
   const getToday = () => {
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  };
+  const getFirstOfMonth = () => {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01';
   };
   const [packedDateFrom, setPackedDateFrom] = useState(getToday);
   const [packedDateTo, setPackedDateTo] = useState(getToday);
@@ -37,6 +43,23 @@ export default function Dashboard() {
   const [packedLoading, setPackedLoading] = useState(false);
   const [packedError, setPackedError] = useState<string | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+
+  // SEO: all orders table
+  const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [allOrdersLoading, setAllOrdersLoading] = useState(false);
+  const [oSearch, setOSearch] = useState('');
+  const [oStatus, setOStatus] = useState('');
+  const [updatingAllOrderId, setUpdatingAllOrderId] = useState<string | null>(null);
+
+  // SEO: operator stats
+  const [opsStats, setOpsStats] = useState<any[]>([]);
+  const [opsLoading, setOpsLoading] = useState(false);
+  const [opsPeriod, setOpsPeriod] = useState<'month' | 'alltime'>('month');
+
+  // Role detection
+  const roleRaw = String(profile?.role ?? profile?.user_role ?? profile?.data?.role ?? '').toLowerCase().trim();
+  const normalizedRole = roleRaw === 'sale_operator' ? 'sale' : roleRaw;
+  const isSeoOrHigher = ['seo', 'admin', 'ceo', 'manager'].includes(normalizedRole);
 
   /** Все статусы заказа (то же API, что у операторов) */
   const orderStatuses = useMemo(
@@ -69,8 +92,22 @@ export default function Dashboard() {
     }
   }, []);
 
+  const handleAllOrderStatusChange = useCallback(async (orderId: string, newStatus: string) => {
+    try {
+      setUpdatingAllOrderId(orderId);
+      await orderAPI.updateStatus(orderId, newStatus);
+      setAllOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+      );
+    } catch {
+      // ignore
+    } finally {
+      setUpdatingAllOrderId(null);
+    }
+  }, []);
+
   // helper: normalize orders like in Orders.tsx
-  const normalizeOrders = (data: any[]) => data.map((o:any)=> {
+  const normalizeOrders = (data: any[]) => data.map((o: any) => {
     const first = (o.buyer_firstname ?? '').trim();
     const last = (o.buyer_lastname ?? '').trim();
     const full = (o.full_name ?? '').trim();
@@ -78,9 +115,11 @@ export default function Dashboard() {
     const customer = byNames || full || (o.order_comment || '').trim() || 'Guest';
     const totalPrice = Number(o.total_price || o.total || 0) || 0;
     const created = o.created_at || o.created || o.order_date || o.date || o.createdAt || null;
+    const phone = o.guest_user_number || o.phone || o.buyer_phone || o.user_phone || '';
     return {
       id: o.order_id || o.id,
       customer,
+      phone,
       total: totalPrice,
       status: String(o.status || 'pending').toLowerCase(),
       order_number: o.order_number || o.number || o.code || '',
@@ -89,9 +128,9 @@ export default function Dashboard() {
     };
   });
 
-  useEffect(()=>{
+  useEffect(() => {
     let ignore = false;
-    const load = async ()=>{
+    const load = async () => {
       try {
         setLoading(true);
         // fetch in parallel
@@ -134,17 +173,17 @@ export default function Dashboard() {
 
         if (!hasOrdersStats || !hasWarehouseStats) {
           const [ordersRes, productsRes, categoriesRes] = await Promise.all([
-            shopAPI.getAllOrders().catch(()=> ({ data: [] } as any)),
-            shopAPI.getProducts({ limit: 1000 }).catch(()=> ({ data: [] } as any)),
-            shopAPI.getCategories().catch(()=> ({ data: [] } as any)),
+            shopAPI.getAllOrders().catch(() => ({ data: [] } as any)),
+            shopAPI.getProducts({ limit: 1000 }).catch(() => ({ data: [] } as any)),
+            shopAPI.getCategories().catch(() => ({ data: [] } as any)),
           ]);
 
           if (!hasOrdersStats) {
             const ordersRaw = Array.isArray(ordersRes.data) ? ordersRes.data : (ordersRes.data?.results || ordersRes.data?.data || []);
             const orders = normalizeOrders(ordersRaw || []);
             const total = orders.length;
-            const sum = orders.reduce((acc, o:any)=> acc + (Number(o.total)||0), 0);
-            const pending = orders.filter((o:any)=> o.status === 'pending').length;
+            const sum = orders.reduce((acc, o: any) => acc + (Number(o.total) || 0), 0);
+            const pending = orders.filter((o: any) => o.status === 'pending').length;
             const avg = total ? Math.round(sum / total) : 0;
             if (!ignore) {
               setOrdersStats({ total, avg, sum, pending });
@@ -155,11 +194,11 @@ export default function Dashboard() {
                 confirmed: t('admin.dashboard.recent.status.confirmed'),
                 packing: t('admin.dashboard.recent.status.packing'),
               };
-              const sortedRecent = [...orders].sort((a:any,b:any)=>{
+              const sortedRecent = [...orders].sort((a: any, b: any) => {
                 const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
                 const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
                 return tb - ta;
-              }).slice(0, 5).map(o=> ({
+              }).slice(0, 5).map((o) => ({
                 id: o.id,
                 name: o.order_number || o.name || '—',
                 client: o.customer,
@@ -175,9 +214,9 @@ export default function Dashboard() {
           if (!hasWarehouseStats) {
             const productsRaw = Array.isArray(productsRes.data) ? productsRes.data : (productsRes.data?.results || productsRes.data?.data || []);
             const totalProducts = (productsRaw || []).length;
-            const out = (productsRaw || []).filter((p:any)=> Number(p.stock||0) <= 0).length;
-            const low = (productsRaw || []).filter((p:any)=> Number(p.stock||0) > 0 && Number(p.stock||0) <= 5).length;
-            const amount = (productsRaw || []).reduce((acc:number, p:any)=> acc + (Number(p.price||0) * Number(p.stock||0)), 0);
+            const out = (productsRaw || []).filter((p: any) => Number(p.stock || 0) <= 0).length;
+            const low = (productsRaw || []).filter((p: any) => Number(p.stock || 0) > 0 && Number(p.stock || 0) <= 5).length;
+            const amount = (productsRaw || []).reduce((acc: number, p: any) => acc + (Number(p.price || 0) * Number(p.stock || 0)), 0);
             if (!ignore) setWarehouseStats({ total: totalProducts, low, out, amount });
           }
 
@@ -188,8 +227,54 @@ export default function Dashboard() {
       }
     };
     load();
-    return ()=>{ ignore = true; };
+    return () => { ignore = true; };
   }, []);
+
+  // SEO: load all orders
+  useEffect(() => {
+    if (!isSeoOrHigher) return;
+    let ignore = false;
+    const load = async () => {
+      try {
+        setAllOrdersLoading(true);
+        const res = await shopAPI.getAllOrders();
+        if (ignore) return;
+        const raw = Array.isArray(res.data) ? res.data : (res.data as any)?.results ?? (res.data as any)?.data ?? [];
+        setAllOrders(normalizeOrders(raw));
+      } catch {
+        // ignore
+      } finally {
+        if (!ignore) setAllOrdersLoading(false);
+      }
+    };
+    load();
+    return () => { ignore = true; };
+  }, [isSeoOrHigher]);
+
+  // SEO: load operator stats
+  useEffect(() => {
+    if (!isSeoOrHigher) return;
+    let ignore = false;
+    const load = async () => {
+      try {
+        setOpsLoading(true);
+        const params =
+          opsPeriod === 'month'
+            ? { date_from: getFirstOfMonth(), date_to: getToday() }
+            : undefined;
+        const res = await shopAPI.getOperatorsStats(params);
+        if (ignore) return;
+        const data = Array.isArray(res.data) ? res.data : (res.data as any)?.data ?? [];
+        setOpsStats(data);
+      } catch {
+        // ignore
+      } finally {
+        if (!ignore) setOpsLoading(false);
+      }
+    };
+    load();
+    return () => { ignore = true; };
+  }, [isSeoOrHigher, opsPeriod]);
 
   useEffect(() => {
     let ignore = false;
@@ -222,11 +307,15 @@ export default function Dashboard() {
     const base = 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold';
     return {
       pending: `${base} bg-amber-100 text-amber-800`,
+      accepted: `${base} bg-blue-100 text-blue-700`,
       cancelled: `${base} bg-rose-100 text-rose-700`,
       delivered: `${base} bg-emerald-100 text-emerald-700`,
       confirmed: `${base} bg-blue-100 text-blue-700`,
       packing: `${base} bg-indigo-100 text-indigo-700`,
       packed: `${base} bg-violet-100 text-violet-700`,
+      shipped: `${base} bg-sky-100 text-sky-700`,
+      processing: `${base} bg-orange-100 text-orange-700`,
+      refunded: `${base} bg-pink-100 text-pink-700`,
       default: `${base} bg-slate-100 text-slate-700`,
     } as Record<string, string>;
   }, []);
@@ -237,8 +326,25 @@ export default function Dashboard() {
     { label: t('admin.dashboard.orderStatuses.issues'), value: warehouseStats.out, color: '#ef4444', accent: '#fee2e2' },
   ];
 
+  const filteredAllOrders = useMemo(() => {
+    const q = oSearch.trim().toLowerCase();
+    return allOrders.filter((o) => {
+      const matchSearch =
+        !q ||
+        o.customer?.toLowerCase().includes(q) ||
+        o.phone?.toLowerCase().includes(q) ||
+        String(o.order_number || '').toLowerCase().includes(q) ||
+        String(o.id || '').toLowerCase().includes(q);
+      const matchStatus = !oStatus || o.status === oStatus;
+      return matchSearch && matchStatus;
+    });
+  }, [allOrders, oSearch, oStatus]);
+
+  const statusSelectCls = 'rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm font-medium disabled:opacity-50';
+
   return (
     <div className="space-y-4 p-4 md:p-6">
+      {/* Hero metric cards */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -247,17 +353,35 @@ export default function Dashboard() {
             <p className="text-slate-500">{t('admin.dashboard.hero.subtitle')}</p>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 w-full md:w-auto">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-              <p className="text-slate-500">{t('admin.dashboard.hero.orders')}</p>
-              <strong className="text-lg text-slate-900">{ordersStats.total}</strong>
+            {/* Orders card — emerald */}
+            <div className="rounded-xl border border-emerald-100 bg-linear-to-br from-emerald-50 to-emerald-100/60 px-4 py-3 text-sm shadow-sm">
+              <div className="mb-1 flex items-center gap-2">
+                <svg className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <p className="text-emerald-700 font-medium">{t('admin.dashboard.hero.orders')}</p>
+              </div>
+              <strong className="text-2xl text-emerald-900">{ordersStats.total}</strong>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-              <p className="text-slate-500">{t('admin.dashboard.hero.avg')}</p>
-              <strong className="text-lg text-slate-900">{ordersStats.avg.toLocaleString()} {t('common.currency')}</strong>
+            {/* Avg card — blue */}
+            <div className="rounded-xl border border-blue-100 bg-linear-to-br from-blue-50 to-blue-100/60 px-4 py-3 text-sm shadow-sm">
+              <div className="mb-1 flex items-center gap-2">
+                <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <p className="text-blue-700 font-medium">{t('admin.dashboard.hero.avg')}</p>
+              </div>
+              <strong className="text-2xl text-blue-900">{ordersStats.avg.toLocaleString()} {t('common.currency')}</strong>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-              <p className="text-slate-500">{t('admin.dashboard.hero.inventory')}</p>
-              <strong className="text-lg text-slate-900">{warehouseStats.amount.toLocaleString()} {t('common.currency')}</strong>
+            {/* Inventory card — violet */}
+            <div className="rounded-xl border border-violet-100 bg-linear-to-br from-violet-50 to-violet-100/60 px-4 py-3 text-sm shadow-sm">
+              <div className="mb-1 flex items-center gap-2">
+                <svg className="h-4 w-4 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                <p className="text-violet-700 font-medium">{t('admin.dashboard.hero.inventory')}</p>
+              </div>
+              <strong className="text-2xl text-violet-900">{warehouseStats.amount.toLocaleString()} {t('common.currency')}</strong>
             </div>
           </div>
         </div>
@@ -276,13 +400,13 @@ export default function Dashboard() {
               <p className="text-slate-500 text-sm">{t('admin.dashboard.warehouse.total')}</p>
               <strong className="text-xl">{warehouseStats.total}</strong>
             </div>
-            <div className="rounded-xl bg-slate-50 p-3">
-              <p className="text-slate-500 text-sm">{t('admin.dashboard.warehouse.low')}</p>
-              <strong className="text-xl">{warehouseStats.low}</strong>
+            <div className="rounded-xl bg-amber-50 p-3">
+              <p className="text-amber-700 text-sm">{t('admin.dashboard.warehouse.low')}</p>
+              <strong className="text-xl text-amber-800">{warehouseStats.low}</strong>
             </div>
-            <div className="rounded-xl bg-slate-50 p-3">
-              <p className="text-slate-500 text-sm">{t('admin.dashboard.warehouse.outOfStock')}</p>
-              <strong className="text-xl">{warehouseStats.out}</strong>
+            <div className="rounded-xl bg-red-50 p-3">
+              <p className="text-red-700 text-sm">{t('admin.dashboard.warehouse.outOfStock')}</p>
+              <strong className="text-xl text-red-800">{warehouseStats.out}</strong>
             </div>
           </div>
         </div>
@@ -309,6 +433,7 @@ export default function Dashboard() {
         </div>
       </section>
 
+      {/* Recent orders table */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
           <div>
@@ -320,26 +445,26 @@ export default function Dashboard() {
           <table className="w-full border-collapse text-left text-sm">
             <thead className="bg-slate-100 text-slate-600">
               <tr>
-                <th className="px-3 py-2">{t('admin.dashboard.recent.table.order')}</th>
-                <th className="px-3 py-2">{t('admin.dashboard.recent.table.client')}</th>
-                <th className="px-3 py-2">{t('admin.dashboard.recent.table.status')}</th>
-                <th className="px-3 py-2">{t('admin.dashboard.recent.table.amount')}</th>
-                <th className="px-3 py-2">{t('admin.dashboard.recent.table.date')}</th>
+                <th className="px-3 py-3 font-semibold">{t('admin.dashboard.recent.table.order')}</th>
+                <th className="px-3 py-3 font-semibold">{t('admin.dashboard.recent.table.client')}</th>
+                <th className="px-3 py-3 font-semibold">{t('admin.dashboard.recent.table.status')}</th>
+                <th className="px-3 py-3 font-semibold">{t('admin.dashboard.recent.table.amount')}</th>
+                <th className="px-3 py-3 font-semibold">{t('admin.dashboard.recent.table.date')}</th>
               </tr>
             </thead>
             <tbody>
               {recent.map((r) => (
-                <tr key={r.id} className="border-t border-slate-200">
-                  <td className="px-3 py-2">
+                <tr key={r.id} className="border-t border-slate-200 hover:bg-slate-50 transition-colors">
+                  <td className="px-3 py-3">
                     <div className="font-semibold text-slate-900">#{r.id}</div>
                     <div className="text-[12px] text-slate-500">{r.name}</div>
                   </td>
-                  <td className="px-3 py-2">{r.client}</td>
-                  <td className="px-3 py-2">
-                    <span className={badgeClass[r.statusCode] || badgeClass.default}>{r.status}</span>
+                  <td className="px-3 py-3">{r.client}</td>
+                  <td className="px-3 py-3">
+                    <span className={badgeClass[(r as any).statusCode || r.status] || badgeClass.default}>{r.status}</span>
                   </td>
-                  <td className="px-3 py-2">{r.sum.toLocaleString()}</td>
-                  <td className="px-3 py-2">{r.date}</td>
+                  <td className="px-3 py-3">{r.sum.toLocaleString()}</td>
+                  <td className="px-3 py-3">{r.date}</td>
                 </tr>
               ))}
             </tbody>
@@ -347,6 +472,7 @@ export default function Dashboard() {
         </div>
       </section>
 
+      {/* Packed orders by updated_at */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -384,11 +510,11 @@ export default function Dashboard() {
           <table className="w-full border-collapse text-left text-sm">
             <thead className="bg-slate-100 text-slate-600">
               <tr>
-                <th className="px-3 py-2">{t('admin.dashboard.packedByUpdated.table.order')}</th>
-                <th className="px-3 py-2">{t('admin.dashboard.packedByUpdated.table.client')}</th>
-                <th className="px-3 py-2">{t('admin.dashboard.packedByUpdated.table.status')}</th>
-                <th className="px-3 py-2">{t('admin.dashboard.packedByUpdated.table.amount')}</th>
-                <th className="px-3 py-2">{t('admin.dashboard.packedByUpdated.table.updatedAt')}</th>
+                <th className="px-3 py-3 font-semibold">{t('admin.dashboard.packedByUpdated.table.order')}</th>
+                <th className="px-3 py-3 font-semibold">{t('admin.dashboard.packedByUpdated.table.client')}</th>
+                <th className="px-3 py-3 font-semibold">{t('admin.dashboard.packedByUpdated.table.status')}</th>
+                <th className="px-3 py-3 font-semibold">{t('admin.dashboard.packedByUpdated.table.amount')}</th>
+                <th className="px-3 py-3 font-semibold">{t('admin.dashboard.packedByUpdated.table.updatedAt')}</th>
               </tr>
             </thead>
             <tbody>
@@ -400,42 +526,32 @@ export default function Dashboard() {
                 </tr>
               )}
               {packedList.map((row) => (
-                <tr key={row.id} className="border-t border-slate-200">
-                  <td className="px-3 py-2">
+                <tr key={row.id} className="border-t border-slate-200 hover:bg-slate-50 transition-colors">
+                  <td className="px-3 py-3">
                     <div className="font-semibold text-slate-900">#{row.id}</div>
                     <div className="text-[12px] text-slate-500">{row.order_number}</div>
                   </td>
-                  <td className="px-3 py-2">{row.client}</td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-3">{row.client}</td>
+                  <td className="px-3 py-3">
                     <select
                       value={row.status}
                       onChange={(e) => handlePackedStatusChange(row.id, e.target.value)}
                       disabled={updatingOrderId === row.id}
-                      className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm font-medium disabled:opacity-50"
+                      className={statusSelectCls}
                     >
                       {orderStatuses.map((st) => (
                         <option key={st} value={st}>
                           {t(`admin.ordersPage.statuses.${st}`, {
                             defaultValue:
-                              st === 'pending'
-                                ? 'В ожидании'
-                                : st === 'accepted'
-                                  ? 'Принят'
-                                  : st === 'packing'
-                                    ? 'Упаковывается'
-                                    : st === 'packed'
-                                      ? 'Упакован'
-                                      : st === 'processing'
-                                        ? 'В обработке'
-                                        : st === 'shipped'
-                                          ? 'Отправлен'
-                                          : st === 'delivered'
-                                            ? 'Доставлен'
-                                            : st === 'cancelled'
-                                              ? 'Отменён'
-                                              : st === 'refunded'
-                                                ? 'Возврат средств'
-                                                : st,
+                              st === 'pending' ? 'В ожидании' :
+                              st === 'accepted' ? 'Принят' :
+                              st === 'packing' ? 'Упаковывается' :
+                              st === 'packed' ? 'Упакован' :
+                              st === 'processing' ? 'В обработке' :
+                              st === 'shipped' ? 'Отправлен' :
+                              st === 'delivered' ? 'Доставлен' :
+                              st === 'cancelled' ? 'Отменён' :
+                              st === 'refunded' ? 'Возврат средств' : st,
                           })}
                         </option>
                       ))}
@@ -444,8 +560,8 @@ export default function Dashboard() {
                       <span className="ml-1 text-xs text-slate-500">...</span>
                     )}
                   </td>
-                  <td className="px-3 py-2">{row.total_price.toLocaleString()}</td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-3">{row.total_price.toLocaleString()}</td>
+                  <td className="px-3 py-3">
                     {row.updated_at ? new Date(row.updated_at).toLocaleString('ru-RU') : '—'}
                   </td>
                 </tr>
@@ -454,8 +570,159 @@ export default function Dashboard() {
           </table>
         </div>
       </section>
+
+      {/* SEO SECTION: All Orders */}
+      {isSeoOrHigher && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <span className="block text-sm font-semibold text-slate-900">{t('admin.dashboard.seoSection.ordersTitle')}</span>
+              {allOrdersLoading && <small className="text-slate-500">{t('admin.dashboard.packedByUpdated.loading')}</small>}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <input
+                className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 sm:w-52"
+                placeholder={t('admin.dashboard.seoSection.searchPlaceholder')}
+                value={oSearch}
+                onChange={(e) => setOSearch(e.target.value)}
+              />
+              <select
+                className="h-9 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none"
+                value={oStatus}
+                onChange={(e) => setOStatus(e.target.value)}
+              >
+                <option value="">{t('admin.dashboard.seoSection.allStatuses')}</option>
+                {orderStatuses.map((st) => (
+                  <option key={st} value={st}>
+                    {t(`admin.ordersPage.statuses.${st}`, { defaultValue: st })}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-slate-200">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-slate-100 text-slate-600">
+                <tr>
+                  <th className="px-3 py-3 font-semibold">{t('admin.dashboard.recent.table.order')}</th>
+                  <th className="px-3 py-3 font-semibold">{t('admin.dashboard.recent.table.client')}</th>
+                  <th className="px-3 py-3 font-semibold">{t('admin.dashboard.seoSection.phone')}</th>
+                  <th className="px-3 py-3 font-semibold">{t('admin.dashboard.recent.table.status')}</th>
+                  <th className="px-3 py-3 font-semibold">{t('admin.dashboard.recent.table.amount')}</th>
+                  <th className="px-3 py-3 font-semibold">{t('admin.dashboard.recent.table.date')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAllOrders.length === 0 && !allOrdersLoading && (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-4 text-center text-slate-500">—</td>
+                  </tr>
+                )}
+                {filteredAllOrders.map((o) => (
+                  <tr key={o.id} className="border-t border-slate-200 hover:bg-slate-50 transition-colors">
+                    <td className="px-3 py-3">
+                      <div className="font-semibold text-slate-900">#{o.order_number || o.id}</div>
+                    </td>
+                    <td className="px-3 py-3">{o.customer}</td>
+                    <td className="px-3 py-3 text-slate-600">{o.phone || '—'}</td>
+                    <td className="px-3 py-3">
+                      <select
+                        value={o.status}
+                        onChange={(e) => handleAllOrderStatusChange(String(o.id), e.target.value)}
+                        disabled={updatingAllOrderId === String(o.id)}
+                        className={statusSelectCls}
+                      >
+                        {orderStatuses.map((st) => (
+                          <option key={st} value={st}>
+                            {t(`admin.ordersPage.statuses.${st}`, { defaultValue: st })}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-3 py-3">{Number(o.total || 0).toLocaleString()}</td>
+                    <td className="px-3 py-3">
+                      {o.created_at ? new Date(o.created_at).toLocaleString('ru-RU') : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* SEO SECTION: Operator Stats */}
+      {isSeoOrHigher && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <span className="block text-sm font-semibold text-slate-900">{t('admin.dashboard.seoSection.opsTitle')}</span>
+              {opsLoading && <small className="text-slate-500">{t('admin.dashboard.packedByUpdated.loading')}</small>}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setOpsPeriod('month')}
+                className={`rounded-xl px-4 py-1.5 text-sm font-semibold transition ${opsPeriod === 'month' ? 'bg-emerald-600 text-white' : 'border border-slate-200 text-slate-700 hover:border-emerald-500 hover:text-emerald-700'}`}
+              >
+                {t('admin.dashboard.seoSection.thisMonth')}
+              </button>
+              <button
+                onClick={() => setOpsPeriod('alltime')}
+                className={`rounded-xl px-4 py-1.5 text-sm font-semibold transition ${opsPeriod === 'alltime' ? 'bg-emerald-600 text-white' : 'border border-slate-200 text-slate-700 hover:border-emerald-500 hover:text-emerald-700'}`}
+              >
+                {t('admin.dashboard.seoSection.allTime')}
+              </button>
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-slate-200">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-slate-100 text-slate-600">
+                <tr>
+                  <th className="px-3 py-3 font-semibold">{t('admin.dashboard.seoSection.operator')}</th>
+                  <th className="px-3 py-3 font-semibold text-center">{t('admin.dashboard.seoSection.acceptedPeriod')}</th>
+                  <th className="px-3 py-3 font-semibold text-center">{t('admin.dashboard.seoSection.cancelledPeriod')}</th>
+                  <th className="px-3 py-3 font-semibold text-center">{t('admin.dashboard.seoSection.acceptedTotal')}</th>
+                  <th className="px-3 py-3 font-semibold text-center">{t('admin.dashboard.seoSection.cancelledTotal')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {opsStats.length === 0 && !opsLoading && (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-4 text-center text-slate-500">—</td>
+                  </tr>
+                )}
+                {opsStats.map((op, idx) => (
+                  <tr key={op.operator_id || idx} className="border-t border-slate-200 hover:bg-slate-50 transition-colors">
+                    <td className="px-3 py-3 font-medium text-slate-900">
+                      {op.first_name || ''} {op.last_name || ''}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                        {op.accepted_in_period ?? op.period_orders ?? 0}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <span className="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700">
+                        {op.cancelled_in_period ?? 0}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                        {op.accepted_count ?? op.total_orders ?? 0}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <span className="inline-flex items-center rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-600">
+                        {op.cancelled_count ?? 0}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
-
-

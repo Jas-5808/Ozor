@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { shopAPI } from "../../services/api";
 
@@ -38,8 +38,19 @@ export default function Categories() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const canSubmit = useMemo(() => name.trim().length > 0, [name]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter(
+      (i) =>
+        i.name.toLowerCase().includes(q) ||
+        (i.parent_name || "").toLowerCase().includes(q)
+    );
+  }, [items, search]);
 
   const load = async () => {
     try {
@@ -98,8 +109,16 @@ export default function Categories() {
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <div className="mb-3 text-sm font-bold text-slate-900">
-        {t("admin.categoriesPage.title")}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-extrabold text-slate-900">
+          {t("admin.categoriesPage.title")}
+        </h1>
+        <input
+          className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 sm:w-64"
+          placeholder={t("admin.categoriesPage.searchPlaceholder") || "Поиск категории…"}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
       <div className="mb-3 grid gap-2 md:grid-cols-3">
@@ -143,7 +162,7 @@ export default function Categories() {
           </thead>
 
           <tbody>
-            {items.map((i, idx) => (
+            {filtered.map((i, idx) => (
               <tr
                 key={i.id}
                 className={[
@@ -245,7 +264,7 @@ export default function Categories() {
               </tr>
             ))}
 
-            {!loading && items.length === 0 && (
+            {!loading && filtered.length === 0 && (
               <tr className="border-t border-slate-200">
                 <td
                   colSpan={5}

@@ -202,7 +202,8 @@ export const buildDisplayProductsFromRawOrder = (rawProducts: any[]): Product[] 
     if (effectivePrice === null || Number(effectivePrice) <= 0) continue;
     result.push(transformProductFromApi(item));
   }
-  return result;
+  // Расставляем варианты одного товара вразброс, чтобы они не шли подряд
+  return spreadProductVariants(result);
 };/**
  * Размешивает варианты одного товара (одинаковый product_id), чтобы они не шли подряд.
  * Round-robin по группам product_id: сначала по одному из каждой группы, затем вторые и т.д.
