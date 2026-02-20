@@ -435,6 +435,29 @@ export const shopAPI = {
       }>
     >
   > => apiClient.get("/admin/dashboard/packed-orders-by-updated", { params }),
+  /** Все заказы для CEO: фильтр по статусу/дате, поиск по телефону/региону/имени */
+  getDashboardOrdersCeo: (params?: {
+    status?: string;
+    date_from?: string;
+    date_to?: string;
+    search?: string;
+    limit?: number;
+  }): Promise<
+    TypedAxiosResponse<
+      Array<{
+        id: string;
+        order_number: string;
+        client: string;
+        phone: string;
+        order_region: string;
+        product_names: string;
+        status: string;
+        total_price: number;
+        created_at: string | null;
+        updated_at: string | null;
+      }>
+    >
+  > => apiClient.get("/admin/dashboard/orders-ceo", { params }),
   // Admin stats: operators and warehouse users
   getOperatorsStats: (params?: { date_from?: string; date_to?: string }): Promise<
     TypedAxiosResponse<Array<{

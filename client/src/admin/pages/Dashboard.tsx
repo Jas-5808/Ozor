@@ -56,10 +56,88 @@ export default function Dashboard() {
   const [opsLoading, setOpsLoading] = useState(false);
   const [opsPeriod, setOpsPeriod] = useState<'month' | 'alltime'>('month');
 
-  // Role detection
+  // CEO: Изменения статусов — все заказы с фильтрацией и поиском
+  const [ceoOrders, setCeoOrders] = useState<Array<{
+    id: string;
+    order_number: string;
+    client: string;
+    phone: string;
+    order_region: string;
+    product_names: string;
+    status: string;
+    total_price: number;
+    created_at: string | null;
+    updated_at: string | null;
+  }>>([]);
+  const [ceoOrdersLoading, setCeoOrdersLoading] = useState(false);
+  const [ceoOrdersError, setCeoOrdersError] = useState<string | null>(null);
+  const [ceoStatusFilter, setCeoStatusFilter] = useState('');
+  const [ceoDateFrom, setCeoDateFrom] = useState('');
+  const [ceoDateTo, setCeoDateTo] = useState('');
+  const [ceoSearch, setCeoSearch] = useState('');
+  const [updatingCeoOrderId, setUpdatingCeoOrderId] = useState<string | null>(null);
+
+  // Role detection (must be before loadCeoOrders / useEffect that use isSeoOrHigher)
   const roleRaw = String(profile?.role ?? profile?.user_role ?? profile?.data?.role ?? '').toLowerCase().trim();
   const normalizedRole = roleRaw === 'sale_operator' ? 'sale' : roleRaw;
-  const isSeoOrHigher = ['seo', 'admin', 'ceo', 'manager'].includes(normalizedRole);
+  const isSeoOrHigher = [
+    'seo', 'admin', 'ceo', 'manager',
+    'sale_manager', 'driver_manager', 'warehouse_manager',
+  ].includes(normalizedRole);
+
+  // Для поиска по телефону: если введены только цифры (напр. последние 4), отправляем только цифры — так бэкенд найдёт по подстроке в номере
+  const getSearchParam = useCallback((raw: string) => {
+    const s = raw.trim();
+    if (!s) return undefined;
+    const digitsOnly = s.replace(/\D/g, '');
+    if (digitsOnly.length >= 4 && /^[\d\s]+$/.test(s)) return digitsOnly;
+    return s;
+  }, []);
+
+  const loadCeoOrders = useCallback(async () => {
+    setCeoOrdersLoading(true);
+    setCeoOrdersError(null);
+    try {
+      const res = await shopAPI.getDashboardOrdersCeo({
+        status: ceoStatusFilter || undefined,
+        date_from: ceoDateFrom || undefined,
+        date_to: ceoDateTo || undefined,
+        search: getSearchParam(ceoSearch),
+        limit: 500,
+      });
+      setCeoOrders(Array.isArray(res.data) ? res.data : []);
+    } catch (e: any) {
+      setCeoOrdersError(e?.response?.data?.detail || e?.message || 'Ошибка загрузки');
+      setCeoOrders([]);
+    } finally {
+      setCeoOrdersLoading(false);
+    }
+  }, [ceoStatusFilter, ceoDateFrom, ceoDateTo, ceoSearch, getSearchParam]);
+
+  // Первая загрузка заказов при открытии дашборда (по умолчанию — текущий месяц)
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      setCeoOrdersLoading(true);
+      setCeoOrdersError(null);
+      try {
+        const res = await shopAPI.getDashboardOrdersCeo({
+          date_from: getFirstOfMonth(),
+          date_to: getToday(),
+          limit: 500,
+        });
+        if (!ignore) setCeoOrders(Array.isArray(res.data) ? res.data : []);
+      } catch (e: any) {
+        if (!ignore) {
+          setCeoOrdersError(e?.response?.data?.detail || e?.message || 'Ошибка загрузки');
+          setCeoOrders([]);
+        }
+      } finally {
+        if (!ignore) setCeoOrdersLoading(false);
+      }
+    })();
+    return () => { ignore = true; };
+  }, []);
 
   /** Все статусы заказа (то же API, что у операторов) */
   const orderStatuses = useMemo(
@@ -103,6 +181,21 @@ export default function Dashboard() {
       // ignore
     } finally {
       setUpdatingAllOrderId(null);
+    }
+  }, []);
+
+  const handleCeoOrderStatusChange = useCallback(async (orderId: string, newStatus: string) => {
+    try {
+      setUpdatingCeoOrderId(orderId);
+      setCeoOrdersError(null);
+      await orderAPI.updateStatus(orderId, newStatus);
+      setCeoOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+      );
+    } catch (e: any) {
+      setCeoOrdersError(e?.response?.data?.detail || e?.message || 'Ошибка смены статуса');
+    } finally {
+      setUpdatingCeoOrderId(null);
     }
   }, []);
 
@@ -472,20 +565,39 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Packed orders by updated_at */}
+      {/* Изменения статусов: поиск, фильтр по статусу, даты, таблица с телефоном/регионом/товаром */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-3 flex flex-col gap-3">
           <div>
-            <span className="block text-sm font-semibold text-slate-900">{t('admin.dashboard.packedByUpdated.title')}</span>
-            <small className="text-slate-500">{t('admin.dashboard.packedByUpdated.subtitle')}</small>
+            <span className="block text-sm font-semibold text-slate-900">{t('admin.dashboard.statusChangesCeo.title')}</span>
+            <small className="text-slate-500">{t('admin.dashboard.statusChangesCeo.subtitle')}</small>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              placeholder={t('admin.dashboard.statusChangesCeo.searchPlaceholder')}
+              value={ceoSearch}
+              onChange={(e) => setCeoSearch(e.target.value)}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm min-w-[180px]"
+            />
+            <select
+              value={ceoStatusFilter}
+              onChange={(e) => setCeoStatusFilter(e.target.value)}
+              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
+            >
+              <option value="">{t('admin.dashboard.seoSection.allStatuses')}</option>
+              {orderStatuses.map((st) => (
+                <option key={st} value={st}>
+                  {t(`admin.ordersPage.statuses.${st}`, { defaultValue: st })}
+                </option>
+              ))}
+            </select>
             <label className="flex items-center gap-1 text-sm">
               <span className="text-slate-600">{t('admin.dashboard.packedByUpdated.dateFrom')}</span>
               <input
                 type="date"
-                value={packedDateFrom}
-                onChange={(e) => setPackedDateFrom(e.target.value)}
+                value={ceoDateFrom}
+                onChange={(e) => setCeoDateFrom(e.target.value)}
                 className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
               />
             </label>
@@ -493,70 +605,73 @@ export default function Dashboard() {
               <span className="text-slate-600">{t('admin.dashboard.packedByUpdated.dateTo')}</span>
               <input
                 type="date"
-                value={packedDateTo}
-                onChange={(e) => setPackedDateTo(e.target.value)}
+                value={ceoDateTo}
+                onChange={(e) => setCeoDateTo(e.target.value)}
                 className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
               />
             </label>
+            <button
+              type="button"
+              onClick={loadCeoOrders}
+              disabled={ceoOrdersLoading}
+              className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {t('admin.dashboard.statusChangesCeo.apply')}
+            </button>
           </div>
         </div>
-        {packedError && (
-          <p className="mb-2 text-sm text-rose-600">{packedError}</p>
+        {ceoOrdersError && (
+          <p className="mb-2 text-sm text-rose-600">{ceoOrdersError}</p>
         )}
-        {packedLoading && (
+        {ceoOrdersLoading && (
           <p className="mb-2 text-sm text-slate-500">{t('admin.dashboard.packedByUpdated.loading')}</p>
         )}
-        <div className="overflow-hidden rounded-xl border border-slate-200">
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="w-full border-collapse text-left text-sm">
             <thead className="bg-slate-100 text-slate-600">
               <tr>
                 <th className="px-3 py-3 font-semibold">{t('admin.dashboard.packedByUpdated.table.order')}</th>
                 <th className="px-3 py-3 font-semibold">{t('admin.dashboard.packedByUpdated.table.client')}</th>
+                <th className="px-3 py-3 font-semibold">{t('admin.dashboard.seoSection.phone')}</th>
+                <th className="px-3 py-3 font-semibold">{t('admin.dashboard.statusChangesCeo.region')}</th>
+                <th className="px-3 py-3 font-semibold">{t('admin.dashboard.statusChangesCeo.product')}</th>
                 <th className="px-3 py-3 font-semibold">{t('admin.dashboard.packedByUpdated.table.status')}</th>
                 <th className="px-3 py-3 font-semibold">{t('admin.dashboard.packedByUpdated.table.amount')}</th>
                 <th className="px-3 py-3 font-semibold">{t('admin.dashboard.packedByUpdated.table.updatedAt')}</th>
               </tr>
             </thead>
             <tbody>
-              {packedList.length === 0 && !packedLoading && (
+              {ceoOrders.length === 0 && !ceoOrdersLoading && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-4 text-center text-slate-500">
+                  <td colSpan={8} className="px-3 py-4 text-center text-slate-500">
                     {t('admin.dashboard.packedByUpdated.empty')}
                   </td>
                 </tr>
               )}
-              {packedList.map((row) => (
+              {ceoOrders.map((row) => (
                 <tr key={row.id} className="border-t border-slate-200 hover:bg-slate-50 transition-colors">
                   <td className="px-3 py-3">
                     <div className="font-semibold text-slate-900">#{row.id}</div>
                     <div className="text-[12px] text-slate-500">{row.order_number}</div>
                   </td>
                   <td className="px-3 py-3">{row.client}</td>
+                  <td className="px-3 py-3 text-slate-600">{row.phone}</td>
+                  <td className="px-3 py-3 text-slate-600">{row.order_region}</td>
+                  <td className="px-3 py-3 max-w-[200px] truncate" title={row.product_names}>{row.product_names}</td>
                   <td className="px-3 py-3">
                     <select
                       value={row.status}
-                      onChange={(e) => handlePackedStatusChange(row.id, e.target.value)}
-                      disabled={updatingOrderId === row.id}
+                      onChange={(e) => handleCeoOrderStatusChange(row.id, e.target.value)}
+                      disabled={updatingCeoOrderId === row.id}
                       className={statusSelectCls}
                     >
                       {orderStatuses.map((st) => (
                         <option key={st} value={st}>
-                          {t(`admin.ordersPage.statuses.${st}`, {
-                            defaultValue:
-                              st === 'pending' ? 'В ожидании' :
-                              st === 'accepted' ? 'Принят' :
-                              st === 'packing' ? 'Упаковывается' :
-                              st === 'packed' ? 'Упакован' :
-                              st === 'processing' ? 'В обработке' :
-                              st === 'shipped' ? 'Отправлен' :
-                              st === 'delivered' ? 'Доставлен' :
-                              st === 'cancelled' ? 'Отменён' :
-                              st === 'refunded' ? 'Возврат средств' : st,
-                          })}
+                          {t(`admin.ordersPage.statuses.${st}`, { defaultValue: st })}
                         </option>
                       ))}
                     </select>
-                    {updatingOrderId === row.id && (
+                    {updatingCeoOrderId === row.id && (
                       <span className="ml-1 text-xs text-slate-500">...</span>
                     )}
                   </td>

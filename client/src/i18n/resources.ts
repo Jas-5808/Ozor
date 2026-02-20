@@ -1006,6 +1006,14 @@ export const resources = {
               updatedAt: 'Дата обновления',
             },
           },
+          statusChangesCeo: {
+            title: 'Изменения статусов',
+            subtitle: 'Все заказы с фильтрацией по статусу, дате и поиском по телефону, региону, имени',
+            searchPlaceholder: 'Телефон (можно последние 4 цифры), регион, имя, № заказа',
+            apply: 'Показать',
+            region: 'Регион',
+            product: 'Товар',
+          },
           seoSection: {
             ordersTitle: 'Все заказы',
             opsTitle: 'Статистика операторов',
@@ -2124,6 +2132,14 @@ export const resources = {
               amount: 'Summasi',
               updatedAt: 'Yangilangan sana',
             },
+          },
+          statusChangesCeo: {
+            title: 'Holat o‘zgarishlari',
+            subtitle: 'Barcha buyurtmalar — holat, sana va telefon, hudud, ism bo‘yicha qidiruv',
+            searchPlaceholder: 'Telefon (oxirgi 4 raqam), hudud, ism, buyurtma raqami',
+            apply: 'Ko‘rsatish',
+            region: 'Hudud',
+            product: 'Mahsulot',
           },
           seoSection: {
             ordersTitle: 'Barcha buyurtmalar',
