@@ -73,12 +73,21 @@ let pagedLoadMoreInFlight: Promise<void> | null = null;
  * Важно: НЕ выкачивает весь каталог, чтобы не убивать API и не держать мегабайты в памяти.
  */
 export const useProductsPaged = () => {
-  const [raw, setRaw] = useState<any[]>([]);
+  // Храним сырые данные в ref, чтобы loadMore не создавался заново при каждом обновлении списка.
+  // Это устраняет стейл-замыкания и предотвращает лишние ре-рендеры при быстром скролле.
+  const rawRef = useRef<any[]>([]);
+  const [raw, setRawState] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState<number>(0);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const locale = getLocaleKey();
+
+  // Синхронный сеттер: обновляет и ref, и state (для перерисовки)
+  const setRaw = useCallback((data: any[]) => {
+    rawRef.current = data;
+    setRawState(data);
+  }, []);
 
   const fetchFirstPage = useCallback(async () => {
     try {
@@ -135,9 +144,11 @@ export const useProductsPaged = () => {
         };
         writeMainCache({ raw: data, offset: nextOffset, hasMore: nextHasMore });
 
+        // Все обновления state в одном месте → один React render (React 18 batching)
         setRaw(data);
         setOffset(nextOffset);
         setHasMore(nextHasMore);
+        setLoading(false);
       };
 
       pagedInFlight = run();
@@ -149,11 +160,10 @@ export const useProductsPaged = () => {
       const errorMessage =
         getUserFriendlyMessage(appError) || i18n.t("common.errors.productsLoad");
       setError(errorMessage);
-      logger.errorWithContext(appError, { context: "useProductsPaged.fetchFirstPage" });
-    } finally {
       setLoading(false);
+      logger.errorWithContext(appError, { context: "useProductsPaged.fetchFirstPage" });
     }
-  }, []);
+  }, [setRaw]);
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return;
@@ -168,15 +178,19 @@ export const useProductsPaged = () => {
       }
 
       const run = async () => {
-        const response = await shopAPI.getProducts({ limit: MAIN_PRODUCTS_PAGED_LIMIT, offset });
+        // Читаем из ref, а не из замыкания — гарантированно актуальные данные без пересоздания callback
+        const currentRaw = rawRef.current;
+        const currentOffset = offset;
+
+        const response = await shopAPI.getProducts({ limit: MAIN_PRODUCTS_PAGED_LIMIT, offset: currentOffset });
         const data = response.data || [];
-        const nextOffset = offset + data.length;
+        const nextOffset = currentOffset + data.length;
 
         // Дедуп на всякий случай (API может отдавать повторно)
         const existingKeys = new Set(
-          raw.map((it: any) => `${it?.product_id || it?.id || ""}_${it?.variant_id || it?.variantId || ""}`)
+          currentRaw.map((it: any) => `${it?.product_id || it?.id || ""}_${it?.variant_id || it?.variantId || ""}`)
         );
-        const merged = raw.slice();
+        const merged = currentRaw.slice();
         for (const item of data) {
           const key = `${item?.product_id || item?.id || ""}_${item?.variant_id || item?.variantId || ""}`;
           if (!existingKeys.has(key)) {
@@ -184,11 +198,8 @@ export const useProductsPaged = () => {
             merged.push(item);
           }
         }
-        const grew = merged.length > raw.length;
+        const grew = merged.length > currentRaw.length;
         // "hasMore" продолжаем, пока сервер возвращает хоть что-то и список реально растёт.
-        // Это устойчиво к бэкам, которые:
-        // - игнорируют limit
-        // - иногда возвращают дубликаты
         const nextHasMore = data.length > 0 && grew;
 
         pagedCache = {
@@ -199,9 +210,11 @@ export const useProductsPaged = () => {
         };
         writeMainCache({ raw: merged, offset: nextOffset, hasMore: nextHasMore });
 
+        // Все обновления в одном batch → один React render, без промежуточных мерцаний
         setRaw(merged);
         setOffset(nextOffset);
         setHasMore(nextHasMore);
+        setLoading(false);
       };
 
       pagedLoadMoreInFlight = run();
@@ -213,11 +226,12 @@ export const useProductsPaged = () => {
       const errorMessage =
         getUserFriendlyMessage(appError) || i18n.t("common.errors.productsLoad");
       setError(errorMessage);
-      logger.errorWithContext(appError, { context: "useProductsPaged.loadMore" });
-    } finally {
       setLoading(false);
+      logger.errorWithContext(appError, { context: "useProductsPaged.loadMore" });
     }
-  }, [hasMore, loading, offset, raw]);
+    // Убран finally { setLoading(false) } — setLoading теперь внутри run() и catch,
+    // чтобы все state-обновления батчились в один рендер (React 18)
+  }, [hasMore, loading, offset, setRaw]); // raw убран из зависимостей — используем rawRef
 
   const refetch = useCallback(() => {
     pagedCache = null;
@@ -234,7 +248,7 @@ export const useProductsPaged = () => {
     setOffset(0);
     setHasMore(true);
     fetchFirstPage();
-  }, [fetchFirstPage]);
+  }, [fetchFirstPage, setRaw]);
 
   useEffect(() => {
     let cancelled = false;

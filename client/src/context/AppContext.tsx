@@ -150,6 +150,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'LOGOUT': {
       return {
         ...state,
+        cart: [],
+        likedProducts: new Set(),
         user: {
           isAuthenticated: false,
           profile: null,

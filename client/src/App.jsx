@@ -72,10 +72,11 @@ function AppContent() {
     }
   }, [
     geoLocation,
-    isAuthenticated,
     state.location.data,
+    state.location.isDetected,
     setLocation,
     hideLocationModal,
+    t,
   ]);
 
   return (

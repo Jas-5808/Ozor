@@ -570,7 +570,6 @@ export const authAPI = {
       hasPassword: !!formData.get("password") 
     });
 
-    // Axios will serialize the URLSearchParams payload automatically
     return apiClient.post("/auth/signin", formData, {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -962,10 +961,6 @@ export const paymentAPI = {
     total_transactions: number;
     total_referral_transactions: number;
   }>> => apiClient.get("/payment/balance"),
-  createWithdrawal: (payload: { amount: number; card_number: string; card_holder_name: string; description?: string }): Promise<TypedAxiosResponse<{ id: string; status: string; created_at: string }>> => {
-    const description = (payload.description ?? "").trim() || "string";
-    return apiClient.post("/payment/statements", { ...payload, description });
-  },
   createStatement: (payload: { amount: number; card_number: string; card_holder_name: string; description?: string }): Promise<TypedAxiosResponse<{
     id: string;
     user_id: string;

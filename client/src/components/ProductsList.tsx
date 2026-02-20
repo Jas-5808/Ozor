@@ -23,7 +23,9 @@ const getColumns = (width: number) => {
 
 // Примерная высота одной строки карточек (уточняем измерением первой карточки)
 const ESTIMATED_ROW_HEIGHT = 460;
-const OVERSCAN_ROWS = 4;
+// Большой overscan — меньше изменений paddingTop при быстром скролле → меньше прыжков.
+// 8 строк сверху и снизу: при высоте карточки ~460px это ~3680px буфера.
+const OVERSCAN_ROWS = 8;
 
 const ProductsListComponent: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -77,8 +79,11 @@ const ProductsListComponent: React.FC = () => {
     };
   }, []);
 
-  // Уточняем высоту строки по первой отрендеренной карточке (плюс vertical gap)
+  // Уточняем высоту строки по первой отрендеренной карточке (плюс vertical gap).
+  // После первого измерения высота фиксируется — дальнейшие изменения products.length
+  // не создают новых observers (проверяем rowHeightLockedRef перед подпиской).
   useEffect(() => {
+    if (rowHeightLockedRef.current) return; // Уже измерено — не нужен новый observer
     if (!measureRef.current) return;
     const el = measureRef.current;
     const ro = new ResizeObserver(() => {
@@ -173,7 +178,9 @@ const ProductsListComponent: React.FC = () => {
   
   return (
     <>
-      <div ref={listRef} style={{ paddingTop: windowed.top, paddingBottom: windowed.bottom }}>
+      {/* overflowAnchor: 'none' — отключает компенсацию скролла браузером при изменении paddingTop,
+          что является основной причиной микро-прыжков при виртуализированной прокрутке */}
+      <div ref={listRef} style={{ paddingTop: windowed.top, paddingBottom: windowed.bottom, overflowAnchor: 'none' } as React.CSSProperties}>
         <div
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 items-stretch"
         >

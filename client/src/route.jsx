@@ -297,14 +297,14 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ) 
       },
-      { 
-        path: "test-auth", 
+      ...(import.meta.env.DEV ? [{
+        path: "test-auth",
         element: (
           <Suspense fallback={<PageSkeleton />}>
             <TestAuth />
           </Suspense>
-        ) 
-      },
+        )
+      }] : []),
     ],
   },
   {

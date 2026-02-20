@@ -87,6 +87,7 @@ export interface ProductResponse {
   refferal_price: number;
   base_price?: number | null;
   main_image: string;
+  variants_count?: number;
   variant_id: string;
   variant_sku: string;
   price: number;

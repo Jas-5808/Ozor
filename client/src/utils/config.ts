@@ -7,9 +7,9 @@ export const config = {
     timeout: parseInt(import.meta.env.VITE_API_TIMEOUT || '10000'),
   },
   app: {
-    name: import.meta.env.VITE_APP_NAME || 'Uzbmarket',
+    name: import.meta.env.VITE_APP_NAME || 'OZAR',
     version: import.meta.env.VITE_APP_VERSION || '1.0.0',
-    description: import.meta.env.VITE_APP_DESCRIPTION || 'Интернет магазин Uzbmarket',
+    description: import.meta.env.VITE_APP_DESCRIPTION || 'Интернет магазин OZAR',
   },
   features: {
     analytics: import.meta.env.VITE_ENABLE_ANALYTICS === 'true',

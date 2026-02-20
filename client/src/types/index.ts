@@ -20,6 +20,7 @@ export interface Product {
   variant_sku: string;
   price: number;
   stock: number;
+  variants_count?: number; // кол-во вариантов товара (как на маркетплейсах)
   variant_attributes: ProductAttributeValue[];
   variant_media?: VariantMedia[]; // из /shop/products для варианта
 }

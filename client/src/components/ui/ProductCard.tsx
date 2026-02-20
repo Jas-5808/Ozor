@@ -176,6 +176,18 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({
             </div>
           )}
 
+          {!matchPercent && (product.variants_count ?? 1) > 1 && (
+            <div
+              className={[
+                "absolute left-2 bottom-2 rounded-full px-2 py-0.5 font-medium text-white/90 shadow",
+                "bg-black/50 backdrop-blur-sm",
+                isCompact ? "text-[9px]" : "text-[10px]",
+              ].join(" ")}
+            >
+              {product.variants_count} {t("product.variantsCount", "вар.")}
+            </div>
+          )}
+
           <button
             type="button"
             className={[
@@ -255,7 +267,8 @@ export const ProductCard = memo(ProductCardComponent, (prevProps, nextProps) => 
     prevProps.product.product_description === nextProps.product.product_description &&
     prevProps.product.price === nextProps.product.price &&
     prevProps.product.base_price === nextProps.product.base_price &&
-    prevProps.product.stock === nextProps.product.stock;
+    prevProps.product.stock === nextProps.product.stock &&
+    prevProps.product.variants_count === nextProps.product.variants_count;
   
   // При смене языка нужно перерисовывать карточку (локализованные название/описание)
   if (prevProps.locale !== nextProps.locale) return false;
