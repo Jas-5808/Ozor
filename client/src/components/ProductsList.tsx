@@ -39,9 +39,34 @@ const ProductsListComponent: React.FC = () => {
     hasMore,
     loading,
     onLoadMore: loadMore,
-    threshold: 200,
-    rootMargin: "400px 0px",
+    threshold: 400,
+    rootMargin: "700px 0px",
   });
+
+  // Дополнительный скролл-триггер: на случай если IntersectionObserver запоздал
+  // (например после быстрой прокрутки к самому низу). Вызываем loadMore, если
+  // до конца страницы < 800px и данные ещё не грузятся.
+  useEffect(() => {
+    const check = () => {
+      if (loading || !hasMore) return;
+      const dist =
+        document.documentElement.scrollHeight -
+        window.scrollY -
+        window.innerHeight;
+      if (dist < 800) loadMore();
+    };
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => { raf = 0; check(); });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    check(); // проверить сразу при монтировании (короткий список)
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [loading, hasMore, loadMore]);
 
   // Windowing: считаем, какие элементы реально рисовать, чтобы не раздувать DOM при бесконечной ленте
   const [viewport, setViewport] = useState(() => ({
@@ -187,29 +212,21 @@ const ProductsListComponent: React.FC = () => {
           {windowedCards}
         </div>
       </div>
-      {/* Элемент-триггер для бесконечной прокрутки */}
-      <div ref={sentinelRef} className="h-10 w-full" />
-      {/* Индикатор загрузки только во время подгрузки следующей страницы */}
-      {loading && hasMore && products.length > 0 && (
-        <div className="flex justify-center items-center py-8">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#04734b]"></div>
-        </div>
-      )}
-      {/* Фолбэк-кнопка на случай если observer не сработает */}
-      {hasMore && !loading && (
-        <div className="flex justify-center mt-4">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              loadMore();
-            }}
-            className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:border-emerald-500 hover:text-emerald-700 transition"
-          >
-            {t("common.actions.loadMore") || "Загрузить ещё"}
-          </button>
-        </div>
-      )}
+      {/* Сентинель для IntersectionObserver — высокий div, чтобы observer не пропустил */}
+      <div ref={sentinelRef} className="h-40 w-full" aria-hidden="true" />
+      {/* Фиксированная высота блока под списком — без сдвига при появлении/скрытии индикатора */}
+      <div className="min-h-18 flex flex-col justify-center">
+        {loading && hasMore && products.length > 0 && (
+          <div className="flex justify-center items-center py-8">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#04734b]" aria-hidden />
+          </div>
+        )}
+        {!hasMore && products.length > 0 && !loading && (
+          <div className="flex justify-center py-6">
+            <span className="text-sm text-slate-400">{t("catalog.allProductsLoaded") || "Все товары загружены"}</span>
+          </div>
+        )}
+      </div>
     </>
   );
 };

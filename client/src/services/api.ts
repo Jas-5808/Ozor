@@ -538,7 +538,7 @@ export const shopAPI = {
       return promise;
     };
   })(),
-  guestOrder: (payload: CreateOrderRequest): Promise<TypedAxiosResponse<OrderResponse>> => 
+  guestOrder: (payload: CreateOrderRequest): Promise<TypedAxiosResponse<OrderResponse>> =>
     apiClient.post(`/shop/guest/order`, payload),
   getAllOrders: (): Promise<TypedAxiosResponse<OrderResponse[]>> => 
     apiClient.get(`/shop/orders/all`),

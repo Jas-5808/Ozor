@@ -70,23 +70,41 @@ let pagedLoadMoreInFlight: Promise<void> | null = null;
 
 /**
  * Витрина (главная): постраничная загрузка с API (infinite scroll).
- * Важно: НЕ выкачивает весь каталог, чтобы не убивать API и не держать мегабайты в памяти.
+ *
+ * Ключевое правило: spread вариантов применяется ТОЛЬКО к новой порции данных
+ * (per-batch), а НЕ ко всему накопленному списку. Это гарантирует, что уже
+ * отображённые карточки не перемещаются при каждой подгрузке.
+ *
+ * Порядок отображаемых товаров:
+ *   display = spread(page1) + spread(page2) + spread(page3) + …
+ * а НЕ:
+ *   display = spread(page1 + page2 + page3)  ← старый вариант, вызывал перескоки
  */
 export const useProductsPaged = () => {
-  // Храним сырые данные в ref, чтобы loadMore не создавался заново при каждом обновлении списка.
-  // Это устраняет стейл-замыкания и предотвращает лишние ре-рендеры при быстром скролле.
+  // raw — только для дедупликации и кэша; НЕ используется для рендера напрямую
   const rawRef = useRef<any[]>([]);
   const [raw, setRawState] = useState<any[]>([]);
+
+  // displayRef / displayProducts — то, что реально рендерится.
+  // Пополняется инкрементально: при подгрузке spread применяется только к новой порции.
+  const displayRef = useRef<Product[]>([]);
+  const [displayProducts, setDisplayProductsState] = useState<Product[]>([]);
+
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState<number>(0);
   const [hasMore, setHasMore] = useState<boolean>(true);
-  const locale = getLocaleKey();
+  const scrollYBeforeAppendRef = useRef<number | null>(null);
 
-  // Синхронный сеттер: обновляет и ref, и state (для перерисовки)
+  // Синхронные сеттеры: обновляют и ref, и state (для перерисовки)
   const setRaw = useCallback((data: any[]) => {
     rawRef.current = data;
     setRawState(data);
+  }, []);
+
+  const setDisplay = useCallback((items: Product[]) => {
+    displayRef.current = items;
+    setDisplayProductsState(items);
   }, []);
 
   const fetchFirstPage = useCallback(async () => {
@@ -96,7 +114,9 @@ export const useProductsPaged = () => {
 
       const now = Date.now();
       if (pagedCache && (now - pagedCache.timestamp) < CACHE_TTL) {
+        const spread = buildDisplayProductsFromRawOrder(pagedCache.raw);
         setRaw(pagedCache.raw);
+        setDisplay(spread);
         setOffset(pagedCache.offset);
         setHasMore(pagedCache.hasMore);
         setLoading(false);
@@ -110,7 +130,9 @@ export const useProductsPaged = () => {
           hasMore: Boolean(persisted.hasMore),
           timestamp: Number(persisted.timestamp || Date.now()),
         };
+        const spread = buildDisplayProductsFromRawOrder(pagedCache.raw);
         setRaw(pagedCache.raw);
+        setDisplay(spread);
         setOffset(pagedCache.offset);
         setHasMore(pagedCache.hasMore);
         setLoading(false);
@@ -120,7 +142,9 @@ export const useProductsPaged = () => {
       if (pagedInFlight) {
         await pagedInFlight;
         if (pagedCache) {
+          const spread = buildDisplayProductsFromRawOrder(pagedCache.raw);
           setRaw(pagedCache.raw);
+          setDisplay(spread);
           setOffset(pagedCache.offset);
           setHasMore(pagedCache.hasMore);
         }
@@ -132,20 +156,16 @@ export const useProductsPaged = () => {
         const response = await shopAPI.getProducts({ limit: MAIN_PRODUCTS_FIRST_PAGE_LIMIT, offset: 0 });
         const data = response.data || [];
         const nextOffset = data.length;
-        // Некоторые бэки игнорируют limit и отдают меньше, но страниц ещё много.
-        // Поэтому не режем hasMore по "=== limit" на первой странице.
         const nextHasMore = data.length > 0;
 
-        pagedCache = {
-          raw: data,
-          offset: nextOffset,
-          hasMore: nextHasMore,
-          timestamp: Date.now(),
-        };
+        pagedCache = { raw: data, offset: nextOffset, hasMore: nextHasMore, timestamp: Date.now() };
         writeMainCache({ raw: data, offset: nextOffset, hasMore: nextHasMore });
 
-        // Все обновления state в одном месте → один React render (React 18 batching)
+        // spread первой страницы — вразброс по вариантам внутри этой порции
+        const spread = buildDisplayProductsFromRawOrder(data);
+
         setRaw(data);
+        setDisplay(spread);
         setOffset(nextOffset);
         setHasMore(nextHasMore);
         setLoading(false);
@@ -154,31 +174,29 @@ export const useProductsPaged = () => {
       pagedInFlight = run();
       await pagedInFlight;
       pagedInFlight = null;
-    } catch (error) {
+    } catch (err) {
       pagedInFlight = null;
-      const appError = handleApiError(error);
-      const errorMessage =
-        getUserFriendlyMessage(appError) || i18n.t("common.errors.productsLoad");
+      const appError = handleApiError(err);
+      const errorMessage = getUserFriendlyMessage(appError) || i18n.t("common.errors.productsLoad");
       setError(errorMessage);
       setLoading(false);
       logger.errorWithContext(appError, { context: "useProductsPaged.fetchFirstPage" });
     }
-  }, [setRaw]);
+  }, [setRaw, setDisplay]);
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return;
 
     try {
-      setLoading(true);
-      setError(null);
-
       if (pagedLoadMoreInFlight) {
         await pagedLoadMoreInFlight;
         return;
       }
 
+      setLoading(true);
+      setError(null);
+
       const run = async () => {
-        // Читаем из ref, а не из замыкания — гарантированно актуальные данные без пересоздания callback
         const currentRaw = rawRef.current;
         const currentOffset = offset;
 
@@ -186,32 +204,37 @@ export const useProductsPaged = () => {
         const data = response.data || [];
         const nextOffset = currentOffset + data.length;
 
-        // Дедуп на всякий случай (API может отдавать повторно)
+        // Дедупликация: отбираем только действительно новые элементы
         const existingKeys = new Set(
           currentRaw.map((it: any) => `${it?.product_id || it?.id || ""}_${it?.variant_id || it?.variantId || ""}`)
         );
         const merged = currentRaw.slice();
+        const newItems: any[] = []; // только новые (не дубли) для spread
+
         for (const item of data) {
           const key = `${item?.product_id || item?.id || ""}_${item?.variant_id || item?.variantId || ""}`;
           if (!existingKeys.has(key)) {
             existingKeys.add(key);
             merged.push(item);
+            newItems.push(item);
           }
         }
-        const grew = merged.length > currentRaw.length;
-        // "hasMore" продолжаем, пока сервер возвращает хоть что-то и список реально растёт.
+
+        const grew = newItems.length > 0;
         const nextHasMore = data.length > 0 && grew;
 
-        pagedCache = {
-          raw: merged,
-          offset: nextOffset,
-          hasMore: nextHasMore,
-          timestamp: Date.now(),
-        };
+        pagedCache = { raw: merged, offset: nextOffset, hasMore: nextHasMore, timestamp: Date.now() };
         writeMainCache({ raw: merged, offset: nextOffset, hasMore: nextHasMore });
 
-        // Все обновления в одном batch → один React render, без промежуточных мерцаний
+        // spread применяется ТОЛЬКО к новой порции → старые карточки не двигаются
+        const newSpread = buildDisplayProductsFromRawOrder(newItems);
+        const combined = [...displayRef.current, ...newSpread];
+
+        if (newSpread.length > 0 && typeof window !== "undefined") {
+          scrollYBeforeAppendRef.current = window.scrollY;
+        }
         setRaw(merged);
+        setDisplay(combined);
         setOffset(nextOffset);
         setHasMore(nextHasMore);
         setLoading(false);
@@ -220,51 +243,52 @@ export const useProductsPaged = () => {
       pagedLoadMoreInFlight = run();
       await pagedLoadMoreInFlight;
       pagedLoadMoreInFlight = null;
-    } catch (error) {
+    } catch (err) {
       pagedLoadMoreInFlight = null;
-      const appError = handleApiError(error);
-      const errorMessage =
-        getUserFriendlyMessage(appError) || i18n.t("common.errors.productsLoad");
+      const appError = handleApiError(err);
+      const errorMessage = getUserFriendlyMessage(appError) || i18n.t("common.errors.productsLoad");
       setError(errorMessage);
       setLoading(false);
       logger.errorWithContext(appError, { context: "useProductsPaged.loadMore" });
     }
-    // Убран finally { setLoading(false) } — setLoading теперь внутри run() и catch,
-    // чтобы все state-обновления батчились в один рендер (React 18)
-  }, [hasMore, loading, offset, setRaw]); // raw убран из зависимостей — используем rawRef
+  }, [hasMore, loading, offset, setRaw, setDisplay]);
 
   const refetch = useCallback(() => {
+    scrollYBeforeAppendRef.current = null;
     pagedCache = null;
     pagedInFlight = null;
     pagedLoadMoreInFlight = null;
     if (typeof window !== "undefined") {
-      try {
-        localStorage.removeItem(MAIN_PRODUCTS_CACHE_KEY);
-      } catch {
-        // ignore
-      }
+      try { localStorage.removeItem(MAIN_PRODUCTS_CACHE_KEY); } catch { /* ignore */ }
     }
     setRaw([]);
+    setDisplay([]);
     setOffset(0);
     setHasMore(true);
     fetchFirstPage();
-  }, [fetchFirstPage, setRaw]);
+  }, [fetchFirstPage, setRaw, setDisplay]);
 
   useEffect(() => {
     let cancelled = false;
-    fetchFirstPage().finally(() => {
-      if (cancelled) return;
-    });
-    return () => {
-      cancelled = true;
-    };
+    fetchFirstPage().finally(() => { if (cancelled) return; });
+    return () => { cancelled = true; };
   }, [fetchFirstPage]);
 
-  // Порядок товаров = порядок API (raw), без переупорядочивания при подгрузке
-  const products = useMemo(() => buildDisplayProductsFromRawOrder(raw), [raw]);
+  // После подгрузки сохраняем позицию скролла — уже видимые товары остаются на месте, новые только снизу
+  useEffect(() => {
+    const saved = scrollYBeforeAppendRef.current;
+    if (saved === null || typeof window === "undefined") return;
+    scrollYBeforeAppendRef.current = null;
+    const id = requestAnimationFrame(() => {
+      if (window.scrollY !== saved) {
+        window.scrollTo(0, saved);
+      }
+    });
+    return () => cancelAnimationFrame(id);
+  }, [displayProducts.length]);
 
   return {
-    products,
+    products: displayProducts,
     loading,
     error,
     refetch,

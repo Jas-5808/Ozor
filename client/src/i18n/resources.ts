@@ -597,6 +597,7 @@ export const resources = {
         backToCatalog: 'Вернуться в каталог',
         productsCount: '{{count}} товаров',
         subcategories: 'Подкатегории',
+        allProductsLoaded: 'Все товары загружены',
         sidePanel: {
           close: 'Закрыть каталог',
         },
@@ -1724,6 +1725,7 @@ export const resources = {
         backToCatalog: 'Katalogga qaytish',
         productsCount: '{{count}} ta mahsulot',
         subcategories: 'Pastki kategoriyalar',
+        allProductsLoaded: "Barcha mahsulotlar yuklandi",
         sidePanel: {
           close: 'Katalogni yopish',
         },
