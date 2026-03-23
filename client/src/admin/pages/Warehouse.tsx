@@ -85,6 +85,17 @@ export default function Warehouse() {
     }) as Record<string, string>,
     [t]
   );
+
+  // Warehouse screen: show only statuses that relate to packing/labeling.
+  // This hides "cancelled" and other non-warehouse statuses from the table UI.
+  const warehouseVisibleStatuses = useMemo(() => {
+    return new Set(['pending', 'accepted', 'packing', 'packed', 'processing']);
+  }, []);
+
+  const isWarehouseVisibleStatus = (status?: string) => {
+    const key = String(status || '').toLowerCase();
+    return warehouseVisibleStatuses.has(key);
+  };
   const statusTone: Record<string, string> = {
     pending: 'bg-amber-100 text-amber-800',
     accepted: 'bg-emerald-100 text-emerald-700',
@@ -160,20 +171,26 @@ export default function Warehouse() {
             String(o?.order_region || '').toLowerCase() === myOrdersDeliveryFilter.toLowerCase() ||
             String(o?.city || '').toLowerCase() === myOrdersDeliveryFilter.toLowerCase()
         );
-    return [...list].sort((a: any, b: any) => {
-      const pa = myOrdersStatusOrder(a?.status);
-      const pb = myOrdersStatusOrder(b?.status);
-      if (pa !== pb) return pa - pb;
-      const ta = a?.created_at ? new Date(a.created_at).getTime() : 0;
-      const tb = b?.created_at ? new Date(b.created_at).getTime() : 0;
-      return tb - ta;
-    });
+    return [...list]
+      .filter((o) => isWarehouseVisibleStatus(o?.status))
+      .sort((a: any, b: any) => {
+        const pa = myOrdersStatusOrder(a?.status);
+        const pb = myOrdersStatusOrder(b?.status);
+        if (pa !== pb) return pa - pb;
+        const ta = a?.created_at ? new Date(a.created_at).getTime() : 0;
+        const tb = b?.created_at ? new Date(b.created_at).getTime() : 0;
+        return tb - ta;
+      });
   }, [myOrders, myOrdersDeliveryFilter]);
 
   const packedOrderIds = useMemo(
     () => myOrdersFiltered.filter((o) => String(o?.status || '').toLowerCase() === 'packed').map((o) => String(o.id)),
     [myOrdersFiltered]
   );
+
+  const ordersForDisplay = useMemo(() => {
+    return orders.filter((o) => isWarehouseVisibleStatus(o?.status));
+  }, [orders, warehouseVisibleStatuses]);
 
   const toggleSelectLabel = useCallback((id: string) => {
     setSelectedLabelIds((prev) => {
@@ -679,14 +696,14 @@ export default function Warehouse() {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.length === 0 && (
+                  {ordersForDisplay.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-3 py-3 text-center text-slate-500">
                         {t('common.empty', { defaultValue: 'Нет заказов на данный момент' })}
                       </td>
                     </tr>
                   )}
-                  {orders.map((o, idx) => (
+                  {ordersForDisplay.map((o, idx) => (
                     <tr key={o.id || idx} className="border-t border-slate-200 hover:bg-slate-50">
                       <td className="px-3 py-2 text-slate-700">{idx + 1}</td>
                       <td className="px-3 py-2">{renderStatus(o.status)}</td>
