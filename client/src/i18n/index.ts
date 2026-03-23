@@ -10,6 +10,9 @@ const minimalResources = {
       common: {
         appName: 'OZAR',
         loading: 'Загрузка…',
+        delivery: {
+          defaultCity: 'Ташкент',
+        },
         actions: {
           close: 'Закрыть',
           searchPlaceholder: 'Искать товары и категории',
@@ -58,6 +61,9 @@ const minimalResources = {
       common: {
         appName: 'OZAR',
         loading: 'Yuklanmoqda…',
+        delivery: {
+          defaultCity: 'Toshkent',
+        },
         actions: {
           close: 'Yopish',
           searchPlaceholder: 'Mahsulot va kategoriyalarni qidirish',
@@ -122,7 +128,10 @@ async function ensureFullResourcesLoaded() {
       });
       fullResourcesLoaded = true;
     })
-    .catch(() => {
+    .catch((e) => {
+      // If dynamic import fails, we keep showing minimalResources.
+      // The console output helps diagnose why full i18n couldn't load.
+      console.error('Failed to load full i18n resources:', e);
       // Если не загрузилось — работаем на минимальном словаре
     });
   return fullResourcesPromise;
